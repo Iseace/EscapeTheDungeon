@@ -1,90 +1,152 @@
-using UnityEngine;
 using Fusion;
+using UnityEngine;
 
 public class PlayerMovement : NetworkBehaviour
 {
-    [Header("Movement")]
-    public float speed = 5f;
-    public float jumpForce = 6f;
-    public float gravity = -20f;
+    private CharacterController _controller;
+    private Animator _animator;
 
     [Header("References")]
-    public Transform cameraTransform;
+    [Tooltip("Assign the Graphics parent object that contains all skin options")]
+    public Transform GraphicsRoot;
+    [Tooltip("Assign the CameraPivot transform (should be at y=1.8)")]
+    public Transform CameraPivot;
 
-    private CharacterController controller;
-    private Animator animator;
-    private SkinnedMeshRenderer[] bodyMeshes;
-    private float moveX;
-    private float moveZ;
-    private float velocityY;
+    [Header("Movement Settings")]
+    public float PlayerSpeed = 2f;
+    public float JumpForce = 5f;
+    public float Gravity = -9.81f;
 
-    public override void Spawned()
+    public Camera Camera;
+
+    private Vector3 _velocity;
+    private bool _isGrounded;
+    private bool _jumpPressed; // New: captures jump input from Update()
+
+    private void Awake()
     {
-        controller = GetComponent<CharacterController>();
-        animator = GetComponentInChildren<Animator>();
-        bodyMeshes = GetComponentsInChildren<SkinnedMeshRenderer>();
+        _controller = GetComponent<CharacterController>();
 
-        // Avoid skipping small downward moves while idle
-        controller.minMoveDistance = 0f;
+        // Find the Animator in the active skin
+        RefreshAnimatorReference();
+    }
 
-        if (!HasInputAuthority)
+    /// <summary>
+    /// Finds the Animator component in the currently active skin.
+    /// Call this method after changing skins.
+    /// </summary>
+    public void RefreshAnimatorReference()
+    {
+        // If GraphicsRoot is assigned, search only within it
+        if (GraphicsRoot != null)
         {
-            if (cameraTransform != null)
-                cameraTransform.gameObject.SetActive(false);
+            _animator = GraphicsRoot.GetComponentInChildren<Animator>(false); // false = only active objects
         }
         else
         {
-            // Hide local body (FPS)
-            foreach (var mesh in bodyMeshes)
-            {
-                mesh.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
-            }
+            // Fallback to searching all children
+            _animator = GetComponentInChildren<Animator>(false);
+        }
+
+        if (_animator == null)
+        {
+            Debug.LogWarning("Animator not found! Make sure one skin is active in the Graphics folder.");
+        }
+        else
+        {
+            Debug.Log($"Animator found on: {_animator.gameObject.name}");
         }
     }
 
     void Update()
     {
-        if (!HasInputAuthority) return;
+        // Only capture input for local player
+        if (HasStateAuthority == false)
+            return;
 
-        // INPUT
-        moveX = Input.GetAxis("Horizontal");
-        moveZ = Input.GetAxis("Vertical");
-
-        // CAMERA-RELATIVE MOVE
-        Vector3 forward = transform.forward;
-        Vector3 right = transform.right;
-        forward.y = 0;
-        right.y = 0;
-        forward.Normalize();
-        right.Normalize();
-
-        Vector3 move = (forward * moveZ + right * moveX) * speed;
-
-        // Apply gravity first; stabilize when grounded
-        if (controller.isGrounded && velocityY < 0)
-            velocityY = -2f;
-
-        velocityY += gravity * Time.deltaTime;
-
-        // Move and use current frame collision flags for grounding
-        Vector3 velocity = move + Vector3.up * velocityY;
-        CollisionFlags flags = controller.Move(velocity * Time.deltaTime);
-        bool grounded = (flags & CollisionFlags.Below) != 0;
-
-        // Jump after Move so grounded reflects this frame
-        if (grounded && Input.GetButtonDown("Jump"))
+        // Capture jump input every frame so it's never missed
+        if (Input.GetButtonDown("Jump"))
         {
-            velocityY = jumpForce;
-            if (animator != null)
-                animator.SetTrigger("Jump");
+            _jumpPressed = true;
+        }
+    }
+
+    public override void FixedUpdateNetwork()
+    {
+        // Only move own player and not every other player
+        if (HasStateAuthority == false)
+        {
+            return;
         }
 
-        // ANIMATIONS
-        if (animator != null)
+        // Check if grounded
+        _isGrounded = _controller.isGrounded;
+
+        if (_isGrounded && _velocity.y < 0)
         {
-            animator.SetFloat("MoveX", moveX);
-            animator.SetFloat("MoveZ", moveZ);
-            animator.SetBool("IsGrounded", grounded);
+            _velocity.y = -2f; // Small downward force to keep grounded
+        }
+
+        // Get input
+        float horizontal = Input.GetAxis("Horizontal");
+        float vertical = Input.GetAxis("Vertical");
+
+        // Calculate movement relative to camera
+        var cameraRotationY = Quaternion.Euler(0, Camera.transform.rotation.eulerAngles.y, 0);
+        Vector3 move = cameraRotationY * new Vector3(horizontal, 0, vertical) * Runner.DeltaTime * PlayerSpeed;
+
+        // Move the character
+        _controller.Move(move);
+
+        // Rotate character to face movement direction
+        if (move != Vector3.zero)
+        {
+            gameObject.transform.forward = move.normalized;
+        }
+
+        // Jump input - now captured from Update() so it's never missed
+        if (_jumpPressed && _isGrounded)
+        {
+            _velocity.y = JumpForce;
+            if (_animator != null)
+            {
+                _animator.SetTrigger("Jump");
+            }
+        }
+
+        // Apply gravity
+        _velocity.y += Gravity * Runner.DeltaTime;
+        _controller.Move(_velocity * Runner.DeltaTime);
+
+        // Update animator parameters
+        if (_animator != null)
+        {
+            // Send movement values relative to player's local space
+            Vector3 localMove = transform.InverseTransformDirection(move.normalized);
+
+            _animator.SetFloat("MoveX", localMove.x * (move.magnitude > 0 ? 1 : 0));
+            _animator.SetFloat("MoveZ", localMove.z * (move.magnitude > 0 ? 1 : 0));
+            _animator.SetBool("IsGrounded", _isGrounded);
+        }
+
+        // Reset jump flag after consuming it
+        _jumpPressed = false;
+    }
+
+    public override void Spawned()
+    {
+        if (HasStateAuthority)
+        {
+            Camera = Camera.main;
+
+            // Use CameraPivot if assigned, otherwise fall back to transform
+            Transform targetTransform = CameraPivot != null ? CameraPivot : transform;
+            Camera.GetComponent<FirstPersonCamera>().Target = targetTransform;
+
+            if (CameraPivot == null)
+            {
+                Debug.LogWarning("CameraPivot not assigned! Camera will follow root transform at ground level.");
+            }
         }
     }
 }

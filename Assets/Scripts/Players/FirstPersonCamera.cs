@@ -1,40 +1,56 @@
 using UnityEngine;
-using Fusion;
 
-public class FirstPersonCamera : NetworkBehaviour
+public class FirstPersonCamera : MonoBehaviour
 {
-    public Transform player;
-    public float mouseSensitivity = 2f;
-    float verticalRotation = 0f;
-    float horizontalRotation = 0f;
+    public Transform Target;
+    public float MouseSensitivity = 10f;
+    public LayerMask CullingMask; // Optional: set camera culling
 
-    public override void Spawned()
+    private float verticalRotation;
+    private float horizontalRotation;
+    private bool bodyHidden = false;
+
+    void HideLocalPlayerBody()
     {
-        if (!HasInputAuthority)
+        if (Target == null || bodyHidden) return;
+
+        // Get the root player object (Target might be CameraPivot child)
+        Transform playerRoot = Target.root;
+
+        // Get all renderers in the player body from the root
+        Renderer[] renderers = playerRoot.GetComponentsInChildren<Renderer>();
+
+        foreach (Renderer renderer in renderers)
         {
-            gameObject.SetActive(false);
-            return;
+            // Skip specific objects if needed (e.g., weapons)
+            //if (renderer.gameObject.CompareTag("Weapon")) continue;
+
+            renderer.enabled = false;
         }
 
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        bodyHidden = true;
     }
 
-    void Update()
+    void LateUpdate()
     {
-        if (!HasInputAuthority) return;
+        if (Target == null) return;
 
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * 100f * Time.deltaTime;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * 100f * Time.deltaTime;
+        // Hide body once Target is assigned
+        if (!bodyHidden)
+        {
+            HideLocalPlayerBody();
+        }
 
-        horizontalRotation += mouseX;
-        verticalRotation -= mouseY;
-        verticalRotation = Mathf.Clamp(verticalRotation, -90f, 90f);
+        transform.position = Target.position;
 
-        // Cámara (arriba / abajo)
-        transform.localRotation = Quaternion.Euler(verticalRotation, 0f, 0f);
+        float mouseX = Input.GetAxis("Mouse X");
+        float mouseY = Input.GetAxis("Mouse Y");
 
-        // Player (izquierda / derecha)
-        player.rotation = Quaternion.Euler(0f, horizontalRotation, 0f);
+        verticalRotation -= mouseY * MouseSensitivity;
+        verticalRotation = Mathf.Clamp(verticalRotation, -70f, 70f);
+
+        horizontalRotation += mouseX * MouseSensitivity;
+
+        transform.rotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0);
     }
 }
