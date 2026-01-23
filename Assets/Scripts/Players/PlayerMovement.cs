@@ -21,30 +21,22 @@ public class PlayerMovement : NetworkBehaviour
 
     private Vector3 _velocity;
     private bool _isGrounded;
-    private bool _jumpPressed; // New: captures jump input from Update()
+    private bool _jumpPressed;
 
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
-
-        // Find the Animator in the active skin
         RefreshAnimatorReference();
     }
 
-    /// <summary>
-    /// Finds the Animator component in the currently active skin.
-    /// Call this method after changing skins.
-    /// </summary>
     public void RefreshAnimatorReference()
     {
-        // If GraphicsRoot is assigned, search only within it
         if (GraphicsRoot != null)
         {
-            _animator = GraphicsRoot.GetComponentInChildren<Animator>(false); // false = only active objects
+            _animator = GraphicsRoot.GetComponentInChildren<Animator>(false);
         }
         else
         {
-            // Fallback to searching all children
             _animator = GetComponentInChildren<Animator>(false);
         }
 
@@ -60,11 +52,9 @@ public class PlayerMovement : NetworkBehaviour
 
     void Update()
     {
-        // Only capture input for local player
         if (HasStateAuthority == false)
             return;
 
-        // Capture jump input every frame so it's never missed
         if (Input.GetButtonDown("Jump"))
         {
             _jumpPressed = true;
@@ -73,70 +63,67 @@ public class PlayerMovement : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
-        // Only move own player and not every other player
+        // Only move own player
         if (HasStateAuthority == false)
         {
             return;
         }
 
-        // Early exit if camera not yet assigned
         if (Camera == null)
         {
             return;
         }
 
-        // Check if grounded
         _isGrounded = _controller.isGrounded;
 
         if (_isGrounded && _velocity.y < 0)
         {
-            _velocity.y = -2f; // Small downward force to keep grounded
+            _velocity.y = -2f;
         }
 
-        // Get input
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
 
-        // Calculate movement relative to camera
         var cameraRotationY = Quaternion.Euler(0, Camera.transform.rotation.eulerAngles.y, 0);
         Vector3 move = cameraRotationY * new Vector3(horizontal, 0, vertical) * Runner.DeltaTime * PlayerSpeed;
 
-        // Move the character
         _controller.Move(move);
 
-        // Rotate character to face movement direction
         if (move != Vector3.zero)
         {
             gameObject.transform.forward = move.normalized;
         }
 
-        // Jump input - now captured from Update() so it's never missed
         if (_jumpPressed && _isGrounded)
         {
             _velocity.y = JumpForce;
-            if (_animator != null)
-            {
-                _animator.SetTrigger("Jump");
-            }
+
+            // Trigger jump animation via RPC so all clients see it
+            RPC_TriggerJump();
         }
 
-        // Apply gravity
         _velocity.y += Gravity * Runner.DeltaTime;
         _controller.Move(_velocity * Runner.DeltaTime);
 
-        // Update animator parameters
+        // Update animator - NetworkMecanimAnimator handles syncing these
         if (_animator != null)
         {
-            // Send movement values relative to player's local space
             Vector3 localMove = transform.InverseTransformDirection(move.normalized);
-
             _animator.SetFloat("MoveX", localMove.x * (move.magnitude > 0 ? 1 : 0));
             _animator.SetFloat("MoveZ", localMove.z * (move.magnitude > 0 ? 1 : 0));
             _animator.SetBool("IsGrounded", _isGrounded);
         }
 
-        // Reset jump flag after consuming it
         _jumpPressed = false;
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_TriggerJump()
+    {
+        if (_animator != null)
+        {
+            _animator.SetTrigger("Jump");
+        }
     }
 
     public override void Spawned()
@@ -144,8 +131,6 @@ public class PlayerMovement : NetworkBehaviour
         if (HasStateAuthority)
         {
             Camera = Camera.main;
-
-            // Use CameraPivot if assigned, otherwise fall back to transform
             Transform targetTransform = CameraPivot != null ? CameraPivot : transform;
             Camera.GetComponent<FirstPersonCamera>().Target = targetTransform;
 

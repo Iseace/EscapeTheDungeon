@@ -57,6 +57,7 @@ MonoBehaviour:
   - {fileID: 5849904117143132054}
   - {fileID: 5156158899739482342}
   - {fileID: 8479133809032691040}
+  - {fileID: 4100285174654709793}
   ForceRemoteRenderTimeframe: 0
 --- !u!143 &3797531120297623430
 CharacterController:
@@ -76,13 +77,13 @@ CharacterController:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Height: 1.8
-  m_Radius: 0.3
+  m_Height: 2
+  m_Radius: 0.25
   m_SlopeLimit: 45
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0.9, z: 0}
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!114 &5849904117143132054
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -234,10 +235,41 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4924115922073956501, guid: 4a38c4fab6ff59344b3559814f886941, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4100285174654709793}
   m_SourcePrefab: {fileID: 100100000, guid: 4a38c4fab6ff59344b3559814f886941, type: 3}
+--- !u!1 &1274275874084658096 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4924115922073956501, guid: 4a38c4fab6ff59344b3559814f886941, type: 3}
+  m_PrefabInstance: {fileID: 6195504413662685989}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &4100285174654709793
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1274275874084658096}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 506319458, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.NetworkMecanimAnimator
+  Animator: {fileID: 5477748649853655920}
+  ApplyTiming: 2
+  SyncSettings: 79
+  StateHashes: 000000008a18fce4b9abd9d3f2164ac8e8877022
+  TriggerHashes: 0000000028a98107
+  TotalWords: 3
 --- !u!4 &1937941519849406730 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5701040336489441839, guid: 4a38c4fab6ff59344b3559814f886941, type: 3}
+  m_PrefabInstance: {fileID: 6195504413662685989}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &5477748649853655920 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 1872940196867977301, guid: 4a38c4fab6ff59344b3559814f886941, type: 3}
   m_PrefabInstance: {fileID: 6195504413662685989}
   m_PrefabAsset: {fileID: 0}
