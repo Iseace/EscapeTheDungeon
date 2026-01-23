@@ -89,10 +89,8 @@ public class PlayerMovement : NetworkBehaviour
 
         _controller.Move(move);
 
-        if (move != Vector3.zero)
-        {
-            gameObject.transform.forward = move.normalized;
-        }
+        // Rotate character to match camera's horizontal rotation
+        transform.rotation = Quaternion.Euler(0, Camera.transform.rotation.eulerAngles.y, 0);
 
         if (_jumpPressed && _isGrounded)
         {
@@ -132,7 +130,7 @@ public class PlayerMovement : NetworkBehaviour
         {
             Camera = Camera.main;
             Transform targetTransform = CameraPivot != null ? CameraPivot : transform;
-            Camera.GetComponent<FirstPersonCamera>().Target = targetTransform;
+            Camera.GetComponent<FirstPersonCamera>().SetTarget(targetTransform, GraphicsRoot != null ? GraphicsRoot.gameObject : gameObject);
 
             if (CameraPivot == null)
             {
