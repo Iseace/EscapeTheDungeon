@@ -2,47 +2,56 @@ using UnityEngine;
 
 public class FirstPersonCamera : MonoBehaviour
 {
-    public Transform Target;
+    public Transform Target; // Will be set at runtime
+    public GameObject PlayerGraphics; // Will be set at runtime
     public float MouseSensitivity = 10f;
-    public LayerMask CullingMask; // Optional: set camera culling
 
     private float verticalRotation;
     private float horizontalRotation;
     private bool bodyHidden = false;
+    private bool isInitialized = false;
 
-    void HideLocalPlayerBody()
+    /// <summary>
+    /// Call this to assign the local player to this camera
+    /// </summary>
+    public void SetTarget(Transform newTarget, GameObject graphics)
     {
-        if (Target == null || bodyHidden) return;
+        Target = newTarget;
+        PlayerGraphics = graphics;
+        bodyHidden = false;
+        isInitialized = false;
 
-        // Get the root player object (Target might be CameraPivot child)
-        Transform playerRoot = Target.root;
-
-        // Get all renderers in the player body from the root
-        Renderer[] renderers = playerRoot.GetComponentsInChildren<Renderer>();
-
-        foreach (Renderer renderer in renderers)
+        if (newTarget != null)
         {
-            // Skip specific objects if needed (e.g., weapons)
-            //if (renderer.gameObject.CompareTag("Weapon")) continue;
-
-            renderer.enabled = false;
+            horizontalRotation = newTarget.eulerAngles.y;
+            verticalRotation = 0f;
+            isInitialized = true;
         }
-
-        bodyHidden = true;
     }
 
     void LateUpdate()
     {
         if (Target == null) return;
 
-        // Hide body once Target is assigned
-        if (!bodyHidden)
+        // Initialize on first frame if not done yet
+        if (!isInitialized)
         {
-            HideLocalPlayerBody();
+            horizontalRotation = Target.eulerAngles.y;
+            verticalRotation = 0f;
+            isInitialized = true;
         }
 
+        // Hide the player body for this camera only
+        if (!bodyHidden && PlayerGraphics != null)
+        {
+            HidePlayerGraphics();
+            bodyHidden = true;
+        }
+
+        // Follow the target position (CameraPivot)
         transform.position = Target.position;
 
+        // Get mouse input
         float mouseX = Input.GetAxis("Mouse X");
         float mouseY = Input.GetAxis("Mouse Y");
 
@@ -51,6 +60,16 @@ public class FirstPersonCamera : MonoBehaviour
 
         horizontalRotation += mouseX * MouseSensitivity;
 
+        // Apply rotation to camera
         transform.rotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0);
+    }
+
+    void HidePlayerGraphics()
+    {
+        Renderer[] renderers = PlayerGraphics.GetComponentsInChildren<Renderer>();
+        foreach (Renderer r in renderers)
+        {
+            r.enabled = false;
+        }
     }
 }

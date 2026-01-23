@@ -79,6 +79,12 @@ public class PlayerMovement : NetworkBehaviour
             return;
         }
 
+        // Early exit if camera not yet assigned
+        if (Camera == null)
+        {
+            return;
+        }
+
         // Check if grounded
         _isGrounded = _controller.isGrounded;
 
