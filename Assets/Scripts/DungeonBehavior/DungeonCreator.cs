@@ -40,12 +40,26 @@ public class DungeonCreator : MonoBehaviour
     public bool useCornerPillars = true;
     
     [Tooltip("Tamaño de los pilares en las esquinas (0.3-0.8 recomendado)")]
-    [Range(0.3f, 1.0f)]
+    [Range(0.3f, 2.0f)]
     public float cornerPillarSize = 0.6f;
 
     [Header("Room Types")]
     public RoomTypeConfiguration roomTypeConfiguration;
     public bool enableRoomTypes = true;
+
+    [Header("Room Shapes")]
+    [Tooltip("Habilitar formas variadas para las habitaciones (L, T, Cruz, Recesos)")]
+    public bool enableVariedShapes = false;
+    
+    [Tooltip("Configuración de probabilidades y parámetros para las formas de habitaciones")]
+    public RoomShapeConfig roomShapeConfig = new RoomShapeConfig();
+
+    [Header("Prefab Rooms")]
+    [Tooltip("Habilitar uso de habitaciones prefabricadas completas")]
+    public bool enablePrefabRooms = false;
+    
+    [Tooltip("Configuración de habitaciones prefabricadas")]
+    public PrefabRoomConfiguration prefabRoomConfig;
 
     [Header("Procedural Objects")]
     public bool spawnObjects = true;
@@ -91,7 +105,9 @@ public class DungeonCreator : MonoBehaviour
             roomTopCornerMidifier,
             roomOffset,
             corridorWidth,
-            enableRoomTypes ? roomTypeConfiguration : null
+            enableRoomTypes ? roomTypeConfiguration : null,
+            enableVariedShapes ? roomShapeConfig : null,
+            enablePrefabRooms ? prefabRoomConfig : null
         );
 
         GameObject wallParent = new GameObject("WallParent");
@@ -108,12 +124,26 @@ public class DungeonCreator : MonoBehaviour
         // Crear meshes y procesar habitaciones
         for (int i = 0; i < listOfRooms.Count; i++)
         {
-            CreateMesh(listOfRooms[i].BottomLeftAreaCorner, listOfRooms[i].TopRightAreaCorner);
-
-            // Aplicar prefab de habitaci�n si existe
-            if (listOfRooms[i] is RoomNode roomNode && roomNode.RoomTypeData != null)
+            if (listOfRooms[i] is RoomNode roomNode)
             {
-                ApplyRoomPrefab(roomNode, objectParent.transform);
+                // Crear suelo basado en el grid (respeta formas variadas)
+                CreateFloorMeshFromGrid(roomNode);
+                
+                // Prioridad 1: Instanciar habitación prefab completa si está asignada
+                if (roomNode.AssignedPrefab != null)
+                {
+                    PrefabRoomApplicator.InstantiatePrefabRoom(roomNode, objectParent.transform);
+                }
+                // Prioridad 2: Aplicar prefab del RoomTypeData (sistema antiguo)
+                else if (roomNode.RoomTypeData != null)
+                {
+                    ApplyRoomPrefab(roomNode, objectParent.transform);
+                }
+            }
+            else
+            {
+                // Para corredores, usar método tradicional
+                CreateMesh(listOfRooms[i].BottomLeftAreaCorner, listOfRooms[i].TopRightAreaCorner);
             }
         }
 
@@ -290,6 +320,88 @@ public class DungeonCreator : MonoBehaviour
         Vector3 scale = wall.transform.localScale;
         scale.y = wallHeight;
         wall.transform.localScale = scale;
+    }
+
+    /// <summary>
+    /// Crea el mesh del suelo basándose en el grid (respeta formas variadas como L, T, Cruz)
+    /// </summary>
+    private void CreateFloorMeshFromGrid(RoomNode room)
+    {
+        if (generator?.Grid == null)
+        {
+            // Fallback al método tradicional si no hay grid
+            CreateMesh(room.BottomLeftAreaCorner, room.TopRightAreaCorner);
+            return;
+        }
+
+        List<Vector3> vertices = new List<Vector3>();
+        List<Vector2> uvs = new List<Vector2>();
+        List<int> triangles = new List<int>();
+
+        // Recorrer cada celda de la habitación en el grid
+        for (int x = room.BottomLeftAreaCorner.x; x < room.TopRightAreaCorner.x; x++)
+        {
+            for (int y = room.BottomLeftAreaCorner.y; y < room.TopRightAreaCorner.y; y++)
+            {
+                Vector2Int pos = new Vector2Int(x, y);
+                GridCell cell = generator.Grid.GetCell(pos);
+
+                // Solo crear suelo para celdas tipo Floor
+                if (cell != null && cell.Type == CellType.Floor)
+                {
+                    // Crear un quad (2 triángulos) para esta celda
+                    int vertexIndex = vertices.Count;
+
+                    // Vértices de la celda (1x1 unidad)
+                    vertices.Add(new Vector3(x, 0, y));         // Bottom-left
+                    vertices.Add(new Vector3(x + 1, 0, y));     // Bottom-right
+                    vertices.Add(new Vector3(x, 0, y + 1));     // Top-left
+                    vertices.Add(new Vector3(x + 1, 0, y + 1)); // Top-right
+
+                    // UVs
+                    uvs.Add(new Vector2(x, y));
+                    uvs.Add(new Vector2(x + 1, y));
+                    uvs.Add(new Vector2(x, y + 1));
+                    uvs.Add(new Vector2(x + 1, y + 1));
+
+                    // Triángulos (orden correcto para normales hacia arriba)
+                    triangles.Add(vertexIndex + 2); // Top-left
+                    triangles.Add(vertexIndex + 3); // Top-right
+                    triangles.Add(vertexIndex + 0); // Bottom-left
+
+                    triangles.Add(vertexIndex + 0); // Bottom-left
+                    triangles.Add(vertexIndex + 3); // Top-right
+                    triangles.Add(vertexIndex + 1); // Bottom-right
+                }
+            }
+        }
+
+        // Si no hay vértices, no crear nada
+        if (vertices.Count == 0)
+            return;
+
+        // Crear el mesh
+        Mesh mesh = new Mesh();
+        mesh.name = $"RoomFloor_{room.RoomID}";
+        mesh.vertices = vertices.ToArray();
+        mesh.uv = uvs.ToArray();
+        mesh.triangles = triangles.ToArray();
+        mesh.RecalculateNormals();
+
+        // Crear GameObject
+        GameObject floorObject = new GameObject(
+            $"Floor_{room.RoomType}_{room.RoomID}",
+            typeof(MeshFilter),
+            typeof(MeshRenderer),
+            typeof(MeshCollider)
+        );
+
+        floorObject.transform.position = Vector3.zero;
+        floorObject.transform.localScale = Vector3.one;
+        floorObject.GetComponent<MeshFilter>().mesh = mesh;
+        floorObject.GetComponent<MeshRenderer>().material = material;
+        floorObject.GetComponent<MeshCollider>().sharedMesh = mesh;
+        floorObject.transform.parent = transform;
     }
 
     private void CreateMesh(Vector2 bottomLeftCorner, Vector2 topRightCorner)

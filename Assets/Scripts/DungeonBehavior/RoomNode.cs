@@ -9,6 +9,9 @@ public class RoomNode : Node
     public RoomType RoomType { get; set; }
     public RoomTypeData RoomTypeData { get; set; }
     public string RoomID { get; private set; }
+    
+    // Habitación prefabricada asignada (opcional)
+    public PrefabRoomData AssignedPrefab { get; set; }
 
     public RoomNode(Vector2Int bottomLeftAreaCorner, Vector2Int topRightAreaCorner, Node parentNode, int index) : base(parentNode)
     {
