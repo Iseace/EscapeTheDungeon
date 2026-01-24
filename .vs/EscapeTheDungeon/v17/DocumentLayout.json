@@ -1,0 +1,198 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{D337E0E8-097F-A15C-F89D-FCD8A18EDAFE}|Assembly-CSharp-Editor.csproj|c:\\users\\deku\\unityprojects\\escapethedungeon\\assets\\editor\\dungeoncreatoreditor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D337E0E8-097F-A15C-F89D-FCD8A18EDAFE}|Assembly-CSharp-Editor.csproj|solutionrelative:assets\\editor\\dungeoncreatoreditor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|c:\\users\\deku\\unityprojects\\escapethedungeon\\assets\\scripts\\dungeonbehavior\\structurehelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\dungeonbehavior\\structurehelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\assets\\scripts\\dungeonbehavior\\roomnode.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\dungeonbehavior\\roomnode.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\assets\\scripts\\dungeonbehavior\\roomgenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\dungeonbehavior\\roomgenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\assets\\scripts\\dungeonbehavior\\node.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\dungeonbehavior\\node.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\assets\\scripts\\dungeonbehavior\\line.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\dungeonbehavior\\line.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\assets\\scripts\\dungeonbehavior\\dungeongenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\dungeonbehavior\\dungeongenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\assets\\scripts\\dungeonbehavior\\dungeoncreator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\dungeonbehavior\\dungeoncreator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\assets\\scripts\\dungeonbehavior\\corridorsgenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\dungeonbehavior\\corridorsgenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\assets\\scripts\\dungeonbehavior\\corridornode.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\dungeonbehavior\\corridornode.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\assets\\scripts\\dungeonbehavior\\binaryspacepartitioner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CC41B868-D09D-B146-5DB6-7C3BF3327B51}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\dungeonbehavior\\binaryspacepartitioner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 143,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "DungeonCreatorEditor.cs",
+              "DocumentMoniker": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Editor\\DungeonCreatorEditor.cs",
+              "RelativeDocumentMoniker": "Assets\\Editor\\DungeonCreatorEditor.cs",
+              "ToolTip": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Editor\\DungeonCreatorEditor.cs",
+              "RelativeToolTip": "Assets\\Editor\\DungeonCreatorEditor.cs",
+              "ViewState": "AgIAAIUAAAAAAAAAAAAYwAgAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-24T18:12:50.898Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "StructureHelper.cs",
+              "DocumentMoniker": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\StructureHelper.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\DungeonBehavior\\StructureHelper.cs",
+              "ToolTip": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\StructureHelper.cs",
+              "RelativeToolTip": "Assets\\Scripts\\DungeonBehavior\\StructureHelper.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-24T17:51:41.319Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "RoomNode.cs",
+              "DocumentMoniker": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\RoomNode.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\DungeonBehavior\\RoomNode.cs",
+              "ToolTip": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\RoomNode.cs",
+              "RelativeToolTip": "Assets\\Scripts\\DungeonBehavior\\RoomNode.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-24T17:51:40.173Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "RoomGenerator.cs",
+              "DocumentMoniker": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\RoomGenerator.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\DungeonBehavior\\RoomGenerator.cs",
+              "ToolTip": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\RoomGenerator.cs",
+              "RelativeToolTip": "Assets\\Scripts\\DungeonBehavior\\RoomGenerator.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-24T17:51:39.141Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "Node.cs",
+              "DocumentMoniker": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\Node.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\DungeonBehavior\\Node.cs",
+              "ToolTip": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\Node.cs",
+              "RelativeToolTip": "Assets\\Scripts\\DungeonBehavior\\Node.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-24T17:51:38.026Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "Line.cs",
+              "DocumentMoniker": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\Line.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\DungeonBehavior\\Line.cs",
+              "ToolTip": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\Line.cs",
+              "RelativeToolTip": "Assets\\Scripts\\DungeonBehavior\\Line.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-24T17:51:35.267Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "DungeonGenerator.cs",
+              "DocumentMoniker": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\DungeonGenerator.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\DungeonBehavior\\DungeonGenerator.cs",
+              "ToolTip": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\DungeonGenerator.cs",
+              "RelativeToolTip": "Assets\\Scripts\\DungeonBehavior\\DungeonGenerator.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-24T17:51:34.213Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "DungeonCreator.cs",
+              "DocumentMoniker": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\DungeonCreator.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\DungeonBehavior\\DungeonCreator.cs",
+              "ToolTip": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\DungeonCreator.cs",
+              "RelativeToolTip": "Assets\\Scripts\\DungeonBehavior\\DungeonCreator.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-24T17:51:32.593Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "CorridorsGenerator.cs",
+              "DocumentMoniker": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\CorridorsGenerator.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\DungeonBehavior\\CorridorsGenerator.cs",
+              "ToolTip": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\CorridorsGenerator.cs",
+              "RelativeToolTip": "Assets\\Scripts\\DungeonBehavior\\CorridorsGenerator.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-24T17:51:31.018Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "CorridorNode.cs",
+              "DocumentMoniker": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\CorridorNode.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\DungeonBehavior\\CorridorNode.cs",
+              "ToolTip": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\CorridorNode.cs",
+              "RelativeToolTip": "Assets\\Scripts\\DungeonBehavior\\CorridorNode.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-24T17:51:29.259Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "BinarySpacePartitioner.cs",
+              "DocumentMoniker": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\BinarySpacePartitioner.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\DungeonBehavior\\BinarySpacePartitioner.cs",
+              "ToolTip": "C:\\Users\\Deku\\unityProjects\\EscapeTheDungeon\\Assets\\Scripts\\DungeonBehavior\\BinarySpacePartitioner.cs",
+              "RelativeToolTip": "Assets\\Scripts\\DungeonBehavior\\BinarySpacePartitioner.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-24T17:51:21.459Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
