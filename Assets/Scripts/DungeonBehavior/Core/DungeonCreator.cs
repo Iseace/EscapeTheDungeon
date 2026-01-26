@@ -12,13 +12,13 @@ public class DungeonCreator : MonoBehaviour
     [SerializeField] private int lastUsedSeed;
 
     [Header("Dungeon Settings")]
-    public int dungeonWidth;
-    public int dungeonLength;
-    public int roomWidthMin;
-    public int roomLengthMin;
+    public int dungeonWidth = 100;
+    public int dungeonLength = 100;
+    public int roomWidthMin = 10;
+    public int roomLengthMin = 10;
     public int wallHeight = 3;
-    public int corridorWidth;
-    public int maxIterations;
+    public int corridorWidth = 5;
+    public int maxIterations = 10;
 
     [Range(0.0f, 0.3f)]
     public float roomBottomCornerModifier = 0.1f;
@@ -27,19 +27,22 @@ public class DungeonCreator : MonoBehaviour
     [Range(0, 2)]
     public int roomOffset = 1;
 
-    [Header("Textures")]
+    [Header("Floor Textures")]
     public Material material;
-    public GameObject wallPrefab;
     
     [Header("Wall Generation")]
-    [Tooltip("Usar sistema de paredes procedurales optimizado (un solo mesh) en lugar de múltiples prefabs")]
+    public GameObject wallPrefab;
+    [HideInInspector]
     public bool useProceduralWalls = true;
     public Material wallMaterial;
     
-    [Tooltip("Añadir pilares en las esquinas para evitar huecos")]
+    [HideInInspector]
     public bool useCornerPillars = true;
     
-    [Tooltip("Tamaño de los pilares en las esquinas (0.3-0.8 recomendado)")]
+    [Header("Corner Pillars")]
+    public Material pillarMaterial;
+
+    [Tooltip("Recomended values between 0.3 and 1.0")]
     [Range(0.3f, 2.0f)]
     public float cornerPillarSize = 0.6f;
 
@@ -48,17 +51,12 @@ public class DungeonCreator : MonoBehaviour
     public bool enableRoomTypes = true;
 
     [Header("Room Shapes")]
-    [Tooltip("Habilitar formas variadas para las habitaciones (L, T, Cruz, Recesos)")]
-    public bool enableVariedShapes = false;
+    public bool enableVariedShapes = false; //Change to true in release
     
-    [Tooltip("Configuración de probabilidades y parámetros para las formas de habitaciones")]
     public RoomShapeConfig roomShapeConfig = new RoomShapeConfig();
 
     [Header("Prefab Rooms")]
-    [Tooltip("Habilitar uso de habitaciones prefabricadas completas")]
     public bool enablePrefabRooms = false;
-    
-    [Tooltip("Configuración de habitaciones prefabricadas")]
     public PrefabRoomConfiguration prefabRoomConfig;
 
     [Header("Procedural Objects")]
@@ -69,7 +67,6 @@ public class DungeonCreator : MonoBehaviour
     public bool showRoomTypes = true;
     public bool showGrid = false;
 
-    // Referencias privadas
     private DugeonGenerator generator;
     private ProceduralObjectSpawner objectSpawner;
     private List<Vector3Int> possibleDoorVerticalPosition;
@@ -94,7 +91,6 @@ public class DungeonCreator : MonoBehaviour
 
         DestroyAllChildren();
 
-        // Crear generador con grid
         generator = new DugeonGenerator(dungeonWidth, dungeonLength);
 
         var listOfRooms = generator.CalculateDungeon(
@@ -121,20 +117,17 @@ public class DungeonCreator : MonoBehaviour
         possibleWallHorizontalPosition = new List<Vector3Int>();
         possibleWallVerticalPosition = new List<Vector3Int>();
 
-        // Crear meshes y procesar habitaciones
         for (int i = 0; i < listOfRooms.Count; i++)
         {
             if (listOfRooms[i] is RoomNode roomNode)
             {
-                // Crear suelo basado en el grid (respeta formas variadas)
                 CreateFloorMeshFromGrid(roomNode);
-                
-                // Prioridad 1: Instanciar habitación prefab completa si está asignada
+
                 if (roomNode.AssignedPrefab != null)
                 {
                     PrefabRoomApplicator.InstantiatePrefabRoom(roomNode, objectParent.transform);
                 }
-                // Prioridad 2: Aplicar prefab del RoomTypeData (sistema antiguo)
+
                 else if (roomNode.RoomTypeData != null)
                 {
                     ApplyRoomPrefab(roomNode, objectParent.transform);
@@ -142,21 +135,18 @@ public class DungeonCreator : MonoBehaviour
             }
             else
             {
-                // Para corredores, usar método tradicional
                 CreateMesh(listOfRooms[i].BottomLeftAreaCorner, listOfRooms[i].TopRightAreaCorner);
             }
         }
 
         CreateWalls(wallParent);
 
-        // Spawn objetos procedurales
         if (spawnObjects && generator.RoomList != null)
         {
             objectSpawner = new ProceduralObjectSpawner(generator.Grid, objectParent.transform);
             SpawnAllObjects();
         }
 
-        // Debug visual
         if (showRoomTypes)
         {
             VisualizeRoomTypes();
@@ -188,16 +178,13 @@ public class DungeonCreator : MonoBehaviour
     {
         foreach (var room in generator.RoomList)
         {
-            // Spawn objetos espec�ficos del tipo de habitaci�n
             objectSpawner.SpawnObjectsInRoom(room);
 
-            // Spawn objetos gen�ricos si est�n configurados
             if (genericObjects.Count > 0)
             {
                 objectSpawner.SpawnObjects(room, genericObjects);
             }
 
-            // Spawn especiales seg�n el tipo
             SpawnSpecialObjectsForRoomType(room);
         }
     }
@@ -207,12 +194,10 @@ public class DungeonCreator : MonoBehaviour
         switch (room.RoomType)
         {
             case RoomType.Boss:
-                // Ejemplo: spawn boss en el centro
                 Debug.Log($"Boss room at {room.RoomID}");
                 break;
 
             case RoomType.Normal:
-                // Ejemplo: spawn cofre
                 Debug.Log($"Normal room at {room.RoomID}");
                 break;
 
@@ -243,7 +228,6 @@ public class DungeonCreator : MonoBehaviour
         }
     }
 
-    // M�todos originales mantenidos
     public void CreateDungeonRandom()
     {
         useRandomSeed = true;
@@ -253,7 +237,6 @@ public class DungeonCreator : MonoBehaviour
    public void CreateDungeonWithSeed(int specificSeed)
 {
     Debug.Log($"CreateDungeonWithSeed called with seed: {specificSeed}");
-    //changed to false to use specific seed
     useRandomSeed = false;
     seed = specificSeed;
     CreateDungeon();
@@ -263,56 +246,63 @@ public class DungeonCreator : MonoBehaviour
 
     private void CreateWalls(GameObject wallParent)
     {
-        if (useProceduralWalls)
-        {
-            // Sistema nuevo: generar un solo mesh optimizado usando el Grid
-            Material matToUse = wallMaterial != null ? wallMaterial : material;
-            ProceduralWallGenerator wallGenerator = new ProceduralWallGenerator(
-                wallHeight, 
-                matToUse, 
-                useCornerPillars, 
-                cornerPillarSize
-            );
-            
-            // Usar el grid directamente para detectar bordes - más confiable
-            if (generator?.Grid != null)
-            {
-                GameObject walls = wallGenerator.GenerateWallsFromGrid(
-                    generator.Grid,
-                    wallParent.transform
-                );
-            }
-            else
-            {
-                Debug.LogWarning("Grid no disponible, usando método alternativo");
-                // Fallback al método anterior si no hay grid
-                GameObject walls = wallGenerator.GenerateOptimizedWalls(
-                    possibleWallHorizontalPosition,
-                    possibleWallVerticalPosition,
-                    possibleDoorHorizontalPosition,
-                    possibleDoorVerticalPosition,
-                    wallParent.transform
-                );
-            }
-        }
-        else
-        {
-            // Sistema antiguo: usar prefabs individuales
-            foreach (var wallPosition in possibleWallHorizontalPosition)
-            {
-                if (!possibleDoorHorizontalPosition.Contains(wallPosition))
-                {
-                    CreateWall(wallParent, wallPosition, 0f);
-                }
-            }
+        if (!useProceduralWalls || generator?.Grid == null)
+            return;
 
-            foreach (var wallPosition in possibleWallVerticalPosition)
-            {
-                if (!possibleDoorVerticalPosition.Contains(wallPosition))
-                {
-                    CreateWall(wallParent, wallPosition, 0f);
-                }
-            }
+        DungeonGrid grid = generator.Grid;
+        var cells = grid.GetAllCells();
+
+        List<Vector3Int> horizontalWalls = new();
+        List<Vector3Int> verticalWalls = new();
+        HashSet<Vector3Int> doors = new();
+
+        foreach (var kvp in cells)
+        {
+            Vector2Int p = kvp.Key;
+            GridCell cell = kvp.Value;
+
+            if (!WallCellAnalyzer.IsWalkable(cell))
+                continue;
+
+            if (!WallCellAnalyzer.IsWalkable(grid.GetCell(p + Vector2Int.up)))
+                horizontalWalls.Add(new Vector3Int(p.x, 0, p.y + 1));
+
+            if (!WallCellAnalyzer.IsWalkable(grid.GetCell(p + Vector2Int.down)))
+                horizontalWalls.Add(new Vector3Int(p.x, 0, p.y));
+
+            if (!WallCellAnalyzer.IsWalkable(grid.GetCell(p + Vector2Int.right)))
+                verticalWalls.Add(new Vector3Int(p.x + 1, 0, p.y));
+
+            if (!WallCellAnalyzer.IsWalkable(grid.GetCell(p + Vector2Int.left)))
+                verticalWalls.Add(new Vector3Int(p.x, 0, p.y));
+        }
+
+        ProceduralWallGenerator wallGenerator =
+            new ProceduralWallGenerator(wallHeight, wallMaterial);
+
+        wallGenerator.GenerateWalls(
+            horizontalWalls,
+            verticalWalls,
+            doors,
+            wallParent.transform
+        );
+
+        if (useCornerPillars)
+        {
+          HashSet<Vector3Int> allCorners =
+              WallCellAnalyzer.DetectCorners(grid, cells);
+
+          CornerPillarGenerator pillarGenerator =
+              new CornerPillarGenerator(
+                  wallHeight,
+                  cornerPillarSize,
+                  pillarMaterial  
+              );
+
+          pillarGenerator.GeneratePillars(
+              allCorners,
+              wallParent.transform
+          );
         }
     }
 
@@ -326,14 +316,10 @@ public class DungeonCreator : MonoBehaviour
         wall.transform.localScale = scale;
     }
 
-    /// <summary>
-    /// Crea el mesh del suelo basándose en el grid (respeta formas variadas como L, T, Cruz)
-    /// </summary>
     private void CreateFloorMeshFromGrid(RoomNode room)
     {
         if (generator?.Grid == null)
         {
-            // Fallback al método tradicional si no hay grid
             CreateMesh(room.BottomLeftAreaCorner, room.TopRightAreaCorner);
             return;
         }
@@ -342,7 +328,6 @@ public class DungeonCreator : MonoBehaviour
         List<Vector2> uvs = new List<Vector2>();
         List<int> triangles = new List<int>();
 
-        // Recorrer cada celda de la habitación en el grid
         for (int x = room.BottomLeftAreaCorner.x; x < room.TopRightAreaCorner.x; x++)
         {
             for (int y = room.BottomLeftAreaCorner.y; y < room.TopRightAreaCorner.y; y++)
@@ -350,25 +335,20 @@ public class DungeonCreator : MonoBehaviour
                 Vector2Int pos = new Vector2Int(x, y);
                 GridCell cell = generator.Grid.GetCell(pos);
 
-                // Solo crear suelo para celdas tipo Floor
                 if (cell != null && cell.Type == CellType.Floor)
                 {
-                    // Crear un quad (2 triángulos) para esta celda
                     int vertexIndex = vertices.Count;
 
-                    // Vértices de la celda (1x1 unidad)
-                    vertices.Add(new Vector3(x, 0, y));         // Bottom-left
-                    vertices.Add(new Vector3(x + 1, 0, y));     // Bottom-right
-                    vertices.Add(new Vector3(x, 0, y + 1));     // Top-left
-                    vertices.Add(new Vector3(x + 1, 0, y + 1)); // Top-right
+                    vertices.Add(new Vector3(x, 0, y));
+                    vertices.Add(new Vector3(x + 1, 0, y));
+                    vertices.Add(new Vector3(x, 0, y + 1));  
+                    vertices.Add(new Vector3(x + 1, 0, y + 1)); 
 
-                    // UVs
                     uvs.Add(new Vector2(x, y));
                     uvs.Add(new Vector2(x + 1, y));
                     uvs.Add(new Vector2(x, y + 1));
                     uvs.Add(new Vector2(x + 1, y + 1));
 
-                    // Triángulos (orden correcto para normales hacia arriba)
                     triangles.Add(vertexIndex + 2); // Top-left
                     triangles.Add(vertexIndex + 3); // Top-right
                     triangles.Add(vertexIndex + 0); // Bottom-left
@@ -380,11 +360,9 @@ public class DungeonCreator : MonoBehaviour
             }
         }
 
-        // Si no hay vértices, no crear nada
         if (vertices.Count == 0)
             return;
 
-        // Crear el mesh
         Mesh mesh = new Mesh();
         mesh.name = $"RoomFloor_{room.RoomID}";
         mesh.vertices = vertices.ToArray();
@@ -392,7 +370,6 @@ public class DungeonCreator : MonoBehaviour
         mesh.triangles = triangles.ToArray();
         mesh.RecalculateNormals();
 
-        // Crear GameObject
         GameObject floorObject = new GameObject(
             $"Floor_{room.RoomType}_{room.RoomID}",
             typeof(MeshFilter),
@@ -494,7 +471,6 @@ public class DungeonCreator : MonoBehaviour
         }
     }
 
-    // M�todos p�blicos para acceder a informaci�n del dungeon
     public RoomNode GetStartRoom()
     {
         return generator?.GetRoomByType(RoomType.Start);

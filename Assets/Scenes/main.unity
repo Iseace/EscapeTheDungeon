@@ -556,8 +556,30 @@ MonoBehaviour:
   roomBottomCornerModifier: 0.1
   roomTopCornerMidifier: 0.9
   roomOffset: 1
-  material: {fileID: 10756, guid: 0000000000000000e000000000000000, type: 0}
+  material: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
   wallPrefab: {fileID: 2916788668196651667, guid: 885a64501d8d80c46847bed5b7a0920b, type: 3}
+  useProceduralWalls: 1
+  wallMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
+  useCornerPillars: 1
+  cornerPillarSize: 0.8
+  roomTypeConfiguration: {fileID: 0}
+  enableRoomTypes: 1
+  enableVariedShapes: 1
+  roomShapeConfig:
+    rectangleChance: 0.4
+    lShapeChance: 0.2
+    tShapeChance: 0.15
+    crossShapeChance: 0.1
+    withRecessesChance: 0.15
+    cutoutMinSize: 0.3
+    cutoutMaxSize: 0.5
+    recessCount: 2
+  enablePrefabRooms: 0
+  prefabRoomConfig: {fileID: 0}
+  spawnObjects: 1
+  genericObjects: []
+  showRoomTypes: 1
+  showGrid: 0
 --- !u!4 &525154141
 Transform:
   m_ObjectHideFlags: 0

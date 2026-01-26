@@ -4,6 +4,7 @@ Logs/
 Obj/
 Build/
 .vscode/
+.vs/
 UserSettings/
 *.csproj
 *.slnx
