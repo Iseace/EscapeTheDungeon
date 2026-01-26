@@ -78,8 +78,8 @@ public class DungeonCreator : MonoBehaviour
     private List<Vector3Int> possibleWallVerticalPosition;
 
     void Start()
-    {
-        CreateDungeon();
+    {  // DungeonNetworkRunner will handle dungeon creation
+       // CreateDungeon();
     }
 
     public void CreateDungeon()
@@ -250,12 +250,16 @@ public class DungeonCreator : MonoBehaviour
         CreateDungeon();
     }
 
-    public void CreateDungeonWithSeed(int specificSeed)
-    {
-        useRandomSeed = false;
-        seed = specificSeed;
-        CreateDungeon();
-    }
+   public void CreateDungeonWithSeed(int specificSeed)
+{
+    Debug.Log($"CreateDungeonWithSeed called with seed: {specificSeed}");
+    //changed to false to use specific seed
+    useRandomSeed = false;
+    seed = specificSeed;
+    CreateDungeon();
+    
+    Debug.Log($"CreateDungeon() completed. Final seed used: {seed}");
+}
 
     private void CreateWalls(GameObject wallParent)
     {

@@ -4,14 +4,13 @@ using UnityEngine;
 
 public class DugeonGenerator
 {
-    List<RoomNode> allNodesCollection = new List<RoomNode>();
+    List<RoomNode> allNodesCollection = new List<RoomNode>(); // Collection of all room nodes in the dungeon tree
     private int dungeonWidth;
     private int dungeonLength;
 
     // Nuevas propiedades
     public DungeonGrid Grid { get; private set; }
     public List<RoomNode> RoomList { get; private set; }
-
     public DugeonGenerator(int dungeonWidth, int dungeonLength)
     {
         this.dungeonWidth = dungeonWidth;
