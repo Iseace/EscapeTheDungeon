@@ -42,29 +42,25 @@ public class DungeonCreator : MonoBehaviour
     [Header("Corner Pillars")]
     public Material pillarMaterial;
 
-    [Tooltip("Recomended values between 0.3 and 1.0")]
+    [Tooltip("Recommended values between 0.3 and 1.0")]
     [Range(0.3f, 2.0f)]
     public float cornerPillarSize = 0.6f;
 
-    [Header("Room Types")]
-    public RoomTypeConfiguration roomTypeConfiguration;
-    public bool enableRoomTypes = true;
-
     [Header("Room Shapes")]
-    public bool enableVariedShapes = false; //Change to true in release
-    
+    public bool enableVariedShapes = false;
     public RoomShapeConfig roomShapeConfig = new RoomShapeConfig();
-
-    [Header("Prefab Rooms")]
-    public bool enablePrefabRooms = false;
-    public PrefabRoomConfiguration prefabRoomConfig;
 
     [Header("Procedural Objects")]
     public bool spawnObjects = true;
     public List<SpawnableObject> genericObjects = new List<SpawnableObject>();
+    
+    [Header("Object Spawn Settings")]
+    [Range(0, 10)]
+    public int minObjectsPerRoom = 0;
+    [Range(0, 20)]
+    public int maxObjectsPerRoom = 5;
 
     [Header("Debug")]
-    public bool showRoomTypes = true;
     public bool showGrid = false;
 
     private DugeonGenerator generator;
@@ -75,8 +71,9 @@ public class DungeonCreator : MonoBehaviour
     private List<Vector3Int> possibleWallVerticalPosition;
 
     void Start()
-    {  // DungeonNetworkRunner will handle dungeon creation
-       // CreateDungeon();
+    {
+        // DungeonNetworkRunner will handle dungeon creation
+        // CreateDungeon();
     }
 
     public void CreateDungeon()
@@ -101,9 +98,7 @@ public class DungeonCreator : MonoBehaviour
             roomTopCornerMidifier,
             roomOffset,
             corridorWidth,
-            enableRoomTypes ? roomTypeConfiguration : null,
-            enableVariedShapes ? roomShapeConfig : null,
-            enablePrefabRooms ? prefabRoomConfig : null
+            enableVariedShapes ? roomShapeConfig : null
         );
 
         GameObject wallParent = new GameObject("WallParent");
@@ -122,16 +117,6 @@ public class DungeonCreator : MonoBehaviour
             if (listOfRooms[i] is RoomNode roomNode)
             {
                 CreateFloorMeshFromGrid(roomNode);
-
-                if (roomNode.AssignedPrefab != null)
-                {
-                    PrefabRoomApplicator.InstantiatePrefabRoom(roomNode, objectParent.transform);
-                }
-
-                else if (roomNode.RoomTypeData != null)
-                {
-                    ApplyRoomPrefab(roomNode, objectParent.transform);
-                }
             }
             else
             {
@@ -146,85 +131,16 @@ public class DungeonCreator : MonoBehaviour
             objectSpawner = new ProceduralObjectSpawner(generator.Grid, objectParent.transform);
             SpawnAllObjects();
         }
-
-        if (showRoomTypes)
-        {
-            VisualizeRoomTypes();
-        }
-    }
-
-    private void ApplyRoomPrefab(RoomNode room, Transform parent)
-    {
-        if (room.RoomTypeData.roomPrefab != null)
-        {
-            Vector3 roomCenter = new Vector3(
-                (room.BottomLeftAreaCorner.x + room.TopRightAreaCorner.x) / 2f,
-                0,
-                (room.BottomLeftAreaCorner.y + room.TopRightAreaCorner.y) / 2f
-            );
-
-            GameObject prefabInstance = Instantiate(
-                room.RoomTypeData.roomPrefab,
-                roomCenter,
-                Quaternion.identity,
-                parent
-            );
-
-            prefabInstance.name = $"{room.RoomType}_Prefab_{room.RoomID}";
-        }
     }
 
     private void SpawnAllObjects()
     {
         foreach (var room in generator.RoomList)
         {
-            objectSpawner.SpawnObjectsInRoom(room);
-
             if (genericObjects.Count > 0)
             {
-                objectSpawner.SpawnObjects(room, genericObjects);
+                objectSpawner.SpawnObjects(room, genericObjects, minObjectsPerRoom, maxObjectsPerRoom);
             }
-
-            SpawnSpecialObjectsForRoomType(room);
-        }
-    }
-
-    private void SpawnSpecialObjectsForRoomType(RoomNode room)
-    {
-        switch (room.RoomType)
-        {
-            case RoomType.Boss:
-                Debug.Log($"Boss room at {room.RoomID}");
-                break;
-
-            case RoomType.Normal:
-                Debug.Log($"Normal room at {room.RoomID}");
-                break;
-
-            case RoomType.Start:
-                Debug.Log($"Start room at {room.RoomID}");
-                break;
-        }
-    }
-
-    private void VisualizeRoomTypes()
-    {
-        if (generator.RoomList == null) return;
-
-        foreach (var room in generator.RoomList)
-        {
-            Color roomColor = room.RoomTypeData?.debugColor ?? Color.white;
-            Vector3 center = new Vector3(
-                (room.BottomLeftAreaCorner.x + room.TopRightAreaCorner.x) / 2f,
-                0.1f,
-                (room.BottomLeftAreaCorner.y + room.TopRightAreaCorner.y) / 2f
-            );
-
-            Debug.DrawLine(
-                new Vector3(room.BottomLeftAreaCorner.x, 0.1f, room.BottomLeftAreaCorner.y),
-                new Vector3(room.TopRightAreaCorner.x, 0.1f, room.BottomLeftAreaCorner.y),
-                roomColor, 100f
-            );
         }
     }
 
@@ -234,47 +150,89 @@ public class DungeonCreator : MonoBehaviour
         CreateDungeon();
     }
 
-   public void CreateDungeonWithSeed(int specificSeed)
-{
-    Debug.Log($"CreateDungeonWithSeed called with seed: {specificSeed}");
-    useRandomSeed = false;
-    seed = specificSeed;
-    CreateDungeon();
-    
-    Debug.Log($"CreateDungeon() completed. Final seed used: {seed}");
-}
+    public void CreateDungeonWithSeed(int specificSeed)
+    {
+        Debug.Log($"CreateDungeonWithSeed called with seed: {specificSeed}");
+        useRandomSeed = false;
+        seed = specificSeed;
+        CreateDungeon();
+        
+        Debug.Log($"CreateDungeon() completed. Final seed used: {seed}");
+    }
+
+    public int GetLastUsedSeed()
+    {
+        return lastUsedSeed;
+    }
 
     private void CreateWalls(GameObject wallParent)
     {
-        if (!useProceduralWalls || generator?.Grid == null)
+        if (generator?.Grid == null)
             return;
 
-        DungeonGrid grid = generator.Grid;
+        var grid = generator.Grid;
         var cells = grid.GetAllCells();
 
-        List<Vector3Int> horizontalWalls = new();
-        List<Vector3Int> verticalWalls = new();
-        HashSet<Vector3Int> doors = new();
+        List<Vector3Int> horizontalWalls = new List<Vector3Int>();
+        List<Vector3Int> verticalWalls = new List<Vector3Int>();
+        HashSet<Vector3Int> doors = new HashSet<Vector3Int>();
 
+        // Iterate through all floor/corridor cells to find their edges
         foreach (var kvp in cells)
         {
-            Vector2Int p = kvp.Key;
-            GridCell cell = kvp.Value;
-
-            if (!WallCellAnalyzer.IsWalkable(cell))
+            if (!WallCellAnalyzer.IsWalkable(kvp.Value))
                 continue;
 
-            if (!WallCellAnalyzer.IsWalkable(grid.GetCell(p + Vector2Int.up)))
-                horizontalWalls.Add(new Vector3Int(p.x, 0, p.y + 1));
+            Vector2Int pos = kvp.Key;
 
-            if (!WallCellAnalyzer.IsWalkable(grid.GetCell(p + Vector2Int.down)))
-                horizontalWalls.Add(new Vector3Int(p.x, 0, p.y));
+            // Check all 4 neighbors and add walls where there's a transition to non-walkable
+            // Bottom edge (horizontal wall)
+            GridCell bottom = grid.GetCell(pos + Vector2Int.down);
+            if (!WallCellAnalyzer.IsWalkable(bottom))
+            {
+                // Wall is at the bottom edge of this cell
+                Vector3Int wallPos = new Vector3Int(pos.x, 0, pos.y);
+                if (!horizontalWalls.Contains(wallPos))
+                {
+                    horizontalWalls.Add(wallPos);
+                }
+            }
 
-            if (!WallCellAnalyzer.IsWalkable(grid.GetCell(p + Vector2Int.right)))
-                verticalWalls.Add(new Vector3Int(p.x + 1, 0, p.y));
+            // Top edge (horizontal wall)
+            GridCell top = grid.GetCell(pos + Vector2Int.up);
+            if (!WallCellAnalyzer.IsWalkable(top))
+            {
+                // Wall is at the top edge of this cell
+                Vector3Int wallPos = new Vector3Int(pos.x, 0, pos.y + 1);
+                if (!horizontalWalls.Contains(wallPos))
+                {
+                    horizontalWalls.Add(wallPos);
+                }
+            }
 
-            if (!WallCellAnalyzer.IsWalkable(grid.GetCell(p + Vector2Int.left)))
-                verticalWalls.Add(new Vector3Int(p.x, 0, p.y));
+            // Left edge (vertical wall)
+            GridCell left = grid.GetCell(pos + Vector2Int.left);
+            if (!WallCellAnalyzer.IsWalkable(left))
+            {
+                // Wall is at the left edge of this cell
+                Vector3Int wallPos = new Vector3Int(pos.x, 0, pos.y);
+                if (!verticalWalls.Contains(wallPos))
+                {
+                    verticalWalls.Add(wallPos);
+                }
+            }
+
+            // Right edge (vertical wall)
+            GridCell right = grid.GetCell(pos + Vector2Int.right);
+            if (!WallCellAnalyzer.IsWalkable(right))
+            {
+                // Wall is at the right edge of this cell
+                Vector3Int wallPos = new Vector3Int(pos.x + 1, 0, pos.y);
+                if (!verticalWalls.Contains(wallPos))
+                {
+                    verticalWalls.Add(wallPos);
+                }
+            }
         }
 
         ProceduralWallGenerator wallGenerator =
@@ -289,20 +247,20 @@ public class DungeonCreator : MonoBehaviour
 
         if (useCornerPillars)
         {
-          HashSet<Vector3Int> allCorners =
-              WallCellAnalyzer.DetectCorners(grid, cells);
+            HashSet<Vector3Int> allCorners =
+                WallCellAnalyzer.DetectCorners(grid, cells);
 
-          CornerPillarGenerator pillarGenerator =
-              new CornerPillarGenerator(
-                  wallHeight,
-                  cornerPillarSize,
-                  pillarMaterial  
-              );
+            CornerPillarGenerator pillarGenerator =
+                new CornerPillarGenerator(
+                    wallHeight,
+                    cornerPillarSize,
+                    pillarMaterial  
+                );
 
-          pillarGenerator.GeneratePillars(
-              allCorners,
-              wallParent.transform
-          );
+            pillarGenerator.GeneratePillars(
+                allCorners,
+                wallParent.transform
+            );
         }
     }
 
@@ -339,16 +297,19 @@ public class DungeonCreator : MonoBehaviour
                 {
                     int vertexIndex = vertices.Count;
 
+                    // Add vertices for quad
                     vertices.Add(new Vector3(x, 0, y));
                     vertices.Add(new Vector3(x + 1, 0, y));
                     vertices.Add(new Vector3(x, 0, y + 1));  
                     vertices.Add(new Vector3(x + 1, 0, y + 1)); 
 
+                    // Add UVs
                     uvs.Add(new Vector2(x, y));
                     uvs.Add(new Vector2(x + 1, y));
                     uvs.Add(new Vector2(x, y + 1));
                     uvs.Add(new Vector2(x + 1, y + 1));
 
+                    // Add triangles
                     triangles.Add(vertexIndex + 2); // Top-left
                     triangles.Add(vertexIndex + 3); // Top-right
                     triangles.Add(vertexIndex + 0); // Bottom-left
@@ -371,7 +332,7 @@ public class DungeonCreator : MonoBehaviour
         mesh.RecalculateNormals();
 
         GameObject floorObject = new GameObject(
-            $"Floor_{room.RoomType}_{room.RoomID}",
+            $"Floor_{room.RoomID}",
             typeof(MeshFilter),
             typeof(MeshRenderer),
             typeof(MeshCollider)
@@ -424,6 +385,7 @@ public class DungeonCreator : MonoBehaviour
         dungeonFloor.GetComponent<MeshCollider>().sharedMesh = mesh;
         dungeonFloor.transform.parent = transform;
 
+        // Add wall positions
         for (int row = (int)bottomLeftV.x; row <= (int)bottomRightV.x; row++)
         {
             var wallPosition = new Vector3(row, 0, bottomLeftV.z);
@@ -471,19 +433,14 @@ public class DungeonCreator : MonoBehaviour
         }
     }
 
-    public RoomNode GetStartRoom()
-    {
-        return generator?.GetRoomByType(RoomType.Start);
-    }
-
-    public RoomNode GetBossRoom()
-    {
-        return generator?.GetRoomByType(RoomType.Boss);
-    }
-
     public DungeonGrid GetGrid()
     {
         return generator?.Grid;
+    }
+
+    public List<RoomNode> GetAllRooms()
+    {
+        return generator?.RoomList;
     }
 
     private void OnDrawGizmos()

@@ -8,7 +8,7 @@ public class SpawnableObject
     public string objectName;
     [Range(0f, 100f)]
     public float spawnChance = 50f;
-    public bool needsClearSpace = true; // Necesita espacio libre alrededor
+    public bool needsClearSpace = true; // Needs clear space around it
     public int clearanceRadius = 1;
 }
 
@@ -23,48 +23,23 @@ public class ProceduralObjectSpawner
         parentTransform = parent;
     }
 
-    // Spawn objetos basados en el tipo de habitación
-    public void SpawnObjectsInRoom(RoomNode room)
+    // Spawn objects with custom list
+    public void SpawnObjects(RoomNode room, List<SpawnableObject> spawnableObjects, int minObjects = 0, int maxObjects = 5)
     {
-        if (room.RoomTypeData == null || room.RoomTypeData.possibleObjectPrefabs.Count == 0)
-            return;
-
-        int objectCount = Random.Range(
-            room.RoomTypeData.minObjects,
-            room.RoomTypeData.maxObjects + 1
-        );
-
         List<Vector2Int> availableCells = grid.GetAvailableCellsInRoom(room);
 
         if (availableCells.Count == 0) return;
 
-        for (int i = 0; i < objectCount; i++)
+        int objectCount = Random.Range(minObjects, maxObjects + 1);
+
+        for (int i = 0; i < objectCount && i < spawnableObjects.Count; i++)
         {
             if (availableCells.Count == 0) break;
 
-            GameObject prefab = room.RoomTypeData.possibleObjectPrefabs[
-                Random.Range(0, room.RoomTypeData.possibleObjectPrefabs.Count)
-            ];
+            var spawnableObj = spawnableObjects[Random.Range(0, spawnableObjects.Count)];
 
-            Vector2Int spawnPos = availableCells[Random.Range(0, availableCells.Count)];
-            SpawnObject(prefab, spawnPos, room);
-
-            // Remover la celda usada
-            availableCells.Remove(spawnPos);
-        }
-    }
-
-    // Spawn objetos genéricos con lista personalizada
-    public void SpawnObjects(RoomNode room, List<SpawnableObject> spawnableObjects)
-    {
-        List<Vector2Int> availableCells = grid.GetAvailableCellsInRoom(room);
-
-        foreach (var spawnableObj in spawnableObjects)
-        {
             if (Random.Range(0f, 100f) > spawnableObj.spawnChance)
                 continue;
-
-            if (availableCells.Count == 0) break;
 
             Vector2Int spawnPos;
 
@@ -85,7 +60,7 @@ public class ProceduralObjectSpawner
 
     private Vector2Int FindClearPosition(List<Vector2Int> availableCells, int clearanceRadius)
     {
-        // Shuffle para aleatorizar
+        // Shuffle to randomize
         List<Vector2Int> shuffled = new List<Vector2Int>(availableCells);
         for (int i = 0; i < shuffled.Count; i++)
         {
@@ -135,7 +110,7 @@ public class ProceduralObjectSpawner
         grid.OccupyCell(gridPos, spawnedObj);
     }
 
-    // Spawn un objeto específico en el centro de la habitación
+    // Spawn a specific object at room center
     public void SpawnCenterObject(RoomNode room, GameObject prefab)
     {
         Vector2Int center = room.GetCenterPosition();
@@ -146,7 +121,7 @@ public class ProceduralObjectSpawner
         }
     }
 
-    // Spawn objetos en las esquinas de la habitación
+    // Spawn objects at room corners
     public void SpawnCornerObjects(RoomNode room, GameObject prefab)
     {
         List<Vector2Int> corners = new List<Vector2Int>

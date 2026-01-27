@@ -2,19 +2,19 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Define diferentes formas que pueden tener las habitaciones
+/// Defines different shapes that rooms can have
 /// </summary>
 public enum RoomShape
 {
-    Rectangle,      // Forma rectangular básica
-    LShape,         // Forma en L
-    TShape,         // Forma en T
-    CrossShape,     // Forma de cruz/+
-    WithRecesses    // Rectangular con recesos
+    Rectangle,      // Basic rectangular shape
+    LShape,         // L-shaped
+    TShape,         // T-shaped
+    CrossShape,     // Cross/+ shaped
+    WithRecesses    // Rectangular with recesses
 }
 
 /// <summary>
-/// Configuración de probabilidades para las formas de habitaciones
+/// Configuration of probabilities for room shapes
 /// </summary>
 [System.Serializable]
 public class RoomShapeConfig
@@ -26,39 +26,39 @@ public class RoomShapeConfig
     [Range(0f, 1f)] public float withRecessesChance = 0.15f;
 
     [Header("Shape Modifiers")]
-    [Tooltip("Tamaño mínimo del corte para formas L/T/Cruz (porcentaje del lado)")]
+    [Tooltip("Minimum cutout size for L/T/Cross shapes (percentage of side)")]
     [Range(0.2f, 0.5f)] public float cutoutMinSize = 0.3f;
     
-    [Tooltip("Tamaño máximo del corte para formas L/T/Cruz (porcentaje del lado)")]
+    [Tooltip("Maximum cutout size for L/T/Cross shapes (percentage of side)")]
     [Range(0.3f, 0.7f)] public float cutoutMaxSize = 0.5f;
     
-    [Tooltip("Número de recesos para habitaciones con recesos")]
+    [Tooltip("Number of recesses for rooms with recesses")]
     [Range(1, 4)] public int recessCount = 2;
 }
 
 /// <summary>
-/// Modifica la forma de una habitación rectangular para crear variaciones
+/// Modifies the shape of a rectangular room to create variations
 /// </summary>
 public static class RoomShapeModifier
 {
     /// <summary>
-    /// Aplica una forma específica a una habitación, modificando su grid
+    /// Applies a specific shape to a room, modifying its grid
     /// </summary>
     public static void ApplyShape(RoomNode room, DungeonGrid grid, RoomShapeConfig config)
     {
-        // No modificar habitaciones muy pequeñas
+        // Don't modify very small rooms
         int width = room.TopRightAreaCorner.x - room.BottomLeftAreaCorner.x;
         int height = room.TopRightAreaCorner.y - room.BottomLeftAreaCorner.y;
         
         if (width < 6 || height < 6)
         {
-            return; // Mantener rectangular
+            return; // Keep rectangular
         }
 
-        // Seleccionar forma basada en probabilidades
+        // Select shape based on probabilities
         RoomShape selectedShape = SelectRandomShape(config);
         
-        // Aplicar la forma seleccionada
+        // Apply selected shape
         switch (selectedShape)
         {
             case RoomShape.LShape:
@@ -75,7 +75,7 @@ public static class RoomShapeModifier
                 break;
             case RoomShape.Rectangle:
             default:
-                // Ya está en forma rectangular, no hacer nada
+                // Already rectangular, do nothing
                 break;
         }
     }
@@ -104,17 +104,17 @@ public static class RoomShapeModifier
     }
 
     /// <summary>
-    /// Crea una forma en L cortando una esquina
+    /// Creates an L-shape by cutting a corner
     /// </summary>
     private static void ApplyLShape(RoomNode room, DungeonGrid grid, RoomShapeConfig config)
     {
         int width = room.TopRightAreaCorner.x - room.BottomLeftAreaCorner.x;
         int height = room.TopRightAreaCorner.y - room.BottomLeftAreaCorner.y;
         
-        // Seleccionar qué esquina cortar (0-3: BL, BR, TL, TR)
+        // Select which corner to cut (0-3: BL, BR, TL, TR)
         int cornerToCut = Random.Range(0, 4);
         
-        // Tamaño del corte
+        // Cutout size
         int cutWidth = Mathf.RoundToInt(width * Random.Range(config.cutoutMinSize, config.cutoutMaxSize));
         int cutHeight = Mathf.RoundToInt(height * Random.Range(config.cutoutMinSize, config.cutoutMaxSize));
         
@@ -152,24 +152,24 @@ public static class RoomShapeModifier
     }
 
     /// <summary>
-    /// Crea una forma en T cortando dos esquinas opuestas
+    /// Creates a T-shape by cutting two opposite corners
     /// </summary>
     private static void ApplyTShape(RoomNode room, DungeonGrid grid, RoomShapeConfig config)
     {
         int width = room.TopRightAreaCorner.x - room.BottomLeftAreaCorner.x;
         int height = room.TopRightAreaCorner.y - room.BottomLeftAreaCorner.y;
         
-        // Decidir si la T es horizontal o vertical
+        // Decide if T is horizontal or vertical
         bool horizontal = Random.value > 0.5f;
         
         int cutSize = Mathf.RoundToInt((horizontal ? height : width) * Random.Range(config.cutoutMinSize, config.cutoutMaxSize));
         
         if (horizontal)
         {
-            // T horizontal: cortar esquinas superior izquierda y derecha, O inferior izquierda y derecha
+            // Horizontal T: cut top-left and top-right corners OR bottom-left and bottom-right
             if (Random.value > 0.5f)
             {
-                // Cortar arriba
+                // Cut top
                 RemoveCells(grid, 
                     room.BottomLeftAreaCorner.x, 
                     room.TopRightAreaCorner.y - cutSize,
@@ -184,7 +184,7 @@ public static class RoomShapeModifier
             }
             else
             {
-                // Cortar abajo
+                // Cut bottom
                 RemoveCells(grid, 
                     room.BottomLeftAreaCorner.x, 
                     room.BottomLeftAreaCorner.y,
@@ -200,10 +200,10 @@ public static class RoomShapeModifier
         }
         else
         {
-            // T vertical: cortar esquinas izquierda o derecha
+            // Vertical T: cut left or right corners
             if (Random.value > 0.5f)
             {
-                // Cortar izquierda
+                // Cut left
                 RemoveCells(grid, 
                     room.BottomLeftAreaCorner.x, 
                     room.BottomLeftAreaCorner.y,
@@ -218,7 +218,7 @@ public static class RoomShapeModifier
             }
             else
             {
-                // Cortar derecha
+                // Cut right
                 RemoveCells(grid, 
                     room.TopRightAreaCorner.x - cutSize, 
                     room.BottomLeftAreaCorner.y,
@@ -235,7 +235,7 @@ public static class RoomShapeModifier
     }
 
     /// <summary>
-    /// Crea una forma de cruz cortando las 4 esquinas
+    /// Creates a cross shape by cutting all 4 corners
     /// </summary>
     private static void ApplyCrossShape(RoomNode room, DungeonGrid grid, RoomShapeConfig config)
     {
@@ -245,7 +245,7 @@ public static class RoomShapeModifier
         int cutWidth = Mathf.RoundToInt(width * Random.Range(config.cutoutMinSize * 0.7f, config.cutoutMaxSize * 0.7f));
         int cutHeight = Mathf.RoundToInt(height * Random.Range(config.cutoutMinSize * 0.7f, config.cutoutMaxSize * 0.7f));
         
-        // Cortar las 4 esquinas
+        // Cut all 4 corners
         // Bottom-Left
         RemoveCells(grid, 
             room.BottomLeftAreaCorner.x, 
@@ -276,7 +276,7 @@ public static class RoomShapeModifier
     }
 
     /// <summary>
-    /// Crea recesos aleatorios en los bordes de la habitación
+    /// Creates random recesses on room edges
     /// </summary>
     private static void ApplyRecesses(RoomNode room, DungeonGrid grid, RoomShapeConfig config)
     {
@@ -285,7 +285,7 @@ public static class RoomShapeModifier
         
         for (int i = 0; i < config.recessCount; i++)
         {
-            // Seleccionar lado aleatorio (0: abajo, 1: arriba, 2: izquierda, 3: derecha)
+            // Select random side (0: bottom, 1: top, 2: left, 3: right)
             int side = Random.Range(0, 4);
             
             int recessDepth = Random.Range(2, 4);
@@ -322,7 +322,7 @@ public static class RoomShapeModifier
     }
 
     /// <summary>
-    /// Remueve celdas del grid en el área especificada (convierte Floor a Empty)
+    /// Removes cells from grid in specified area (converts Floor to Empty)
     /// </summary>
     private static void RemoveCells(DungeonGrid grid, int x1, int y1, int x2, int y2)
     {

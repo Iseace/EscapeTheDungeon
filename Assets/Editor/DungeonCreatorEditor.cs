@@ -50,13 +50,13 @@ public class DungeonCreatorEditor : Editor
             dungeonCreator.CreateDungeonRandom();
         }
 
-        EditorGUILayout.Space(5);
+        EditorGUILayout.Space(10);
 
         EditorGUILayout.BeginVertical("box");
         EditorGUILayout.LabelField("Seeded Dungeon", EditorStyles.boldLabel);
         inputSeed = EditorGUILayout.IntField("Seed:", inputSeed);
 
-        EditorGUILayout.Space(5);
+        EditorGUILayout.Space(10);
 
         if (GUILayout.Button("Generate with Seed"))
         {

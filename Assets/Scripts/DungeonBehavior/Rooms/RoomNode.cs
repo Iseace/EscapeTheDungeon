@@ -5,13 +5,8 @@ public class RoomNode : Node
     public int Width { get => (int)(TopRightAreaCorner.x - BottomLeftAreaCorner.x); }
     public int Length { get => (int)(TopRightAreaCorner.y - BottomLeftAreaCorner.y); }
 
-    // Nuevas propiedades para el sistema de tipos
-    public RoomType RoomType { get; set; }
-    public RoomTypeData RoomTypeData { get; set; }
+    // Unique room identifier
     public string RoomID { get; private set; }
-    
-    // Habitación prefabricada asignada (opcional)
-    public PrefabRoomData AssignedPrefab { get; set; }
 
     public RoomNode(Vector2Int bottomLeftAreaCorner, Vector2Int topRightAreaCorner, Node parentNode, int index) : base(parentNode)
     {
@@ -21,15 +16,8 @@ public class RoomNode : Node
         this.TopLeftAreaCorner = new Vector2Int(bottomLeftAreaCorner.x, TopRightAreaCorner.y);
         this.TreeLayerIndex = index;
 
-        // Inicializar con tipo Normal por defecto
-        SetRoomType(RoomType.Normal);
-    }
-
-    public void SetRoomType(RoomType type, RoomTypeData data = null)
-    {
-        RoomType = type;
-        RoomTypeData = data;
-        RoomID = $"{type}_{GetHashCode()}_{Random.Range(1000, 9999)}";
+        // Generate unique room ID
+        RoomID = $"Room_{GetHashCode()}_{Random.Range(1000, 9999)}";
     }
 
     public Vector2Int GetCenterPosition()
