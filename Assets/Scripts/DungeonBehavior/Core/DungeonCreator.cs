@@ -124,6 +124,7 @@ public class DungeonCreator : MonoBehaviour
             }
         }
 
+        CreateCorridorFloorMesh();
         CreateWalls(wallParent);
 
         if (spawnObjects && generator.RoomList != null)
@@ -293,7 +294,7 @@ public class DungeonCreator : MonoBehaviour
                 Vector2Int pos = new Vector2Int(x, y);
                 GridCell cell = generator.Grid.GetCell(pos);
 
-                if (cell != null && cell.Type == CellType.Floor)
+                if (cell != null && (cell.Type == CellType.Floor || cell.Type == CellType.Corridor))
                 {
                     int vertexIndex = vertices.Count;
 
@@ -333,6 +334,72 @@ public class DungeonCreator : MonoBehaviour
 
         GameObject floorObject = new GameObject(
             $"Floor_{room.RoomID}",
+            typeof(MeshFilter),
+            typeof(MeshRenderer),
+            typeof(MeshCollider)
+        );
+
+        floorObject.transform.position = Vector3.zero;
+        floorObject.transform.localScale = Vector3.one;
+        floorObject.GetComponent<MeshFilter>().mesh = mesh;
+        floorObject.GetComponent<MeshRenderer>().material = material;
+        floorObject.GetComponent<MeshCollider>().sharedMesh = mesh;
+        floorObject.transform.parent = transform;
+    }
+
+    private void CreateCorridorFloorMesh()
+    {
+        if (generator?.Grid == null)
+            return;
+
+        List<Vector3> vertices = new List<Vector3>();
+        List<Vector2> uvs = new List<Vector2>();
+        List<int> triangles = new List<int>();
+
+        // Iterate through entire grid to find corridor cells
+        foreach (var kvp in generator.Grid.GetAllCells())
+        {
+            if (kvp.Value.Type == CellType.Corridor)
+            {
+                int x = kvp.Key.x;
+                int y = kvp.Key.y;
+                int vertexIndex = vertices.Count;
+
+                // Add vertices for quad
+                vertices.Add(new Vector3(x, 0, y));
+                vertices.Add(new Vector3(x + 1, 0, y));
+                vertices.Add(new Vector3(x, 0, y + 1));
+                vertices.Add(new Vector3(x + 1, 0, y + 1));
+
+                // Add UVs
+                uvs.Add(new Vector2(x, y));
+                uvs.Add(new Vector2(x + 1, y));
+                uvs.Add(new Vector2(x, y + 1));
+                uvs.Add(new Vector2(x + 1, y + 1));
+
+                // Add triangles
+                triangles.Add(vertexIndex + 2); // Top-left
+                triangles.Add(vertexIndex + 3); // Top-right
+                triangles.Add(vertexIndex + 0); // Bottom-left
+
+                triangles.Add(vertexIndex + 0); // Bottom-left
+                triangles.Add(vertexIndex + 3); // Top-right
+                triangles.Add(vertexIndex + 1); // Bottom-right
+            }
+        }
+
+        if (vertices.Count == 0)
+            return;
+
+        Mesh mesh = new Mesh();
+        mesh.name = "CorridorFloor";
+        mesh.vertices = vertices.ToArray();
+        mesh.uv = uvs.ToArray();
+        mesh.triangles = triangles.ToArray();
+        mesh.RecalculateNormals();
+
+        GameObject floorObject = new GameObject(
+            "CorridorFloor",
             typeof(MeshFilter),
             typeof(MeshRenderer),
             typeof(MeshCollider)

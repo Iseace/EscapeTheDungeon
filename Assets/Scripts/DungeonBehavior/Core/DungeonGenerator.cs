@@ -55,14 +55,12 @@ public class DugeonGenerator
             UpdateRoomBounds(RoomList);
         }
 
-        // Create corridors connecting the rooms (NOW with updated bounds)
-        CorridorsGenerator corridorGenerator = new CorridorsGenerator();
-        var corridorList = corridorGenerator.CreateCorridor(allNodesCollection, corridorWidth);
+        // Create corridors connecting the rooms using smart corridor generator
+        SmartCorridorGenerator smartCorridorGen = new SmartCorridorGenerator(Grid, corridorWidth);
+        var smartCorridors = smartCorridorGen.CreateCorridorsWithConnectionPoints(allNodesCollection);
+        UpdateGridWithSmartCorridors(smartCorridors);
 
-        // Update grid with corridors
-        UpdateGridWithCorridors(corridorList);
-
-        return new List<Node>(RoomList).Concat(corridorList).ToList();
+        return new List<Node>(RoomList);
     }
 
     /// <summary>
@@ -166,86 +164,87 @@ public class DugeonGenerator
         }
     }
 
-    private void UpdateGridWithCorridors(List<Node> corridors)
+
+
+    /// <summary>
+    /// Updates the grid with smart corridors generated from connection points
+    /// </summary>
+    private void UpdateGridWithSmartCorridors(List<CorridorData> corridors)
     {
         foreach (var corridor in corridors)
         {
-            // Mark corridor cells
-            for (int x = corridor.BottomLeftAreaCorner.x; x < corridor.TopRightAreaCorner.x; x++)
+            // Process each segment of the corridor
+            foreach (var segment in corridor.PathSegments)
             {
-                for (int y = corridor.BottomLeftAreaCorner.y; y < corridor.TopRightAreaCorner.y; y++)
+                // Mark corridor floor cells
+                for (int x = segment.Start.x; x <= segment.End.x; x++)
                 {
-                    Vector2Int pos = new Vector2Int(x, y);
-                    GridCell cell = Grid.GetCell(pos);
-
-                    if (cell != null && cell.Type != CellType.Floor)
+                    for (int y = segment.Start.y; y <= segment.End.y; y++)
                     {
-                        Grid.SetCellType(pos, CellType.Corridor);
+                        Vector2Int pos = new Vector2Int(x, y);
+                        GridCell cell = Grid.GetCell(pos);
+
+                        // Only mark if not already a room floor
+                        if (cell != null && cell.Type != CellType.Floor)
+                        {
+                            Grid.SetCellType(pos, CellType.Corridor);
+                        }
                     }
                 }
-            }
 
-            // Mark corridor walls
-            MarkCorridorWalls(corridor);
+                // Mark walls around the segment
+                MarkSmartCorridorWalls(segment);
+            }
         }
     }
 
-    private void MarkCorridorWalls(Node corridor)
+    /// <summary>
+    /// Marks walls around a corridor segment
+    /// </summary>
+    private void MarkSmartCorridorWalls(CorridorSegment segment)
     {
-        int leftX = corridor.BottomLeftAreaCorner.x - 1;
-        int rightX = corridor.TopRightAreaCorner.x;
-        int bottomY = corridor.BottomLeftAreaCorner.y - 1;
-        int topY = corridor.TopRightAreaCorner.y;
-
-        // Bottom wall (excluding corners)
-        for (int x = corridor.BottomLeftAreaCorner.x + 1; x < corridor.TopRightAreaCorner.x - 1; x++)
+        if (segment.IsHorizontal)
         {
-            Vector2Int pos = new Vector2Int(x, bottomY);
-            GridCell cell = Grid.GetCell(pos);
-            
-            // Only mark if not already a room
-            if (cell != null && cell.Type != CellType.Floor)
+            // Mark walls above and below
+            for (int x = segment.Start.x; x <= segment.End.x; x++)
             {
-                Grid.SetCellType(pos, CellType.Wall);
+                // Bottom wall
+                Vector2Int bottomPos = new Vector2Int(x, segment.Start.y - 1);
+                GridCell bottomCell = Grid.GetCell(bottomPos);
+                if (bottomCell != null && bottomCell.Type != CellType.Floor && bottomCell.Type != CellType.Corridor)
+                {
+                    Grid.SetCellType(bottomPos, CellType.Wall);
+                }
+
+                // Top wall
+                Vector2Int topPos = new Vector2Int(x, segment.End.y + 1);
+                GridCell topCell = Grid.GetCell(topPos);
+                if (topCell != null && topCell.Type != CellType.Floor && topCell.Type != CellType.Corridor)
+                {
+                    Grid.SetCellType(topPos, CellType.Wall);
+                }
             }
         }
-
-        // Top wall (excluding corners)
-        for (int x = corridor.BottomLeftAreaCorner.x + 1; x < corridor.TopRightAreaCorner.x - 1; x++)
+        else
         {
-            Vector2Int pos = new Vector2Int(x, topY);
-            GridCell cell = Grid.GetCell(pos);
-            
-            // Only mark if not already a room
-            if (cell != null && cell.Type != CellType.Floor)
+            // Mark walls left and right
+            for (int y = segment.Start.y; y <= segment.End.y; y++)
             {
-                Grid.SetCellType(pos, CellType.Wall);
-            }
-        }
+                // Left wall
+                Vector2Int leftPos = new Vector2Int(segment.Start.x - 1, y);
+                GridCell leftCell = Grid.GetCell(leftPos);
+                if (leftCell != null && leftCell.Type != CellType.Floor && leftCell.Type != CellType.Corridor)
+                {
+                    Grid.SetCellType(leftPos, CellType.Wall);
+                }
 
-        // Left wall (excluding corners)
-        for (int y = corridor.BottomLeftAreaCorner.y + 1; y < corridor.TopRightAreaCorner.y - 1; y++)
-        {
-            Vector2Int pos = new Vector2Int(leftX, y);
-            GridCell cell = Grid.GetCell(pos);
-            
-            // Only mark if not already a room
-            if (cell != null && cell.Type != CellType.Floor)
-            {
-                Grid.SetCellType(pos, CellType.Wall);
-            }
-        }
-
-        // Right wall (excluding corners)
-        for (int y = corridor.BottomLeftAreaCorner.y + 1; y < corridor.TopRightAreaCorner.y - 1; y++)
-        {
-            Vector2Int pos = new Vector2Int(rightX, y);
-            GridCell cell = Grid.GetCell(pos);
-            
-            // Only mark if not already a room
-            if (cell != null && cell.Type != CellType.Floor)
-            {
-                Grid.SetCellType(pos, CellType.Wall);
+                // Right wall
+                Vector2Int rightPos = new Vector2Int(segment.End.x + 1, y);
+                GridCell rightCell = Grid.GetCell(rightPos);
+                if (rightCell != null && rightCell.Type != CellType.Floor && rightCell.Type != CellType.Corridor)
+                {
+                    Grid.SetCellType(rightPos, CellType.Wall);
+                }
             }
         }
     }
