@@ -11,6 +11,14 @@ public class DugeonGenerator
     public DungeonGrid Grid { get; private set; }
     public List<RoomNode> RoomList { get; private set; }
     
+    /// <summary>
+    /// Gets the offset needed to center the dungeon at (0, 0, 0)
+    /// </summary>
+    public Vector3 GetCenterOffset()
+    {
+        return new Vector3(-dungeonWidth / 2f, 0, -dungeonLength / 2f);
+    }
+    
     public DugeonGenerator(int dungeonWidth, int dungeonLength)
     {
         this.dungeonWidth = dungeonWidth;

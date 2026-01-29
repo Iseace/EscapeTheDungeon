@@ -16,11 +16,13 @@ public class ProceduralObjectSpawner
 {
     private DungeonGrid grid;
     private Transform parentTransform;
+    private Vector3 centerOffset;
 
-    public ProceduralObjectSpawner(DungeonGrid dungeonGrid, Transform parent)
+    public ProceduralObjectSpawner(DungeonGrid dungeonGrid, Transform parent, Vector3 centerOffsetValue = default)
     {
         grid = dungeonGrid;
         parentTransform = parent;
+        centerOffset = centerOffsetValue;
     }
 
     // Spawn objects with custom list
@@ -103,7 +105,7 @@ public class ProceduralObjectSpawner
     {
         if (prefab == null) return;
 
-        Vector3 worldPos = new Vector3(gridPos.x + 0.5f, 0, gridPos.y + 0.5f);
+        Vector3 worldPos = new Vector3(gridPos.x + 0.5f, 0, gridPos.y + 0.5f) + centerOffset;
         GameObject spawnedObj = Object.Instantiate(prefab, worldPos, Quaternion.identity, parentTransform);
         spawnedObj.name = $"{prefab.name}_{room.RoomID}";
 

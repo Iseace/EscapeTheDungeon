@@ -89,6 +89,7 @@ public class DungeonCreator : MonoBehaviour
         DestroyAllChildren();
 
         generator = new DugeonGenerator(dungeonWidth, dungeonLength);
+        Vector3 centerOffset = generator.GetCenterOffset();
 
         var listOfRooms = generator.CalculateDungeon(
             maxIterations,
@@ -129,7 +130,7 @@ public class DungeonCreator : MonoBehaviour
 
         if (spawnObjects && generator.RoomList != null)
         {
-            objectSpawner = new ProceduralObjectSpawner(generator.Grid, objectParent.transform);
+            objectSpawner = new ProceduralObjectSpawner(generator.Grid, objectParent.transform, centerOffset);
             SpawnAllObjects();
         }
     }
@@ -171,6 +172,7 @@ public class DungeonCreator : MonoBehaviour
         if (generator?.Grid == null)
             return;
 
+        Vector3 centerOffset = generator.GetCenterOffset();
         var grid = generator.Grid;
         var cells = grid.GetAllCells();
 
@@ -192,7 +194,7 @@ public class DungeonCreator : MonoBehaviour
             if (!WallCellAnalyzer.IsWalkable(bottom))
             {
                 // Wall is at the bottom edge of this cell
-                Vector3Int wallPos = new Vector3Int(pos.x, 0, pos.y);
+                Vector3Int wallPos = new Vector3Int((int)(pos.x + centerOffset.x), 0, (int)(pos.y + centerOffset.z));
                 if (!horizontalWalls.Contains(wallPos))
                 {
                     horizontalWalls.Add(wallPos);
@@ -204,7 +206,7 @@ public class DungeonCreator : MonoBehaviour
             if (!WallCellAnalyzer.IsWalkable(top))
             {
                 // Wall is at the top edge of this cell
-                Vector3Int wallPos = new Vector3Int(pos.x, 0, pos.y + 1);
+                Vector3Int wallPos = new Vector3Int((int)(pos.x + centerOffset.x), 0, (int)(pos.y + 1 + centerOffset.z));
                 if (!horizontalWalls.Contains(wallPos))
                 {
                     horizontalWalls.Add(wallPos);
@@ -216,7 +218,7 @@ public class DungeonCreator : MonoBehaviour
             if (!WallCellAnalyzer.IsWalkable(left))
             {
                 // Wall is at the left edge of this cell
-                Vector3Int wallPos = new Vector3Int(pos.x, 0, pos.y);
+                Vector3Int wallPos = new Vector3Int((int)(pos.x + centerOffset.x), 0, (int)(pos.y + centerOffset.z));
                 if (!verticalWalls.Contains(wallPos))
                 {
                     verticalWalls.Add(wallPos);
@@ -228,7 +230,7 @@ public class DungeonCreator : MonoBehaviour
             if (!WallCellAnalyzer.IsWalkable(right))
             {
                 // Wall is at the right edge of this cell
-                Vector3Int wallPos = new Vector3Int(pos.x + 1, 0, pos.y);
+                Vector3Int wallPos = new Vector3Int((int)(pos.x + 1 + centerOffset.x), 0, (int)(pos.y + centerOffset.z));
                 if (!verticalWalls.Contains(wallPos))
                 {
                     verticalWalls.Add(wallPos);
@@ -255,7 +257,8 @@ public class DungeonCreator : MonoBehaviour
                 new CornerPillarGenerator(
                     wallHeight,
                     cornerPillarSize,
-                    pillarMaterial  
+                    pillarMaterial,
+                    centerOffset
                 );
 
             pillarGenerator.GeneratePillars(
@@ -283,6 +286,7 @@ public class DungeonCreator : MonoBehaviour
             return;
         }
 
+        Vector3 centerOffset = generator.GetCenterOffset();
         List<Vector3> vertices = new List<Vector3>();
         List<Vector2> uvs = new List<Vector2>();
         List<int> triangles = new List<int>();
@@ -298,11 +302,11 @@ public class DungeonCreator : MonoBehaviour
                 {
                     int vertexIndex = vertices.Count;
 
-                    // Add vertices for quad
-                    vertices.Add(new Vector3(x, 0, y));
-                    vertices.Add(new Vector3(x + 1, 0, y));
-                    vertices.Add(new Vector3(x, 0, y + 1));  
-                    vertices.Add(new Vector3(x + 1, 0, y + 1)); 
+                    // Add vertices for quad with center offset
+                    vertices.Add(new Vector3(x, 0, y) + centerOffset);
+                    vertices.Add(new Vector3(x + 1, 0, y) + centerOffset);
+                    vertices.Add(new Vector3(x, 0, y + 1) + centerOffset);  
+                    vertices.Add(new Vector3(x + 1, 0, y + 1) + centerOffset); 
 
                     // Add UVs
                     uvs.Add(new Vector2(x, y));
@@ -352,6 +356,7 @@ public class DungeonCreator : MonoBehaviour
         if (generator?.Grid == null)
             return;
 
+        Vector3 centerOffset = generator.GetCenterOffset();
         List<Vector3> vertices = new List<Vector3>();
         List<Vector2> uvs = new List<Vector2>();
         List<int> triangles = new List<int>();
@@ -365,11 +370,11 @@ public class DungeonCreator : MonoBehaviour
                 int y = kvp.Key.y;
                 int vertexIndex = vertices.Count;
 
-                // Add vertices for quad
-                vertices.Add(new Vector3(x, 0, y));
-                vertices.Add(new Vector3(x + 1, 0, y));
-                vertices.Add(new Vector3(x, 0, y + 1));
-                vertices.Add(new Vector3(x + 1, 0, y + 1));
+                // Add vertices for quad with center offset
+                vertices.Add(new Vector3(x, 0, y) + centerOffset);
+                vertices.Add(new Vector3(x + 1, 0, y) + centerOffset);
+                vertices.Add(new Vector3(x, 0, y + 1) + centerOffset);
+                vertices.Add(new Vector3(x + 1, 0, y + 1) + centerOffset);
 
                 // Add UVs
                 uvs.Add(new Vector2(x, y));
@@ -415,10 +420,11 @@ public class DungeonCreator : MonoBehaviour
 
     private void CreateMesh(Vector2 bottomLeftCorner, Vector2 topRightCorner)
     {
-        Vector3 bottomLeftV = new Vector3(bottomLeftCorner.x, 0, bottomLeftCorner.y);
-        Vector3 bottomRightV = new Vector3(topRightCorner.x, 0, bottomLeftCorner.y);
-        Vector3 topLeftV = new Vector3(bottomLeftCorner.x, 0, topRightCorner.y);
-        Vector3 topRightV = new Vector3(topRightCorner.x, 0, topRightCorner.y);
+        Vector3 centerOffset = generator?.GetCenterOffset() ?? Vector3.zero;
+        Vector3 bottomLeftV = new Vector3(bottomLeftCorner.x, 0, bottomLeftCorner.y) + centerOffset;
+        Vector3 bottomRightV = new Vector3(topRightCorner.x, 0, bottomLeftCorner.y) + centerOffset;
+        Vector3 topLeftV = new Vector3(bottomLeftCorner.x, 0, topRightCorner.y) + centerOffset;
+        Vector3 topRightV = new Vector3(topRightCorner.x, 0, topRightCorner.y) + centerOffset;
 
         Vector3[] vertices = new Vector3[]
         {
@@ -514,10 +520,11 @@ public class DungeonCreator : MonoBehaviour
     {
         if (!showGrid || generator?.Grid == null) return;
 
+        Vector3 centerOffset = generator.GetCenterOffset();
         var allCells = generator.Grid.GetAllCells();
         foreach (var kvp in allCells)
         {
-            Vector3 pos = new Vector3(kvp.Key.x + 0.5f, 0.1f, kvp.Key.y + 0.5f);
+            Vector3 pos = new Vector3(kvp.Key.x + 0.5f, 0.1f, kvp.Key.y + 0.5f) + centerOffset;
 
             switch (kvp.Value.Type)
             {
