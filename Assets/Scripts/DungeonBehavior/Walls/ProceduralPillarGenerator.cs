@@ -9,12 +9,14 @@ public class CornerPillarGenerator
     private int height;
     private float size;
     private Material pillarMaterial;
+    private Vector3 centerOffset;
 
-    public CornerPillarGenerator(int height, float size, Material material)
+    public CornerPillarGenerator(int height, float size, Material material, Vector3 centerOffsetValue = default)
     {
         this.height = height;
         this.size = size;
         pillarMaterial = material;
+        centerOffset = centerOffsetValue;
     }
 
     public void GeneratePillars(
@@ -31,7 +33,7 @@ public class CornerPillarGenerator
             pillar.transform.parent = root.transform;
 
             pillar.transform.position =
-                new Vector3(c.x, height / 2f, c.z);
+                new Vector3(c.x, height / 2f, c.z) + centerOffset;
 
             pillar.transform.localScale =
                 new Vector3(size, height, size);
