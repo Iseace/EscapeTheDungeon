@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System;
 using System.Linq;
 
-public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
+public class PlayerSpawner : SimulationBehaviour, IPlayerJoined, IPlayerLeft
 {
     public NetworkObject PlayerPrefab;
 
@@ -70,8 +70,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
                 }
             }
         }
-
-        // Default spawn position
+        
         Vector3 spawnPos = new Vector3(3f, 1f, 3f);
         Quaternion spawnRot = Quaternion.identity;
 
@@ -234,43 +233,8 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             runner.Despawn(playerObj);
         }
     }
-
-    private async void ReturnToMenu(NetworkRunner runner)
-    {
-        if (runner == null) return;
-
-        try
-        {
-            Debug.Log("[BOSS DISCONNECT] Loading menu scene...");
-            
-            int sceneIndex = SceneUtility.GetBuildIndexByScenePath("Scenes/" + menuSceneName);
-            if (sceneIndex >= 0)
-            {
-                await runner.LoadScene(SceneRef.FromIndex(sceneIndex));
-            }
-            else
-            {
-                await runner.LoadScene(SceneRef.FromIndex(menuSceneIndex));
-            }
-
-            // Wait a moment for scene to load
-            await System.Threading.Tasks.Task.Delay(500);
-
-            Debug.Log("[BOSS DISCONNECT] Shutting down runner...");
-            await runner.Shutdown();
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"[BOSS DISCONNECT] Failed during cleanup: {e.Message}");
-            if (runner != null)
-            {
-                await runner.Shutdown();
-            }
-        }
-    }
-
-    private void OnDestroy()
-    {
+    
+    private void OnDestroy(){
         dungeonRunnerSpawned = false;
     }
 
