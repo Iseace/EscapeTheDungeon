@@ -127,15 +127,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Pillar
   roomType: 0
-  height: 3
+  height: 2.5
   width: 0.5
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
   uvScale: 1
-  enableDoorAttachment: 1
-  doorDetectionRange: 1
-  snapToDoor: 0
+  enableAttachment: 1
+  detectionRange: 1
+  snapToAttachment: 1
   showConnectionPoint: 0
 --- !u!1 &2927045028772559508
 GameObject:
@@ -299,15 +299,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Pillar
   roomType: 0
-  height: 3
+  height: 2.5
   width: 0.5
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
   uvScale: 1
-  enableDoorAttachment: 1
-  doorDetectionRange: 1
-  snapToDoor: 0
+  enableAttachment: 1
+  detectionRange: 1
+  snapToAttachment: 1
   showConnectionPoint: 0
 --- !u!1 &3309794766388631415
 GameObject:
@@ -338,7 +338,7 @@ Transform:
   m_GameObject: {fileID: 3309794766388631415}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 3.8284268, y: 0, z: 3.8284268}
+  m_LocalPosition: {x: 3.8284264, y: 0, z: 3.8284268}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -426,7 +426,7 @@ MonoBehaviour:
   enableDoorAttachment: 1
   doorDetectionRange: 1
   autoDimensionFromDoors: 1
-  snapLeftEndToDoor: 0
+  snapLeftEndToDoor: 1
   snapRightEndToDoor: 0
   showConnectionPoints: 0
 --- !u!64 &5348205701741085774
@@ -617,15 +617,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Pillar
   roomType: 0
-  height: 3
+  height: 2.5
   width: 0.5
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
   uvScale: 1
-  enableDoorAttachment: 1
-  doorDetectionRange: 1
-  snapToDoor: 0
+  enableAttachment: 1
+  detectionRange: 1
+  snapToAttachment: 1
   showConnectionPoint: 0
 --- !u!1 &4501315696896219853
 GameObject:
@@ -754,15 +754,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Pillar
   roomType: 0
-  height: 3
+  height: 2.5
   width: 0.5
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
   uvScale: 1
-  enableDoorAttachment: 1
-  doorDetectionRange: 1
-  snapToDoor: 0
+  enableAttachment: 1
+  detectionRange: 1
+  snapToAttachment: 1
   showConnectionPoint: 0
 --- !u!1 &4512394087478094046
 GameObject:
@@ -1014,7 +1014,7 @@ MonoBehaviour:
   attachmentRange: 0.5
   enableFloorAttachment: 1
   floorDetectionRange: 1
-  snapToFloorBorder: 0
+  snapToFloorBorder: 1
   showFloorConnectionPoint: 0
 --- !u!1 &4755335751609002994
 GameObject:
@@ -1266,7 +1266,7 @@ MonoBehaviour:
   attachmentRange: 0.5
   enableFloorAttachment: 1
   floorDetectionRange: 1
-  snapToFloorBorder: 0
+  snapToFloorBorder: 1
   showFloorConnectionPoint: 0
 --- !u!1 &4801714706217364629
 GameObject:
@@ -1518,7 +1518,7 @@ MonoBehaviour:
   attachmentRange: 0.5
   enableFloorAttachment: 1
   floorDetectionRange: 1
-  snapToFloorBorder: 0
+  snapToFloorBorder: 1
   showFloorConnectionPoint: 0
 --- !u!1 &5001407739431223453
 GameObject:
@@ -1545,7 +1545,7 @@ Transform:
   m_GameObject: {fileID: 5001407739431223453}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 25.25, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1619,7 +1619,7 @@ Transform:
   m_GameObject: {fileID: 5643546278754215440}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -1, z: -0, w: -0.00000004371139}
-  m_LocalPosition: {x: -3.828427, y: 0, z: 3.8284268}
+  m_LocalPosition: {x: -3.8284264, y: 0, z: 3.8284268}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1707,7 +1707,7 @@ MonoBehaviour:
   enableDoorAttachment: 1
   doorDetectionRange: 1
   autoDimensionFromDoors: 1
-  snapLeftEndToDoor: 0
+  snapLeftEndToDoor: 1
   snapRightEndToDoor: 0
   showConnectionPoints: 0
 --- !u!64 &2100573380822373543
@@ -1859,15 +1859,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Pillar
   roomType: 0
-  height: 3
+  height: 2.5
   width: 0.5
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
   uvScale: 1
-  enableDoorAttachment: 1
-  doorDetectionRange: 1
-  snapToDoor: 0
+  enableAttachment: 1
+  detectionRange: 1
+  snapToAttachment: 1
   showConnectionPoint: 0
 --- !u!1 &6886445276194020511
 GameObject:
@@ -1996,15 +1996,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Pillar
   roomType: 0
-  height: 3
+  height: 2.5
   width: 0.5
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
   uvScale: 1
-  enableDoorAttachment: 1
-  doorDetectionRange: 1
-  snapToDoor: 0
+  enableAttachment: 1
+  detectionRange: 1
+  snapToAttachment: 1
   showConnectionPoint: 0
 --- !u!1 &7301224194577477532
 GameObject:
@@ -2390,7 +2390,7 @@ MonoBehaviour:
   attachmentRange: 0.5
   enableFloorAttachment: 1
   floorDetectionRange: 1
-  snapToFloorBorder: 0
+  snapToFloorBorder: 1
   showFloorConnectionPoint: 0
 --- !u!1 &8527494289312178304
 GameObject:
@@ -2421,7 +2421,7 @@ Transform:
   m_GameObject: {fileID: 8527494289312178304}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.000000033289513, z: -0, w: 1}
-  m_LocalPosition: {x: 3.828427, y: 0, z: -3.8284268}
+  m_LocalPosition: {x: 3.8284264, y: 0, z: -3.8284268}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2509,7 +2509,7 @@ MonoBehaviour:
   enableDoorAttachment: 1
   doorDetectionRange: 1
   autoDimensionFromDoors: 1
-  snapLeftEndToDoor: 0
+  snapLeftEndToDoor: 1
   snapRightEndToDoor: 0
   showConnectionPoints: 0
 --- !u!64 &2045606118857340556
@@ -2661,15 +2661,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Pillar
   roomType: 0
-  height: 3
+  height: 2.5
   width: 0.5
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
   uvScale: 1
-  enableDoorAttachment: 1
-  doorDetectionRange: 1
-  snapToDoor: 0
+  enableAttachment: 1
+  detectionRange: 1
+  snapToAttachment: 1
   showConnectionPoint: 0
 --- !u!1 &8923383468328220376
 GameObject:
@@ -2798,15 +2798,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Pillar
   roomType: 0
-  height: 3
+  height: 2.5
   width: 0.5
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
   uvScale: 1
-  enableDoorAttachment: 1
-  doorDetectionRange: 1
-  snapToDoor: 0
+  enableAttachment: 1
+  detectionRange: 1
+  snapToAttachment: 1
   showConnectionPoint: 0
 --- !u!1 &9006364916242863180
 GameObject:
@@ -2837,7 +2837,7 @@ Transform:
   m_GameObject: {fileID: 9006364916242863180}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: -3.828427, y: 0, z: -3.8284273}
+  m_LocalPosition: {x: -3.8284264, y: 0, z: -3.8284273}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2925,7 +2925,7 @@ MonoBehaviour:
   enableDoorAttachment: 1
   doorDetectionRange: 1
   autoDimensionFromDoors: 1
-  snapLeftEndToDoor: 0
+  snapLeftEndToDoor: 1
   snapRightEndToDoor: 0
   showConnectionPoints: 0
 --- !u!64 &7757182425427906647

@@ -151,9 +151,17 @@ public class Wall : MonoBehaviour
         }
 
         // If doors moved, recalculate wall dimensions and position
-        if ((leftDoorMoved || rightDoorMoved) && autoDimensionFromDoors)
+        if ((leftDoorMoved || rightDoorMoved) && autoDimensionFromDoors && snapLeftEndToDoor && snapRightEndToDoor)
         {
             RecalculateDimensionsFromDoors();
+        }
+        else if (leftDoorMoved && snapLeftEndToDoor)
+        {
+            SnapToLeftDoor();
+        }
+        else if (rightDoorMoved && snapRightEndToDoor)
+        {
+            SnapToRightDoor();
         }
     }
 
@@ -237,17 +245,20 @@ public class Wall : MonoBehaviour
             needsRegeneration = true;
         }
 
-        // Snap to doors if attached
-        if (snapLeftEndToDoor && !autoDimensionFromDoors)
-            SnapToLeftDoor();
-
-        if (snapRightEndToDoor && !autoDimensionFromDoors)
-            SnapToRightDoor();
-
+        // FIXED: Snap logic now works correctly
         // If both ends attached and auto dimension is enabled, recalculate dimensions
         if (snapLeftEndToDoor && snapRightEndToDoor && autoDimensionFromDoors)
         {
             RecalculateDimensionsFromDoors();
+        }
+        // Otherwise snap individual ends
+        else
+        {
+            if (snapLeftEndToDoor)
+                SnapToLeftDoor();
+
+            if (snapRightEndToDoor)
+                SnapToRightDoor();
         }
     }
 
@@ -316,14 +327,14 @@ public class Wall : MonoBehaviour
         transform.position += snapPoint - rightConnWorld;
     }
 
-    private Vector3 GetLeftConnectionPointWorld()
+    public Vector3 GetLeftConnectionPointWorld()
     {
         // Left end of wall at bottom
         Vector3 localPoint = new Vector3(-length / 2f, 0, 0);
         return transform.TransformPoint(localPoint);
     }
 
-    private Vector3 GetRightConnectionPointWorld()
+    public Vector3 GetRightConnectionPointWorld()
     {
         // Right end of wall at bottom
         Vector3 localPoint = new Vector3(length / 2f, 0, 0);
