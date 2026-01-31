@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider))]
-public class CircularPillar : MonoBehaviour
+public class Pillar : MonoBehaviour
 {
     public enum RoomType { Pillar }
     public RoomType Type { get { return RoomType.Pillar; } }
@@ -19,12 +19,13 @@ public class CircularPillar : MonoBehaviour
     
     [Header("Material Settings")]
     [SerializeField] private Material pillarMaterial; // Material to apply to the pillar
+    [SerializeField] private float uvScale = 1f; // UV scale factor (1 = 1 Unity unit = 1 texture repeat)
     
     [Header("Door Attachment")]
     [SerializeField] private bool enableDoorAttachment = true; // Enable auto-attachment to doors
     [SerializeField] private float doorDetectionRange = 2f; // Range to detect doors
     [SerializeField] private bool snapToDoor = false; // Currently snapped to door
-    [SerializeField] private bool showConnectionPoint = true; // Show connection point gizmo
+    [SerializeField] private bool showConnectionPoint = false; // Show connection point gizmo
     
     private MeshFilter meshFilter;
     private MeshRenderer meshRenderer;
@@ -260,35 +261,47 @@ public class CircularPillar : MonoBehaviour
         float halfW = width / 2f;
         float halfD = depth / 2f;
 
+        // Calculate perimeter for UV mapping
+        float perimeter = 2f * (width + depth);
+        float frontWidth = width;
+        float sideDepth = depth;
+
         // Generate vertices for each height level
         for (int h = 0; h <= segmentsAlongHeight; h++)
         {
             float y = (h / (float)segmentsAlongHeight) * height;
-            float v = h / (float)segmentsAlongHeight;
+            float v = y * uvScale; // UV V based on actual height
 
-            // Front face (Z+)
+            // Track U coordinate around the perimeter
+            float uOffset = 0f;
+
+            // Front face (Z+) - width units
             vertices[vertIndex] = new Vector3(-halfW, y, halfD);
-            uvs[vertIndex++] = new Vector2(0, v);
+            uvs[vertIndex++] = new Vector2(uOffset * uvScale, v);
+            uOffset += frontWidth;
             vertices[vertIndex] = new Vector3(halfW, y, halfD);
-            uvs[vertIndex++] = new Vector2(1, v);
+            uvs[vertIndex++] = new Vector2(uOffset * uvScale, v);
 
-            // Right face (X+)
+            // Right face (X+) - depth units
             vertices[vertIndex] = new Vector3(halfW, y, halfD);
-            uvs[vertIndex++] = new Vector2(0, v);
+            uvs[vertIndex++] = new Vector2(uOffset * uvScale, v);
+            uOffset += sideDepth;
             vertices[vertIndex] = new Vector3(halfW, y, -halfD);
-            uvs[vertIndex++] = new Vector2(1, v);
+            uvs[vertIndex++] = new Vector2(uOffset * uvScale, v);
 
-            // Back face (Z-)
+            // Back face (Z-) - width units
             vertices[vertIndex] = new Vector3(halfW, y, -halfD);
-            uvs[vertIndex++] = new Vector2(0, v);
+            uvs[vertIndex++] = new Vector2(uOffset * uvScale, v);
+            uOffset += frontWidth;
             vertices[vertIndex] = new Vector3(-halfW, y, -halfD);
-            uvs[vertIndex++] = new Vector2(1, v);
+            uvs[vertIndex++] = new Vector2(uOffset * uvScale, v);
 
-            // Left face (X-)
+            // Left face (X-) - depth units
             vertices[vertIndex] = new Vector3(-halfW, y, -halfD);
-            uvs[vertIndex++] = new Vector2(0, v);
+            uvs[vertIndex++] = new Vector2(uOffset * uvScale, v);
+            uOffset += sideDepth;
             vertices[vertIndex] = new Vector3(-halfW, y, halfD);
-            uvs[vertIndex++] = new Vector2(1, v);
+            uvs[vertIndex++] = new Vector2(uOffset * uvScale, v);
         }
 
         // Generate triangles for the 4 vertical faces
@@ -321,25 +334,25 @@ public class CircularPillar : MonoBehaviour
         // Add top and bottom caps
         int capVertStart = vertIndex;
 
-        // Bottom cap (Y = 0)
+        // Bottom cap (Y = 0) - UVs based on XZ position
         vertices[vertIndex] = new Vector3(-halfW, 0, halfD);
-        uvs[vertIndex++] = new Vector2(0, 0);
+        uvs[vertIndex++] = new Vector2(0, depth) * uvScale;
         vertices[vertIndex] = new Vector3(halfW, 0, halfD);
-        uvs[vertIndex++] = new Vector2(1, 0);
+        uvs[vertIndex++] = new Vector2(width, depth) * uvScale;
         vertices[vertIndex] = new Vector3(halfW, 0, -halfD);
-        uvs[vertIndex++] = new Vector2(1, 1);
+        uvs[vertIndex++] = new Vector2(width, 0) * uvScale;
         vertices[vertIndex] = new Vector3(-halfW, 0, -halfD);
-        uvs[vertIndex++] = new Vector2(0, 1);
+        uvs[vertIndex++] = new Vector2(0, 0) * uvScale;
 
-        // Top cap (Y = height)
+        // Top cap (Y = height) - UVs based on XZ position
         vertices[vertIndex] = new Vector3(-halfW, height, halfD);
-        uvs[vertIndex++] = new Vector2(0, 0);
+        uvs[vertIndex++] = new Vector2(0, depth) * uvScale;
         vertices[vertIndex] = new Vector3(halfW, height, halfD);
-        uvs[vertIndex++] = new Vector2(1, 0);
+        uvs[vertIndex++] = new Vector2(width, depth) * uvScale;
         vertices[vertIndex] = new Vector3(halfW, height, -halfD);
-        uvs[vertIndex++] = new Vector2(1, 1);
+        uvs[vertIndex++] = new Vector2(width, 0) * uvScale;
         vertices[vertIndex] = new Vector3(-halfW, height, -halfD);
-        uvs[vertIndex++] = new Vector2(0, 1);
+        uvs[vertIndex++] = new Vector2(0, 0) * uvScale;
 
         // Bottom cap triangles (facing down - clockwise from below)
         triangles[triIndex++] = capVertStart + 0;

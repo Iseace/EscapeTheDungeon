@@ -25,6 +25,7 @@ public class Circularfloor : MonoBehaviour
 
     [Header("Material Settings")]
     [SerializeField] private Material floorMaterial; // Material to apply to the floor
+    [SerializeField] private float uvScale = 1f; // UV scale factor (1 = 1 Unity unit = 1 texture repeat)
 
     private Mesh floorMesh;
     private MeshCollider meshCollider;
@@ -115,11 +116,11 @@ public class Circularfloor : MonoBehaviour
         vertices.Add(new Vector3(halfW, 0, halfH));   // Top-right
         vertices.Add(new Vector3(-halfW, 0, halfH));  // Top-left
 
-        // UV coordinates
-        uvs.Add(new Vector2(0, 0)); // Bottom-left
-        uvs.Add(new Vector2(1, 0)); // Bottom-right
-        uvs.Add(new Vector2(1, 1)); // Top-right
-        uvs.Add(new Vector2(0, 1)); // Top-left
+        // UV coordinates - scaled by actual world dimensions
+        uvs.Add(new Vector2(0, 0) * uvScale);                    // Bottom-left
+        uvs.Add(new Vector2(width, 0) * uvScale);                // Bottom-right
+        uvs.Add(new Vector2(width, height) * uvScale);           // Top-right
+        uvs.Add(new Vector2(0, height) * uvScale);               // Top-left
 
         // Two triangles to form a square
         triangles.AddRange(new int[] { 0, 2, 1 }); // First triangle
@@ -193,10 +194,11 @@ public class Circularfloor : MonoBehaviour
                 Vector3 vertexPos = grid[x, y];
                 vertices.Add(vertexPos);
 
-                // Add UV coordinates based on original rectangular position (static material)
-                float u = (vertexPos.x + halfW) / width;
-                float v = (vertexPos.z + halfH) / height;
-                uvs.Add(new Vector2(u, v));
+                // UV coordinates based on world position (prevents stretching)
+                // Map vertex position to UV space using actual world coordinates
+                float uCoord = (vertexPos.x + halfW) * uvScale;
+                float vCoord = (vertexPos.z + halfH) * uvScale;
+                uvs.Add(new Vector2(uCoord, vCoord));
             }
         }
 

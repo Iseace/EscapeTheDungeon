@@ -4,7 +4,7 @@ using System.Collections.Generic;
 [RequireComponent(typeof(LineRenderer))]
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
-public class CircularDoor : MonoBehaviour
+public class RectangularDoor : MonoBehaviour
 {
     public enum RoomType { Door, Wall }
     public RoomType Type { get { return roomType; } }
@@ -15,22 +15,22 @@ public class CircularDoor : MonoBehaviour
     [Header("Door Dimensions")]
     [SerializeField] private float doorWidth = 2f; // Door opening width
     [SerializeField] private float doorHeight = 2.5f; // Door opening height
-    
+
     [Header("Border Settings")]
     [SerializeField] private bool showBorder = false; // Toggle border visibility
     [SerializeField] private float borderThickness = 0.05f; // Line renderer thickness
     [SerializeField] private Color borderColor = Color.yellow; // Border color
-    
+
     [Header("Attachment Settings")]
     [SerializeField] private bool showAttachmentPoints = false; // Show gizmos for attachment points
     [SerializeField] private float attachmentRange = 0.5f; // Range to detect walls for attachment
-    
+
     [Header("Floor Border Attachment")]
     [SerializeField] private bool enableFloorAttachment = true; // Enable auto-attachment to floor borders
     [SerializeField] private float floorDetectionRange = 1f; // Range to detect floor borders
     [SerializeField] private bool snapToFloorBorder = false; // Currently snapped to floor
     [SerializeField] private bool showFloorConnectionPoint = true; // Show floor connection gizmo
-    
+
     private LineRenderer lineRenderer;
     private List<Vector3> borderPoints = new List<Vector3>();
 
@@ -41,14 +41,13 @@ public class CircularDoor : MonoBehaviour
     public Vector3 RightAttachmentNormal { get; private set; }
 
     // Floor attachment properties
-    private Circularfloor attachedFloor;
+    private RectangularFloor attachedFloor;
     private Vector3 floorSnapPoint; // Point on floor border where door is snapped
     private Vector3 floorSnapNormal; // Normal at the snap point
     private Vector3 prevFloorPosition;
     private Quaternion prevFloorRotation;
     private float prevFloorWidth;
     private float prevFloorHeight;
-    private float prevFloorCornerRadius;
 
     private void OnEnable()
     {
@@ -56,7 +55,7 @@ public class CircularDoor : MonoBehaviour
         lineRenderer.useWorldSpace = false; // Use local space so border moves with object
         GenerateDoorBorder();
         UpdateAttachmentPoints();
-        
+
         if (enableFloorAttachment)
             DetectAndAttachToFloor();
     }
@@ -70,7 +69,7 @@ public class CircularDoor : MonoBehaviour
             lineRenderer.useWorldSpace = false; // Ensure local space
             GenerateDoorBorder();
             UpdateAttachmentPoints();
-            
+
             if (enableFloorAttachment)
                 DetectAndAttachToFloor();
         }
@@ -93,9 +92,8 @@ public class CircularDoor : MonoBehaviour
         {
             prevFloorPosition = attachedFloor.transform.position;
             prevFloorRotation = attachedFloor.transform.rotation;
-            prevFloorWidth = GetFloorWidth(attachedFloor);
-            prevFloorHeight = GetFloorHeight(attachedFloor);
-            prevFloorCornerRadius = GetFloorCornerRadius(attachedFloor);
+            prevFloorWidth = attachedFloor.GetWidth();
+            prevFloorHeight = attachedFloor.GetHeight();
         }
     }
 
@@ -216,17 +214,16 @@ public class CircularDoor : MonoBehaviour
         Vector3 leftWorld = GetLeftAttachmentPointWorld();
         Vector3 rightWorld = GetRightAttachmentPointWorld();
 
-        float distToLeft = Vector3.Distance(worldPoint, leftWorld);
-        float distToRight = Vector3.Distance(worldPoint, rightWorld);
+        float leftDist = Vector3.Distance(worldPoint, leftWorld);
+        float rightDist = Vector3.Distance(worldPoint, rightWorld);
 
-        // Check if point is within attachment range of either side
-        if (distToLeft < attachmentRange)
+        if (leftDist < attachmentRange && leftDist <= rightDist)
         {
             snapPoint = leftWorld;
             isLeftSide = true;
             return true;
         }
-        else if (distToRight < attachmentRange)
+        else if (rightDist < attachmentRange)
         {
             snapPoint = rightWorld;
             isLeftSide = false;
@@ -250,14 +247,14 @@ public class CircularDoor : MonoBehaviour
         // Get the door's floor connection point (bottom center)
         Vector3 doorFloorPoint = GetFloorConnectionPointWorld();
 
-        // Find all Circularfloor objects in the scene
-        Circularfloor[] floors = FindObjectsOfType<Circularfloor>();
-        Circularfloor nearestFloor = null;
+        // Find all RectangularFloor objects in the scene
+        RectangularFloor[] floors = FindObjectsOfType<RectangularFloor>();
+        RectangularFloor nearestFloor = null;
         float minDist = float.MaxValue;
         Vector3 nearestSnapPoint = Vector3.zero;
         Vector3 nearestBorderNormal = Vector3.zero;
 
-        foreach (Circularfloor floor in floors)
+        foreach (RectangularFloor floor in floors)
         {
             Vector3 closestPoint;
             Vector3 borderNormal;
@@ -288,126 +285,56 @@ public class CircularDoor : MonoBehaviour
         }
     }
 
-    private float GetClosestPointOnFloorBorder(Circularfloor floor, Vector3 worldPoint, out Vector3 closestPoint, out Vector3 borderNormal)
+    private float GetClosestPointOnFloorBorder(RectangularFloor floor, Vector3 worldPoint, out Vector3 closestPoint, out Vector3 borderNormal)
     {
         // Convert world point to floor's local space
         Vector3 localPoint = floor.transform.InverseTransformPoint(worldPoint);
+
+        float width = floor.GetWidth();
+        float height = floor.GetHeight();
+        float halfW = width / 2f;
+        float halfH = height / 2f;
+
+        // Project onto floor plane (y=0)
         float x = localPoint.x;
         float z = localPoint.z;
 
-        // Get floor dimensions (width and height in floor's local space)
-        float floorWidth = GetFloorWidth(floor);
-        float floorHeight = GetFloorHeight(floor);
-        float cornerRadius = GetFloorCornerRadius(floor);
-
-        float halfW = floorWidth / 2f;
-        float halfH = floorHeight / 2f;
-
-        // Default values
-        Vector3 closestLocal = Vector3.zero;
-        Vector3 normalLocal = Vector3.forward;
-
-        // Determine which edge or corner is closest
+        // Calculate distances to each edge
         float distToLeft = Mathf.Abs(x + halfW);
         float distToRight = Mathf.Abs(x - halfW);
         float distToBottom = Mathf.Abs(z + halfH);
         float distToTop = Mathf.Abs(z - halfH);
 
+        // Find minimum distance
         float minDist = Mathf.Min(distToLeft, distToRight, distToBottom, distToTop);
 
-        // Check if in a corner region
-        bool inCornerRegion = false;
-        Vector3 cornerCenter = Vector3.zero;
+        // Clamp to floor bounds
+        float clampedX = Mathf.Clamp(x, -halfW, halfW);
+        float clampedZ = Mathf.Clamp(z, -halfH, halfH);
 
-        // Check each corner
-        Vector3[] corners = new Vector3[]
-        {
-            new Vector3(-halfW + cornerRadius, 0, -halfH + cornerRadius), // Bottom-left
-            new Vector3(halfW - cornerRadius, 0, -halfH + cornerRadius),  // Bottom-right
-            new Vector3(halfW - cornerRadius, 0, halfH - cornerRadius),   // Top-right
-            new Vector3(-halfW + cornerRadius, 0, halfH - cornerRadius)   // Top-left
-        };
+        Vector3 closestLocal;
+        Vector3 normalLocal;
 
-        foreach (Vector3 corner in corners)
+        // Determine which edge is closest
+        if (minDist == distToLeft)
         {
-            float distToCorner = Vector3.Distance(new Vector3(x, 0, z), corner);
-            if (distToCorner < cornerRadius &&
-                (Mathf.Abs(x - corner.x) < cornerRadius || Mathf.Abs(z - corner.z) < cornerRadius))
-            {
-                inCornerRegion = true;
-                cornerCenter = corner;
-                break;
-            }
+            closestLocal = new Vector3(-halfW, 0, clampedZ);
+            normalLocal = Vector3.left;
         }
-
-        // Clamp x and z for edge calculation
-        float clampedX = Mathf.Clamp(x, -halfW + cornerRadius, halfW - cornerRadius);
-        float clampedZ = Mathf.Clamp(z, -halfH + cornerRadius, halfH - cornerRadius);
-
-        // Recalculate distances with clamped values for areas outside corners
-        if (!inCornerRegion)
+        else if (minDist == distToRight)
         {
-            distToLeft = Mathf.Abs(clampedX + halfW);
-            distToRight = Mathf.Abs(clampedX - halfW);
-            distToBottom = Mathf.Abs(clampedZ + halfH);
-            distToTop = Mathf.Abs(clampedZ - halfH);
-            minDist = Mathf.Min(distToLeft, distToRight, distToBottom, distToTop);
-
-            // Further adjust for corner transition zones
-            if ((x < -halfW + cornerRadius || x > halfW - cornerRadius) &&
-                (z < -halfH + cornerRadius || z > halfH - cornerRadius))
-            {
-                inCornerRegion = true;
-                cornerCenter = new Vector3(
-                    x < 0 ? -halfW + cornerRadius : halfW - cornerRadius,
-                    0,
-                    z < 0 ? -halfH + cornerRadius : halfH - cornerRadius
-                );
-            }
+            closestLocal = new Vector3(halfW, 0, clampedZ);
+            normalLocal = Vector3.right;
         }
-
-        if (inCornerRegion)
+        else if (minDist == distToBottom)
         {
-            // Project to corner arc
-            Vector3 toPoint = new Vector3(x, 0, z) - cornerCenter;
-            toPoint.y = 0;
-            float distFromCorner = toPoint.magnitude;
-            
-            if (distFromCorner > 0.001f)
-            {
-                Vector3 direction = toPoint.normalized;
-                closestLocal = cornerCenter + direction * cornerRadius;
-                normalLocal = direction;
-            }
-            else
-            {
-                closestLocal = cornerCenter + new Vector3(cornerRadius, 0, 0);
-                normalLocal = Vector3.right;
-            }
+            closestLocal = new Vector3(clampedX, 0, -halfH);
+            normalLocal = Vector3.back;
         }
-        else
+        else // top
         {
-            // Project to nearest edge
-            if (minDist == distToLeft)
-            {
-                closestLocal = new Vector3(-halfW, 0, clampedZ);
-                normalLocal = Vector3.left;
-            }
-            else if (minDist == distToRight)
-            {
-                closestLocal = new Vector3(halfW, 0, clampedZ);
-                normalLocal = Vector3.right;
-            }
-            else if (minDist == distToBottom)
-            {
-                closestLocal = new Vector3(clampedX, 0, -halfH);
-                normalLocal = Vector3.back;
-            }
-            else // top
-            {
-                closestLocal = new Vector3(clampedX, 0, halfH);
-                normalLocal = Vector3.forward;
-            }
+            closestLocal = new Vector3(clampedX, 0, halfH);
+            normalLocal = Vector3.forward;
         }
 
         // Convert back to world space
@@ -430,7 +357,7 @@ public class CircularDoor : MonoBehaviour
         // The door's forward should point along the border normal (outward from floor)
         Vector3 targetForward = floorSnapNormal;
         targetForward.y = 0; // Keep door upright
-        
+
         if (targetForward.magnitude > 0.001f)
         {
             transform.rotation = Quaternion.LookRotation(targetForward, Vector3.up);
@@ -447,15 +374,13 @@ public class CircularDoor : MonoBehaviour
 
         Vector3 currentPos = attachedFloor.transform.position;
         Quaternion currentRot = attachedFloor.transform.rotation;
-        float currentWidth = GetFloorWidth(attachedFloor);
-        float currentHeight = GetFloorHeight(attachedFloor);
-        float currentRadius = GetFloorCornerRadius(attachedFloor);
+        float currentWidth = attachedFloor.GetWidth();
+        float currentHeight = attachedFloor.GetHeight();
 
         if (Vector3.Distance(currentPos, prevFloorPosition) > 0.001f ||
             Quaternion.Angle(currentRot, prevFloorRotation) > 0.1f ||
             Mathf.Abs(currentWidth - prevFloorWidth) > 0.001f ||
-            Mathf.Abs(currentHeight - prevFloorHeight) > 0.001f ||
-            Mathf.Abs(currentRadius - prevFloorCornerRadius) > 0.001f)
+            Mathf.Abs(currentHeight - prevFloorHeight) > 0.001f)
         {
             floorChanged = true;
         }
@@ -468,30 +393,12 @@ public class CircularDoor : MonoBehaviour
             Vector3 newSnapPoint;
             Vector3 newBorderNormal;
             GetClosestPointOnFloorBorder(attachedFloor, doorFloorPoint, out newSnapPoint, out newBorderNormal);
-            
+
             floorSnapPoint = newSnapPoint;
             floorSnapNormal = newBorderNormal;
-            
+
             SnapToFloorBorder();
         }
-    }
-
-    // Helper methods to get floor properties using reflection (since fields are private)
-    private float GetFloorWidth(Circularfloor floor)
-    {
-        var field = floor.GetType().GetField("width", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        return field != null ? (float)field.GetValue(floor) : 10f;
-    }
-
-    private float GetFloorHeight(Circularfloor floor)
-    {
-        var field = floor.GetType().GetField("height", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        return field != null ? (float)field.GetValue(floor) : 10f;
-    }
-
-    private float GetFloorCornerRadius(Circularfloor floor)
-    {
-        return floor.cornerRadius; // This is public
     }
 
     public void SetDoorDimensions(float newWidth, float newHeight)
@@ -522,7 +429,7 @@ public class CircularDoor : MonoBehaviour
     // Visualize attachment points in editor
     private void OnDrawGizmos()
     {
-        if (!showAttachmentPoints && !showFloorConnectionPoint && !enableFloorAttachment) 
+        if (!showAttachmentPoints && !showFloorConnectionPoint && !enableFloorAttachment)
             return;
 
         // Update attachment points for gizmo display
@@ -556,7 +463,7 @@ public class CircularDoor : MonoBehaviour
             Gizmos.color = Color.blue;
             Gizmos.DrawWireSphere(floorPoint, 0.12f);
             Gizmos.DrawRay(floorPoint, Vector3.down * 0.2f);
-            
+
             // Draw floor detection range
             if (enableFloorAttachment)
             {
@@ -569,12 +476,12 @@ public class CircularDoor : MonoBehaviour
         if (enableFloorAttachment && snapToFloorBorder && attachedFloor != null)
         {
             Vector3 floorPoint = GetFloorConnectionPointWorld();
-            
+
             // Draw connection line to snap point
             Gizmos.color = Color.green;
             Gizmos.DrawLine(floorPoint, floorSnapPoint);
             Gizmos.DrawWireSphere(floorSnapPoint, 0.15f);
-            
+
             // Draw border normal
             Gizmos.color = Color.yellow;
             Gizmos.DrawRay(floorSnapPoint, floorSnapNormal * 0.5f);

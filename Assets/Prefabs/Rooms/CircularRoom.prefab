@@ -132,10 +132,11 @@ MonoBehaviour:
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
+  uvScale: 1
   enableDoorAttachment: 1
-  doorDetectionRange: 2
-  snapToDoor: 1
-  showConnectionPoint: 1
+  doorDetectionRange: 1
+  snapToDoor: 0
+  showConnectionPoint: 0
 --- !u!1 &2927045028772559508
 GameObject:
   m_ObjectHideFlags: 0
@@ -303,10 +304,11 @@ MonoBehaviour:
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
+  uvScale: 1
   enableDoorAttachment: 1
-  doorDetectionRange: 2
-  snapToDoor: 1
-  showConnectionPoint: 1
+  doorDetectionRange: 1
+  snapToDoor: 0
+  showConnectionPoint: 0
 --- !u!1 &3309794766388631415
 GameObject:
   m_ObjectHideFlags: 0
@@ -420,12 +422,13 @@ MonoBehaviour:
   segmentsAlongLength: 20
   segmentsAlongHeight: 1
   wallMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
+  uvScale: 1
   enableDoorAttachment: 1
   doorDetectionRange: 1
   autoDimensionFromDoors: 1
-  snapLeftEndToDoor: 1
-  snapRightEndToDoor: 1
-  showConnectionPoints: 1
+  snapLeftEndToDoor: 0
+  snapRightEndToDoor: 0
+  showConnectionPoints: 0
 --- !u!64 &5348205701741085774
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -619,10 +622,11 @@ MonoBehaviour:
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
+  uvScale: 1
   enableDoorAttachment: 1
-  doorDetectionRange: 2
-  snapToDoor: 1
-  showConnectionPoint: 1
+  doorDetectionRange: 1
+  snapToDoor: 0
+  showConnectionPoint: 0
 --- !u!1 &4501315696896219853
 GameObject:
   m_ObjectHideFlags: 0
@@ -755,10 +759,11 @@ MonoBehaviour:
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
+  uvScale: 1
   enableDoorAttachment: 1
-  doorDetectionRange: 2
-  snapToDoor: 1
-  showConnectionPoint: 1
+  doorDetectionRange: 1
+  snapToDoor: 0
+  showConnectionPoint: 0
 --- !u!1 &4512394087478094046
 GameObject:
   m_ObjectHideFlags: 0
@@ -802,7 +807,7 @@ LineRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4512394087478094046}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -1002,15 +1007,15 @@ MonoBehaviour:
   roomType: 0
   doorWidth: 2
   doorHeight: 2.5
-  showBorder: 1
+  showBorder: 0
   borderThickness: 0.05
   borderColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  showAttachmentPoints: 1
+  showAttachmentPoints: 0
   attachmentRange: 0.5
   enableFloorAttachment: 1
   floorDetectionRange: 1
-  snapToFloorBorder: 1
-  showFloorConnectionPoint: 1
+  snapToFloorBorder: 0
+  showFloorConnectionPoint: 0
 --- !u!1 &4755335751609002994
 GameObject:
   m_ObjectHideFlags: 0
@@ -1054,7 +1059,7 @@ LineRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4755335751609002994}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -1254,15 +1259,15 @@ MonoBehaviour:
   roomType: 0
   doorWidth: 2
   doorHeight: 2.5
-  showBorder: 1
+  showBorder: 0
   borderThickness: 0.05
   borderColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  showAttachmentPoints: 1
+  showAttachmentPoints: 0
   attachmentRange: 0.5
   enableFloorAttachment: 1
   floorDetectionRange: 1
-  snapToFloorBorder: 1
-  showFloorConnectionPoint: 1
+  snapToFloorBorder: 0
+  showFloorConnectionPoint: 0
 --- !u!1 &4801714706217364629
 GameObject:
   m_ObjectHideFlags: 0
@@ -1306,7 +1311,7 @@ LineRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4801714706217364629}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -1506,15 +1511,15 @@ MonoBehaviour:
   roomType: 0
   doorWidth: 2
   doorHeight: 2.5
-  showBorder: 1
+  showBorder: 0
   borderThickness: 0.05
   borderColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  showAttachmentPoints: 1
+  showAttachmentPoints: 0
   attachmentRange: 0.5
   enableFloorAttachment: 1
   floorDetectionRange: 1
-  snapToFloorBorder: 1
-  showFloorConnectionPoint: 1
+  snapToFloorBorder: 0
+  showFloorConnectionPoint: 0
 --- !u!1 &5001407739431223453
 GameObject:
   m_ObjectHideFlags: 0
@@ -1698,12 +1703,13 @@ MonoBehaviour:
   segmentsAlongLength: 20
   segmentsAlongHeight: 1
   wallMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
+  uvScale: 1
   enableDoorAttachment: 1
   doorDetectionRange: 1
   autoDimensionFromDoors: 1
-  snapLeftEndToDoor: 1
-  snapRightEndToDoor: 1
-  showConnectionPoints: 1
+  snapLeftEndToDoor: 0
+  snapRightEndToDoor: 0
+  showConnectionPoints: 0
 --- !u!64 &2100573380822373543
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -1858,10 +1864,11 @@ MonoBehaviour:
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
+  uvScale: 1
   enableDoorAttachment: 1
-  doorDetectionRange: 2
-  snapToDoor: 1
-  showConnectionPoint: 1
+  doorDetectionRange: 1
+  snapToDoor: 0
+  showConnectionPoint: 0
 --- !u!1 &6886445276194020511
 GameObject:
   m_ObjectHideFlags: 0
@@ -1994,10 +2001,11 @@ MonoBehaviour:
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
+  uvScale: 1
   enableDoorAttachment: 1
-  doorDetectionRange: 2
-  snapToDoor: 1
-  showConnectionPoint: 1
+  doorDetectionRange: 1
+  snapToDoor: 0
+  showConnectionPoint: 0
 --- !u!1 &7301224194577477532
 GameObject:
   m_ObjectHideFlags: 0
@@ -2105,10 +2113,11 @@ MonoBehaviour:
   roomType: 0
   width: 10
   height: 10
-  cornerRadius: 3.6
+  cornerRadius: 4
   cornerSegments: 8
   subdivisions: 1
   floorMaterial: {fileID: 2100000, guid: 4c1e5018234aaa94b8f5cb6590a756b5, type: 2}
+  uvScale: 1
 --- !u!64 &8659622368034551172
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -2174,7 +2183,7 @@ LineRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8212498001063275241}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -2374,15 +2383,15 @@ MonoBehaviour:
   roomType: 0
   doorWidth: 2
   doorHeight: 2.5
-  showBorder: 1
+  showBorder: 0
   borderThickness: 0.05
   borderColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  showAttachmentPoints: 1
+  showAttachmentPoints: 0
   attachmentRange: 0.5
   enableFloorAttachment: 1
   floorDetectionRange: 1
-  snapToFloorBorder: 1
-  showFloorConnectionPoint: 1
+  snapToFloorBorder: 0
+  showFloorConnectionPoint: 0
 --- !u!1 &8527494289312178304
 GameObject:
   m_ObjectHideFlags: 0
@@ -2496,12 +2505,13 @@ MonoBehaviour:
   segmentsAlongLength: 20
   segmentsAlongHeight: 1
   wallMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
+  uvScale: 1
   enableDoorAttachment: 1
   doorDetectionRange: 1
   autoDimensionFromDoors: 1
-  snapLeftEndToDoor: 1
-  snapRightEndToDoor: 1
-  showConnectionPoints: 1
+  snapLeftEndToDoor: 0
+  snapRightEndToDoor: 0
+  showConnectionPoints: 0
 --- !u!64 &2045606118857340556
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -2656,10 +2666,11 @@ MonoBehaviour:
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
+  uvScale: 1
   enableDoorAttachment: 1
-  doorDetectionRange: 2
-  snapToDoor: 1
-  showConnectionPoint: 1
+  doorDetectionRange: 1
+  snapToDoor: 0
+  showConnectionPoint: 0
 --- !u!1 &8923383468328220376
 GameObject:
   m_ObjectHideFlags: 0
@@ -2792,10 +2803,11 @@ MonoBehaviour:
   depth: 0.5
   segmentsAlongHeight: 2
   pillarMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
+  uvScale: 1
   enableDoorAttachment: 1
-  doorDetectionRange: 2
-  snapToDoor: 1
-  showConnectionPoint: 1
+  doorDetectionRange: 1
+  snapToDoor: 0
+  showConnectionPoint: 0
 --- !u!1 &9006364916242863180
 GameObject:
   m_ObjectHideFlags: 0
@@ -2909,12 +2921,13 @@ MonoBehaviour:
   segmentsAlongLength: 20
   segmentsAlongHeight: 1
   wallMaterial: {fileID: 2100000, guid: 8452c9d51c8eb094494e0a29b7014ea4, type: 2}
+  uvScale: 1
   enableDoorAttachment: 1
   doorDetectionRange: 1
   autoDimensionFromDoors: 1
-  snapLeftEndToDoor: 1
-  snapRightEndToDoor: 1
-  showConnectionPoints: 1
+  snapLeftEndToDoor: 0
+  snapRightEndToDoor: 0
+  showConnectionPoints: 0
 --- !u!64 &7757182425427906647
 MeshCollider:
   m_ObjectHideFlags: 0

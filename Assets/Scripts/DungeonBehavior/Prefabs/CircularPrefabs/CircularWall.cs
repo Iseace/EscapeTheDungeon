@@ -22,9 +22,11 @@ public class CircularWall : MonoBehaviour
     [Header("Mesh Quality")]
     [SerializeField] private int segmentsAlongLength = 20; // Segments for smoothness
     [SerializeField] private int segmentsAlongHeight = 1; // Vertical segments
-    
+
     [Header("Material Settings")]
     [SerializeField] private Material wallMaterial; // Material to apply to the wall
+    
+    [SerializeField] private float uvScale = 1f; // UV scale factor (1 = 1 Unity unit = 1 texture repeat)
     
     [Header("Door Attachment")]
     [SerializeField] private bool enableDoorAttachment = true; // Enable auto-attachment to doors
@@ -32,7 +34,7 @@ public class CircularWall : MonoBehaviour
     [SerializeField] private bool autoDimensionFromDoors = true; // Auto-adjust dimensions when both ends attached
     [SerializeField] private bool snapLeftEndToDoor = false; // Snap left end to door
     [SerializeField] private bool snapRightEndToDoor = false; // Snap right end to door
-    [SerializeField] private bool showConnectionPoints = true; // Show connection point gizmos
+    [SerializeField] private bool showConnectionPoints = false; // Show connection point gizmos
     
     private MeshFilter meshFilter;
     private MeshRenderer meshRenderer;
@@ -411,7 +413,7 @@ public class CircularWall : MonoBehaviour
     {
         // Left endpoint at angle 0, mid-height
         Vector3 centerOffset = GetBottomCenterLocal();
-        return new Vector3(0, height / 2f, 0) - centerOffset;
+        return new Vector3(0, 0, 0) - centerOffset;
     }
 
     // Get right connection point in local space (at mid-height)
@@ -514,7 +516,10 @@ public class CircularWall : MonoBehaviour
                 
                 // Apply pivot offset to center the wall
                 vertices[vertIndex] = new Vector3(x, yPos, z) + offset - pivotOffset;
-                uvs[vertIndex] = new Vector2(t, h / (float)segmentsAlongHeight);
+                
+                // UV mapping: U along arc length, V along height (world-space scaled)
+                float arcLength = t * length; // Current position along arc
+                uvs[vertIndex] = new Vector2(arcLength * uvScale, yPos * uvScale);
                 vertIndex++;
             }
         }
@@ -541,7 +546,10 @@ public class CircularWall : MonoBehaviour
                 
                 // Apply pivot offset to center the wall
                 vertices[vertIndex] = new Vector3(x, yPos, z) - offset - pivotOffset;
-                uvs[vertIndex] = new Vector2(t, h / (float)segmentsAlongHeight);
+                
+                // UV mapping (same as outer for consistent tiling)
+                float arcLength = t * length;
+                uvs[vertIndex] = new Vector2(arcLength * uvScale, yPos * uvScale);
                 vertIndex++;
             }
         }
@@ -607,12 +615,12 @@ public class CircularWall : MonoBehaviour
             
             // Outer vertex (offset in direction)
             vertices[vertIndex] = basePos + normal * (thickness / 2f) * direction;
-            uvs[vertIndex] = new Vector2(0, h / (float)segmentsAlongHeight);
+            uvs[vertIndex] = new Vector2(0, yPos * uvScale);
             vertIndex++;
             
             // Inner vertex (offset in opposite direction)
             vertices[vertIndex] = basePos - normal * (thickness / 2f) * direction;
-            uvs[vertIndex] = new Vector2(1, h / (float)segmentsAlongHeight);
+            uvs[vertIndex] = new Vector2(thickness * uvScale, yPos * uvScale);
             vertIndex++;
         }
 
@@ -631,12 +639,12 @@ public class CircularWall : MonoBehaviour
             
             // Outer vertex
             vertices[vertIndex] = basePos + normal * (thickness / 2f) * direction;
-            uvs[vertIndex] = new Vector2(0, h / (float)segmentsAlongHeight);
+            uvs[vertIndex] = new Vector2(0, yPos * uvScale);
             vertIndex++;
             
             // Inner vertex
             vertices[vertIndex] = basePos - normal * (thickness / 2f) * direction;
-            uvs[vertIndex] = new Vector2(1, h / (float)segmentsAlongHeight);
+            uvs[vertIndex] = new Vector2(thickness * uvScale, yPos * uvScale);
             vertIndex++;
         }
 
@@ -696,12 +704,13 @@ public class CircularWall : MonoBehaviour
             
             // Outer vertex
             vertices[vertIndex] = basePos + normal * (thickness / 2f) * direction;
-            uvs[vertIndex] = new Vector2(t, 0);
+            float arcLength = t * length;
+            uvs[vertIndex] = new Vector2(arcLength * uvScale, 0);
             vertIndex++;
             
             // Inner vertex
             vertices[vertIndex] = basePos - normal * (thickness / 2f) * direction;
-            uvs[vertIndex] = new Vector2(t, 1);
+            uvs[vertIndex] = new Vector2(arcLength * uvScale, thickness * uvScale);
             vertIndex++;
         }
 
@@ -719,12 +728,13 @@ public class CircularWall : MonoBehaviour
             
             // Outer vertex
             vertices[vertIndex] = basePos + normal * (thickness / 2f) * direction;
-            uvs[vertIndex] = new Vector2(t, 0);
+            float arcLength = t * length;
+            uvs[vertIndex] = new Vector2(arcLength * uvScale, 0);
             vertIndex++;
             
             // Inner vertex
             vertices[vertIndex] = basePos - normal * (thickness / 2f) * direction;
-            uvs[vertIndex] = new Vector2(t, 1);
+            uvs[vertIndex] = new Vector2(arcLength * uvScale, thickness * uvScale);
             vertIndex++;
         }
 
