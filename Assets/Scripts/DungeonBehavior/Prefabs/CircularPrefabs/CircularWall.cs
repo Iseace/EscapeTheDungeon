@@ -431,13 +431,13 @@ public class CircularWall : MonoBehaviour
     }
 
     // Get left connection point in world space
-    private Vector3 GetLeftConnectionPointWorld()
+    public Vector3 GetLeftConnectionPointWorld()
     {
         return transform.TransformPoint(GetLeftConnectionPointLocal());
     }
 
     // Get right connection point in world space
-    private Vector3 GetRightConnectionPointWorld()
+    public Vector3 GetRightConnectionPointWorld()
     {
         return transform.TransformPoint(GetRightConnectionPointLocal());
     }

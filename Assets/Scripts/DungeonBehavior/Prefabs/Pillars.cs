@@ -21,10 +21,10 @@ public class Pillar : MonoBehaviour
     [SerializeField] private Material pillarMaterial; // Material to apply to the pillar
     [SerializeField] private float uvScale = 1f; // UV scale factor (1 = 1 Unity unit = 1 texture repeat)
     
-    [Header("Door Attachment")]
-    [SerializeField] private bool enableDoorAttachment = true; // Enable auto-attachment to doors
-    [SerializeField] private float doorDetectionRange = 2f; // Range to detect doors
-    [SerializeField] private bool snapToDoor = false; // Currently snapped to door
+    [Header("Attachment Settings")]
+    [SerializeField] private bool enableAttachment = true; // Enable auto-attachment to doors/walls
+    [SerializeField] private float detectionRange = 2f; // Range to detect attachment points
+    [SerializeField] private bool snapToAttachment = false; // Currently snapped
     [SerializeField] private bool showConnectionPoint = false; // Show connection point gizmo
     
     private MeshFilter meshFilter;
@@ -32,13 +32,14 @@ public class Pillar : MonoBehaviour
     private MeshCollider meshCollider;
     private Mesh mesh;
 
-    // Door attachment references
-    private CircularDoor attachedDoor;
-    private bool attachedToLeftSide; // Which side of the door is attached
+    // Attachment references - can attach to any door or wall
+    private MonoBehaviour attachedObject; // The object (Wall or Door) we're attached to
+    private bool attachedToLeftSide; // Which side of the object we're attached to
+    private string attachedObjectType; // Track type: "RectangularWall", "RectangularDoor", "CircularWall", "CircularDoor"
 
-    // Previous door position for tracking movement
-    private Vector3 prevDoorPos;
-    private Quaternion prevDoorRot;
+    // Previous position for tracking movement
+    private Vector3 prevObjectPos;
+    private Quaternion prevObjectRot;
 
     private bool needsRegeneration = false;
 
@@ -48,8 +49,8 @@ public class Pillar : MonoBehaviour
         meshRenderer = GetComponent<MeshRenderer>();
         meshCollider = GetComponent<MeshCollider>();
         
-        if (enableDoorAttachment)
-            DetectAndAttachToDoor();
+        if (enableAttachment)
+            DetectAndAttachToObject();
         
         GeneratePillar();
         ApplyMaterial();
@@ -67,8 +68,8 @@ public class Pillar : MonoBehaviour
         if (meshCollider == null)
             meshCollider = GetComponent<MeshCollider>();
         
-        if (enableDoorAttachment)
-            DetectAndAttachToDoor();
+        if (enableAttachment)
+            DetectAndAttachToObject();
         
         GeneratePillar();
         ApplyMaterial();
@@ -77,10 +78,10 @@ public class Pillar : MonoBehaviour
     private void Update()
     {
         // Continuously update attachment in play mode if enabled
-        if (enableDoorAttachment)
+        if (enableAttachment)
         {
-            DetectAndAttachToDoor();
-            UpdateDoorFollowing();
+            DetectAndAttachToObject();
+            UpdateAttachmentFollowing();
         }
 
         // Regenerate pillar if needed
@@ -93,11 +94,11 @@ public class Pillar : MonoBehaviour
 
     private void LateUpdate()
     {
-        // Track door position after all other updates
-        if (attachedDoor != null)
+        // Track object position after all other updates
+        if (attachedObject != null)
         {
-            prevDoorPos = attachedDoor.transform.position;
-            prevDoorRot = attachedDoor.transform.rotation;
+            prevObjectPos = attachedObject.transform.position;
+            prevObjectRot = attachedObject.transform.rotation;
         }
     }
 
@@ -110,55 +111,123 @@ public class Pillar : MonoBehaviour
         }
     }
 
-    private void UpdateDoorFollowing()
+    private void UpdateAttachmentFollowing()
     {
-        bool doorMoved = false;
+        bool objectMoved = false;
 
-        // Check if door moved
-        if (attachedDoor != null && snapToDoor)
+        // Check if attached object moved
+        if (attachedObject != null && snapToAttachment)
         {
-            Vector3 currentPos = attachedDoor.transform.position;
-            Quaternion currentRot = attachedDoor.transform.rotation;
+            Vector3 currentPos = attachedObject.transform.position;
+            Quaternion currentRot = attachedObject.transform.rotation;
             
-            if (Vector3.Distance(currentPos, prevDoorPos) > 0.001f || 
-                Quaternion.Angle(currentRot, prevDoorRot) > 0.1f)
+            if (Vector3.Distance(currentPos, prevObjectPos) > 0.001f || 
+                Quaternion.Angle(currentRot, prevObjectRot) > 0.1f)
             {
-                doorMoved = true;
+                objectMoved = true;
             }
         }
 
-        // If door moved, reposition pillar
-        if (doorMoved)
+        // If object moved, reposition pillar
+        if (objectMoved)
         {
-            SnapToDoor();
+            SnapToAttachment();
         }
     }
 
-    private void DetectAndAttachToDoor()
+    private void DetectAndAttachToObject()
     {
-        // Find all doors in the scene
-        CircularDoor[] doors = FindObjectsOfType<CircularDoor>();
-        
-        if (doors.Length == 0)
-        {
-            attachedDoor = null;
-            snapToDoor = false;
-            return;
-        }
+        // Find all walls and doors in the scene
+        Wall[] rectangularWalls = FindObjectsOfType<Wall>();
+        RectangularDoor[] rectangularDoors = FindObjectsOfType<RectangularDoor>();
+        CircularWall[] circularWalls = FindObjectsOfType<CircularWall>();
+        CircularDoor[] circularDoors = FindObjectsOfType<CircularDoor>();
 
-        // Calculate current pillar connection point in world space (at mid-height)
+        // Calculate current pillar connection point in world space (at bottom center)
         Vector3 connectionWorld = GetConnectionPointWorld();
 
         // Store previous attachment
-        CircularDoor prevDoor = attachedDoor;
+        MonoBehaviour prevObject = attachedObject;
 
         // Reset attachment flags
-        snapToDoor = false;
-        attachedDoor = null;
+        snapToAttachment = false;
+        attachedObject = null;
+        attachedObjectType = "";
 
-        // Check connection point for door attachment
-        float closestDist = doorDetectionRange;
-        foreach (CircularDoor door in doors)
+        // Check for closest attachment point
+        float closestDist = detectionRange;
+
+        // Check rectangular walls
+        foreach (Wall wall in rectangularWalls)
+        {
+            if (wall.Type == Wall.RoomType.Wall)
+            {
+                Vector3 snapPoint;
+                bool isLeftSide;
+                
+                if (IsPointNearWallAttachment(wall, connectionWorld, out snapPoint, out isLeftSide))
+                {
+                    float dist = Vector3.Distance(connectionWorld, snapPoint);
+                    if (dist < closestDist)
+                    {
+                        closestDist = dist;
+                        attachedObject = wall;
+                        attachedToLeftSide = isLeftSide;
+                        attachedObjectType = "RectangularWall";
+                        snapToAttachment = true;
+                    }
+                }
+            }
+        }
+
+        // Check rectangular doors
+        foreach (RectangularDoor door in rectangularDoors)
+        {
+            if (door.Type == RectangularDoor.RoomType.Door)
+            {
+                Vector3 snapPoint;
+                bool isLeftSide;
+                
+                if (door.IsPointNearAttachment(connectionWorld, out snapPoint, out isLeftSide))
+                {
+                    float dist = Vector3.Distance(connectionWorld, snapPoint);
+                    if (dist < closestDist)
+                    {
+                        closestDist = dist;
+                        attachedObject = door;
+                        attachedToLeftSide = isLeftSide;
+                        attachedObjectType = "RectangularDoor";
+                        snapToAttachment = true;
+                    }
+                }
+            }
+        }
+
+        // Check circular walls
+        foreach (CircularWall wall in circularWalls)
+        {
+            if (wall.Type == CircularWall.RoomType.Wall)
+            {
+                Vector3 snapPoint;
+                bool isLeftSide;
+                
+                if (IsPointNearCircularWallAttachment(wall, connectionWorld, out snapPoint, out isLeftSide))
+                {
+                    float dist = Vector3.Distance(connectionWorld, snapPoint);
+                    if (dist < closestDist)
+                    {
+                        closestDist = dist;
+                        attachedObject = wall;
+                        attachedToLeftSide = isLeftSide;
+                        attachedObjectType = "CircularWall";
+                        snapToAttachment = true;
+                    }
+                }
+            }
+        }
+
+        // Check circular doors
+        foreach (CircularDoor door in circularDoors)
         {
             if (door.Type == CircularDoor.RoomType.Door)
             {
@@ -171,64 +240,141 @@ public class Pillar : MonoBehaviour
                     if (dist < closestDist)
                     {
                         closestDist = dist;
-                        attachedDoor = door;
+                        attachedObject = door;
                         attachedToLeftSide = isLeftSide;
-                        snapToDoor = true;
+                        attachedObjectType = "CircularDoor";
+                        snapToAttachment = true;
                     }
                 }
             }
         }
 
-        // If attached to a door, snap to it
-        if (snapToDoor && attachedDoor != null)
+        // If attached to an object, snap to it
+        if (snapToAttachment && attachedObject != null)
         {
-            SnapToDoor();
+            SnapToAttachment();
             
             // Initialize tracking variables on new attachment
-            if (prevDoor != attachedDoor)
+            if (prevObject != attachedObject)
             {
-                prevDoorPos = attachedDoor.transform.position;
-                prevDoorRot = attachedDoor.transform.rotation;
+                prevObjectPos = attachedObject.transform.position;
+                prevObjectRot = attachedObject.transform.rotation;
             }
         }
     }
 
-    private void SnapToDoor()
+    // Check if point is near rectangular wall attachment (walls don't have IsPointNearAttachment method)
+    private bool IsPointNearWallAttachment(Wall wall, Vector3 worldPoint, out Vector3 snapPoint, out bool isLeftSide)
     {
-        if (attachedDoor == null || !snapToDoor)
-            return;
+        Vector3 leftWorld = wall.GetLeftConnectionPointWorld();
+        Vector3 rightWorld = wall.GetRightConnectionPointWorld();
 
-        // Get the door's attachment point (at mid-height of door)
-        Vector3 doorAttachPoint = attachedToLeftSide ? 
-            attachedDoor.GetLeftAttachmentPointWorld() : 
-            attachedDoor.GetRightAttachmentPointWorld();
+        float leftDist = Vector3.Distance(worldPoint, leftWorld);
+        float rightDist = Vector3.Distance(worldPoint, rightWorld);
 
-        Vector3 doorNormal = attachedToLeftSide ? 
-            attachedDoor.GetLeftAttachmentNormalWorld() : 
-            attachedDoor.GetRightAttachmentNormalWorld();
+        // Use same attachment range as door detection
+        float attachmentRange = 0.5f;
 
-        // Position pillar so its bottom aligns with the door's bottom (y=0 in door's local space)
-        // Get the door's bottom position in world space
-        Vector3 doorBottomWorld = attachedDoor.transform.position;
-        
-        // Set pillar position to door's bottom, keeping X and Z from attachment point
-        transform.position = new Vector3(doorAttachPoint.x, doorBottomWorld.y, doorAttachPoint.z);
+        if (leftDist < attachmentRange && leftDist <= rightDist)
+        {
+            snapPoint = leftWorld;
+            isLeftSide = true;
+            return true;
+        }
+        else if (rightDist < attachmentRange)
+        {
+            snapPoint = rightWorld;
+            isLeftSide = false;
+            return true;
+        }
 
-        // Optionally rotate pillar to align with door
-        // For now, keep pillar upright but you could add rotation logic here
+        snapPoint = Vector3.zero;
+        isLeftSide = false;
+        return false;
     }
 
-    // Get connection point in world space (at mid-height of pillar)
+    // Check if point is near circular wall attachment
+    private bool IsPointNearCircularWallAttachment(CircularWall wall, Vector3 worldPoint, out Vector3 snapPoint, out bool isLeftSide)
+    {
+        Vector3 leftWorld = wall.GetLeftConnectionPointWorld();
+        Vector3 rightWorld = wall.GetRightConnectionPointWorld();
+
+        float leftDist = Vector3.Distance(worldPoint, leftWorld);
+        float rightDist = Vector3.Distance(worldPoint, rightWorld);
+
+        // Use same attachment range as door detection
+        float attachmentRange = 0.5f;
+
+        if (leftDist < attachmentRange && leftDist <= rightDist)
+        {
+            snapPoint = leftWorld;
+            isLeftSide = true;
+            return true;
+        }
+        else if (rightDist < attachmentRange)
+        {
+            snapPoint = rightWorld;
+            isLeftSide = false;
+            return true;
+        }
+
+        snapPoint = Vector3.zero;
+        isLeftSide = false;
+        return false;
+    }
+
+    private void SnapToAttachment()
+    {
+        if (attachedObject == null || !snapToAttachment)
+            return;
+
+        Vector3 attachPoint = Vector3.zero;
+
+        // Get the attachment point based on object type
+        switch (attachedObjectType)
+        {
+            case "RectangularWall":
+                Wall rectWall = (Wall)attachedObject;
+                attachPoint = attachedToLeftSide ? 
+                    rectWall.GetLeftConnectionPointWorld() : 
+                    rectWall.GetRightConnectionPointWorld();
+                break;
+
+            case "RectangularDoor":
+                RectangularDoor rectDoor = (RectangularDoor)attachedObject;
+                attachPoint = attachedToLeftSide ? 
+                    rectDoor.GetLeftAttachmentPointWorld() : 
+                    rectDoor.GetRightAttachmentPointWorld();
+                break;
+
+            case "CircularWall":
+                CircularWall circWall = (CircularWall)attachedObject;
+                attachPoint = attachedToLeftSide ? 
+                    circWall.GetLeftConnectionPointWorld() : 
+                    circWall.GetRightConnectionPointWorld();
+                break;
+
+            case "CircularDoor":
+                CircularDoor circDoor = (CircularDoor)attachedObject;
+                attachPoint = attachedToLeftSide ? 
+                    circDoor.GetLeftAttachmentPointWorld() : 
+                    circDoor.GetRightAttachmentPointWorld();
+                break;
+        }
+
+        // Position pillar at the attachment point (bottom center)
+        transform.position = attachPoint;
+    }
+
+    // Get connection point in world space (at bottom center of pillar)
     private Vector3 GetConnectionPointWorld()
     {
-        // Connection point is at the center of the pillar at mid-height
-        Vector3 localConnectionPoint = new Vector3(0, height / 2f, 0);
-        return transform.TransformPoint(localConnectionPoint);
+        // Connection point is at the bottom center of the pillar
+        return transform.position;
     }
 
     private void GeneratePillar()
     {
-        // Create or get mesh
         if (mesh == null)
         {
             mesh = new Mesh();
@@ -417,9 +563,9 @@ public class Pillar : MonoBehaviour
     // Visualize attachment status and connection point in editor
     private void OnDrawGizmos()
     {
-        if (!enableDoorAttachment && !showConnectionPoint) return;
+        if (!enableAttachment && !showConnectionPoint) return;
 
-        // Draw connection point (at mid-height)
+        // Draw connection point (at bottom center)
         if (showConnectionPoint)
         {
             Vector3 conn = GetConnectionPointWorld();
@@ -435,24 +581,55 @@ public class Pillar : MonoBehaviour
             Gizmos.DrawWireSphere(transform.position, 0.1f);
         }
 
-        if (!enableDoorAttachment) return;
+        if (!enableAttachment) return;
 
         Vector3 connectionPoint = GetConnectionPointWorld();
 
-        // Draw connection status
-        if (snapToDoor && attachedDoor != null)
+        // Draw attachment status
+        if (snapToAttachment && attachedObject != null)
         {
             Gizmos.color = Color.green;
             Gizmos.DrawWireSphere(connectionPoint, 0.2f);
             
-            Vector3 doorPoint = attachedToLeftSide ? 
-                attachedDoor.GetLeftAttachmentPointWorld() : 
-                attachedDoor.GetRightAttachmentPointWorld();
-            Gizmos.DrawLine(connectionPoint, doorPoint);
+            Vector3 attachPoint = Vector3.zero;
+            
+            // Get attachment point based on object type
+            switch (attachedObjectType)
+            {
+                case "RectangularWall":
+                    Wall rectWall = (Wall)attachedObject;
+                    attachPoint = attachedToLeftSide ? 
+                        rectWall.GetLeftConnectionPointWorld() : 
+                        rectWall.GetRightConnectionPointWorld();
+                    break;
+
+                case "RectangularDoor":
+                    RectangularDoor rectDoor = (RectangularDoor)attachedObject;
+                    attachPoint = attachedToLeftSide ? 
+                        rectDoor.GetLeftAttachmentPointWorld() : 
+                        rectDoor.GetRightAttachmentPointWorld();
+                    break;
+
+                case "CircularWall":
+                    CircularWall circWall = (CircularWall)attachedObject;
+                    attachPoint = attachedToLeftSide ? 
+                        circWall.GetLeftConnectionPointWorld() : 
+                        circWall.GetRightConnectionPointWorld();
+                    break;
+
+                case "CircularDoor":
+                    CircularDoor circDoor = (CircularDoor)attachedObject;
+                    attachPoint = attachedToLeftSide ? 
+                        circDoor.GetLeftAttachmentPointWorld() : 
+                        circDoor.GetRightAttachmentPointWorld();
+                    break;
+            }
+            
+            Gizmos.DrawLine(connectionPoint, attachPoint);
         }
 
         // Draw detection range
         Gizmos.color = new Color(0, 1, 0, 0.2f);
-        Gizmos.DrawWireSphere(connectionPoint, doorDetectionRange);
+        Gizmos.DrawWireSphere(connectionPoint, detectionRange);
     }
 }
