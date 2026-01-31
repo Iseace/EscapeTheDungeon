@@ -22,7 +22,7 @@ public class Pillar : MonoBehaviour
     [SerializeField] private float uvScale = 1f; // UV scale factor (1 = 1 Unity unit = 1 texture repeat)
     
     [Header("Attachment Settings")]
-    [SerializeField] private bool enableAttachment = true; // Enable auto-attachment to doors/walls
+    [SerializeField] private bool enableAttachment = true; // Enable auto-attachment to doors/walls/floors
     [SerializeField] private float detectionRange = 2f; // Range to detect attachment points
     [SerializeField] private bool snapToAttachment = false; // Currently snapped
     [SerializeField] private bool showConnectionPoint = false; // Show connection point gizmo
@@ -32,10 +32,11 @@ public class Pillar : MonoBehaviour
     private MeshCollider meshCollider;
     private Mesh mesh;
 
-    // Attachment references - can attach to any door or wall
-    private MonoBehaviour attachedObject; // The object (Wall or Door) we're attached to
-    private bool attachedToLeftSide; // Which side of the object we're attached to
-    private string attachedObjectType; // Track type: "RectangularWall", "RectangularDoor", "CircularWall", "CircularDoor"
+    // Attachment references - can attach to any door, wall, or floor corner
+    private MonoBehaviour attachedObject; // The object (Wall, Door, or Floor) we're attached to
+    private bool attachedToLeftSide; // Which side of the object we're attached to (for walls/doors)
+    private int attachedCornerIndex; // Which corner of the floor we're attached to (0-3: BL, BR, TR, TL)
+    private string attachedObjectType; // Track type: "RectangularWall", "RectangularDoor", "CircularWall", "CircularDoor", "RectangularFloor"
 
     // Previous position for tracking movement
     private Vector3 prevObjectPos;
@@ -137,11 +138,12 @@ public class Pillar : MonoBehaviour
 
     private void DetectAndAttachToObject()
     {
-        // Find all walls and doors in the scene
+        // Find all walls, doors, and floors in the scene
         Wall[] rectangularWalls = FindObjectsOfType<Wall>();
         RectangularDoor[] rectangularDoors = FindObjectsOfType<RectangularDoor>();
         CircularWall[] circularWalls = FindObjectsOfType<CircularWall>();
         CircularDoor[] circularDoors = FindObjectsOfType<CircularDoor>();
+        RectangularFloor[] rectangularFloors = FindObjectsOfType<RectangularFloor>();
 
         // Calculate current pillar connection point in world space (at bottom center)
         Vector3 connectionWorld = GetConnectionPointWorld();
@@ -234,7 +236,7 @@ public class Pillar : MonoBehaviour
                 Vector3 snapPoint;
                 bool isLeftSide;
                 
-                if (door.IsPointNearAttachment(connectionWorld, out snapPoint, out isLeftSide))
+                if (IsPointNearCircularDoorAttachment(door, connectionWorld, out snapPoint, out isLeftSide))
                 {
                     float dist = Vector3.Distance(connectionWorld, snapPoint);
                     if (dist < closestDist)
@@ -249,41 +251,103 @@ public class Pillar : MonoBehaviour
             }
         }
 
-        // If attached to an object, snap to it
-        if (snapToAttachment && attachedObject != null)
+        // Check rectangular floors (NEW)
+        foreach (RectangularFloor floor in rectangularFloors)
+        {
+            if (floor.Type == RectangularFloor.RoomType.Floor)
+            {
+                Vector3 snapPoint;
+                int cornerIndex;
+                
+                if (IsPointNearFloorCorner(floor, connectionWorld, out snapPoint, out cornerIndex))
+                {
+                    float dist = Vector3.Distance(connectionWorld, snapPoint);
+                    if (dist < closestDist)
+                    {
+                        closestDist = dist;
+                        attachedObject = floor;
+                        attachedCornerIndex = cornerIndex;
+                        attachedObjectType = "RectangularFloor";
+                        snapToAttachment = true;
+                    }
+                }
+            }
+        }
+
+        // Trigger snap if attachment changed
+        if (snapToAttachment && attachedObject != prevObject)
         {
             SnapToAttachment();
-            
-            // Initialize tracking variables on new attachment
-            if (prevObject != attachedObject)
-            {
-                prevObjectPos = attachedObject.transform.position;
-                prevObjectRot = attachedObject.transform.rotation;
-            }
         }
     }
 
-    // Check if point is near rectangular wall attachment (walls don't have IsPointNearAttachment method)
-    private bool IsPointNearWallAttachment(Wall wall, Vector3 worldPoint, out Vector3 snapPoint, out bool isLeftSide)
+    // NEW: Check if point is near a floor corner
+    private bool IsPointNearFloorCorner(RectangularFloor floor, Vector3 point, out Vector3 snapPoint, out int cornerIndex)
     {
-        Vector3 leftWorld = wall.GetLeftConnectionPointWorld();
-        Vector3 rightWorld = wall.GetRightConnectionPointWorld();
+        snapPoint = Vector3.zero;
+        cornerIndex = -1;
 
-        float leftDist = Vector3.Distance(worldPoint, leftWorld);
-        float rightDist = Vector3.Distance(worldPoint, rightWorld);
+        float halfW = floor.GetWidth() / 2f;
+        float halfH = floor.GetHeight() / 2f;
 
-        // Use same attachment range as door detection
-        float attachmentRange = 0.5f;
-
-        if (leftDist < attachmentRange && leftDist <= rightDist)
+        // Define the 4 corners in local space (same order as floor vertices)
+        Vector3[] localCorners = new Vector3[]
         {
-            snapPoint = leftWorld;
+            new Vector3(-halfW, 0, -halfH), // 0: Bottom-left
+            new Vector3(halfW, 0, -halfH),  // 1: Bottom-right
+            new Vector3(halfW, 0, halfH),   // 2: Top-right
+            new Vector3(-halfW, 0, halfH)   // 3: Top-left
+        };
+
+        // Convert to world space
+        Transform floorTransform = floor.transform;
+        Vector3[] worldCorners = new Vector3[4];
+        for (int i = 0; i < 4; i++)
+        {
+            worldCorners[i] = floorTransform.TransformPoint(localCorners[i]);
+        }
+
+        // Find the closest corner
+        float closestDist = detectionRange;
+        int closestCorner = -1;
+
+        for (int i = 0; i < 4; i++)
+        {
+            float dist = Vector3.Distance(point, worldCorners[i]);
+            if (dist < closestDist)
+            {
+                closestDist = dist;
+                closestCorner = i;
+                snapPoint = worldCorners[i];
+            }
+        }
+
+        if (closestCorner != -1)
+        {
+            cornerIndex = closestCorner;
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool IsPointNearWallAttachment(Wall wall, Vector3 point, out Vector3 snapPoint, out bool isLeftSide)
+    {
+        Vector3 leftPoint = wall.GetLeftConnectionPointWorld();
+        Vector3 rightPoint = wall.GetRightConnectionPointWorld();
+
+        float distLeft = Vector3.Distance(point, leftPoint);
+        float distRight = Vector3.Distance(point, rightPoint);
+
+        if (distLeft < distRight && distLeft < detectionRange)
+        {
+            snapPoint = leftPoint;
             isLeftSide = true;
             return true;
         }
-        else if (rightDist < attachmentRange)
+        else if (distRight < detectionRange)
         {
-            snapPoint = rightWorld;
+            snapPoint = rightPoint;
             isLeftSide = false;
             return true;
         }
@@ -293,27 +357,49 @@ public class Pillar : MonoBehaviour
         return false;
     }
 
-    // Check if point is near circular wall attachment
-    private bool IsPointNearCircularWallAttachment(CircularWall wall, Vector3 worldPoint, out Vector3 snapPoint, out bool isLeftSide)
+    private bool IsPointNearCircularWallAttachment(CircularWall wall, Vector3 point, out Vector3 snapPoint, out bool isLeftSide)
     {
-        Vector3 leftWorld = wall.GetLeftConnectionPointWorld();
-        Vector3 rightWorld = wall.GetRightConnectionPointWorld();
+        Vector3 leftPoint = wall.GetLeftConnectionPointWorld();
+        Vector3 rightPoint = wall.GetRightConnectionPointWorld();
 
-        float leftDist = Vector3.Distance(worldPoint, leftWorld);
-        float rightDist = Vector3.Distance(worldPoint, rightWorld);
+        float distLeft = Vector3.Distance(point, leftPoint);
+        float distRight = Vector3.Distance(point, rightPoint);
 
-        // Use same attachment range as door detection
-        float attachmentRange = 0.5f;
-
-        if (leftDist < attachmentRange && leftDist <= rightDist)
+        if (distLeft < distRight && distLeft < detectionRange)
         {
-            snapPoint = leftWorld;
+            snapPoint = leftPoint;
             isLeftSide = true;
             return true;
         }
-        else if (rightDist < attachmentRange)
+        else if (distRight < detectionRange)
         {
-            snapPoint = rightWorld;
+            snapPoint = rightPoint;
+            isLeftSide = false;
+            return true;
+        }
+
+        snapPoint = Vector3.zero;
+        isLeftSide = false;
+        return false;
+    }
+
+    private bool IsPointNearCircularDoorAttachment(CircularDoor door, Vector3 point, out Vector3 snapPoint, out bool isLeftSide)
+    {
+        Vector3 leftPoint = door.GetLeftAttachmentPointWorld();
+        Vector3 rightPoint = door.GetRightAttachmentPointWorld();
+
+        float distLeft = Vector3.Distance(point, leftPoint);
+        float distRight = Vector3.Distance(point, rightPoint);
+
+        if (distLeft < distRight && distLeft < detectionRange)
+        {
+            snapPoint = leftPoint;
+            isLeftSide = true;
+            return true;
+        }
+        else if (distRight < detectionRange)
+        {
+            snapPoint = rightPoint;
             isLeftSide = false;
             return true;
         }
@@ -325,98 +411,136 @@ public class Pillar : MonoBehaviour
 
     private void SnapToAttachment()
     {
-        if (attachedObject == null || !snapToAttachment)
-            return;
+        if (!snapToAttachment || attachedObject == null) return;
 
-        Vector3 attachPoint = Vector3.zero;
-
-        // Get the attachment point based on object type
+        Vector3 targetPoint = Vector3.zero;
+        
         switch (attachedObjectType)
         {
             case "RectangularWall":
                 Wall rectWall = (Wall)attachedObject;
-                attachPoint = attachedToLeftSide ? 
+                targetPoint = attachedToLeftSide ? 
                     rectWall.GetLeftConnectionPointWorld() : 
                     rectWall.GetRightConnectionPointWorld();
                 break;
 
             case "RectangularDoor":
                 RectangularDoor rectDoor = (RectangularDoor)attachedObject;
-                attachPoint = attachedToLeftSide ? 
+                targetPoint = attachedToLeftSide ? 
                     rectDoor.GetLeftAttachmentPointWorld() : 
                     rectDoor.GetRightAttachmentPointWorld();
                 break;
 
             case "CircularWall":
                 CircularWall circWall = (CircularWall)attachedObject;
-                attachPoint = attachedToLeftSide ? 
+                targetPoint = attachedToLeftSide ? 
                     circWall.GetLeftConnectionPointWorld() : 
                     circWall.GetRightConnectionPointWorld();
                 break;
 
             case "CircularDoor":
                 CircularDoor circDoor = (CircularDoor)attachedObject;
-                attachPoint = attachedToLeftSide ? 
+                targetPoint = attachedToLeftSide ? 
                     circDoor.GetLeftAttachmentPointWorld() : 
                     circDoor.GetRightAttachmentPointWorld();
                 break;
+
+            case "RectangularFloor":
+                RectangularFloor floor = (RectangularFloor)attachedObject;
+                targetPoint = GetFloorCornerWorld(floor, attachedCornerIndex);
+                break;
         }
 
-        // Position pillar at the attachment point (bottom center)
-        transform.position = attachPoint;
+        // Calculate the offset from transform.position to connection point
+        Vector3 connectionLocal = GetConnectionPointLocal();
+        
+        // Position the pillar so that its connection point aligns with the target
+        transform.position = targetPoint - transform.TransformVector(connectionLocal);
     }
 
-    // Get connection point in world space (at bottom center of pillar)
-    private Vector3 GetConnectionPointWorld()
+    // NEW: Get floor corner in world space
+    private Vector3 GetFloorCornerWorld(RectangularFloor floor, int cornerIndex)
     {
-        // Connection point is at the bottom center of the pillar
-        return transform.position;
+        float halfW = floor.GetWidth() / 2f;
+        float halfH = floor.GetHeight() / 2f;
+
+        Vector3 localCorner = Vector3.zero;
+        switch (cornerIndex)
+        {
+            case 0: // Bottom-left
+                localCorner = new Vector3(-halfW, 0, -halfH);
+                break;
+            case 1: // Bottom-right
+                localCorner = new Vector3(halfW, 0, -halfH);
+                break;
+            case 2: // Top-right
+                localCorner = new Vector3(halfW, 0, halfH);
+                break;
+            case 3: // Top-left
+                localCorner = new Vector3(-halfW, 0, halfH);
+                break;
+        }
+
+        return floor.transform.TransformPoint(localCorner);
+    }
+
+    private Vector3 GetConnectionPointLocal()
+    {
+        // Connection point is at the bottom center of the pillar (local space)
+        return new Vector3(0, 0, 0);
+    }
+
+    public Vector3 GetConnectionPointWorld()
+    {
+        // Connection point is at the bottom center of the pillar (world space)
+        return transform.TransformPoint(GetConnectionPointLocal());
     }
 
     private void GeneratePillar()
     {
+        // Validate inputs
+        width = Mathf.Max(0.01f, width);
+        depth = Mathf.Max(0.01f, depth);
+        height = Mathf.Max(0.01f, height);
+        segmentsAlongHeight = Mathf.Max(1, segmentsAlongHeight);
+
         if (mesh == null)
         {
             mesh = new Mesh();
             mesh.name = "Pillar Mesh";
         }
-        else
-        {
-            mesh.Clear();
-        }
 
-        // Calculate mesh data
-        // A pillar is a simple rectangular prism (box)
-        
-        int vertsPerHeight = segmentsAlongHeight + 1;
-        int sideVerts = 8 * vertsPerHeight; // 4 faces, 2 verts per face corner, per height segment
-        int capVerts = 8; // 4 verts for bottom cap + 4 verts for top cap
-        int totalVerts = sideVerts + capVerts;
-        
-        int sideTris = 4 * segmentsAlongHeight * 6; // 4 faces, 2 triangles per segment, 3 indices per triangle
-        int capTris = 4 * 3; // 2 caps, 2 triangles each, 3 indices per triangle
-        int totalTriangles = sideTris + capTris;
+        mesh.Clear();
+
+        // Calculate vertex and triangle counts
+        int vertsPerLevel = 8; // 4 faces × 2 vertices per face
+        int totalLevels = segmentsAlongHeight + 1;
+        int totalVerts = vertsPerLevel * totalLevels + 8; // +8 for top/bottom caps
+
+        int trisPerSegment = 4 * 2 * 3; // 4 faces × 2 triangles × 3 vertices
+        int totalTris = segmentsAlongHeight * trisPerSegment + 4 * 3; // +12 for caps (2 caps × 2 triangles × 3 vertices)
 
         Vector3[] vertices = new Vector3[totalVerts];
         Vector2[] uvs = new Vector2[totalVerts];
-        int[] triangles = new int[totalTriangles];
-
-        int vertIndex = 0;
-        int triIndex = 0;
+        int[] triangles = new int[totalTris];
 
         float halfW = width / 2f;
         float halfD = depth / 2f;
 
-        // Calculate perimeter for UV mapping
-        float perimeter = 2f * (width + depth);
+        // Calculate total perimeter for UV unwrapping
         float frontWidth = width;
         float sideDepth = depth;
+        float totalPerimeter = (frontWidth + sideDepth) * 2;
 
-        // Generate vertices for each height level
+        // Generate vertices in rings from bottom to top
+        int vertIndex = 0;
         for (int h = 0; h <= segmentsAlongHeight; h++)
         {
-            float y = (h / (float)segmentsAlongHeight) * height;
-            float v = y * uvScale; // UV V based on actual height
+            float t = (float)h / segmentsAlongHeight;
+            float y = height * t;
+            
+            // V coordinate based on height (0 to height in world units)
+            float v = y;
 
             // Track U coordinate around the perimeter
             float uOffset = 0f;
@@ -451,6 +575,7 @@ public class Pillar : MonoBehaviour
         }
 
         // Generate triangles for the 4 vertical faces
+        int triIndex = 0;
         for (int h = 0; h < segmentsAlongHeight; h++)
         {
             int baseIndex = h * 8; // 8 vertices per height level
@@ -622,6 +747,13 @@ public class Pillar : MonoBehaviour
                     attachPoint = attachedToLeftSide ? 
                         circDoor.GetLeftAttachmentPointWorld() : 
                         circDoor.GetRightAttachmentPointWorld();
+                    break;
+
+                case "RectangularFloor":
+                    RectangularFloor floor = (RectangularFloor)attachedObject;
+                    attachPoint = GetFloorCornerWorld(floor, attachedCornerIndex);
+                    
+                   
                     break;
             }
             
