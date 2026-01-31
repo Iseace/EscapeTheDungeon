@@ -28,7 +28,7 @@ public class RectangularFloor : MonoBehaviour
         if (floorMesh == null)
         {
             floorMesh = new Mesh();
-            floorMesh.name = "Rectangular Floor";
+            floorMesh.name = "Floor";
             GetComponent<MeshFilter>().mesh = floorMesh;
         }
 
