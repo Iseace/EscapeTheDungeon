@@ -11,7 +11,7 @@ public class Wall : MonoBehaviour
     [SerializeField] public RoomType roomType = RoomType.Wall;
 
     [Header("Wall Dimensions")]
-    [SerializeField] private float height = 3f; // Wall height
+    [SerializeField] private float height = 2.5f; // Wall height
     [SerializeField] private float length = 10f; // Wall length
     [SerializeField] private float thickness = 0.2f; // Wall thickness
 
@@ -21,7 +21,7 @@ public class Wall : MonoBehaviour
 
     [Header("Attachment Settings")]
     [SerializeField] private bool enableAttachment = true; // Enable auto-attachment to doors and pillars
-    [SerializeField] private float detectionRange = 2f; // Range to detect doors and pillars
+    [SerializeField] private float detectionRange = 1f; // Range to detect doors and pillars
     [SerializeField] private bool autoDimensionFromAttachments = true; // Auto-adjust dimensions when both ends attached
     [SerializeField] private bool snapLeftEnd = false; // Snap left end to door/pillar
     [SerializeField] private bool snapRightEnd = false; // Snap right end to door/pillar

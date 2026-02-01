@@ -23,7 +23,7 @@ public class CircularDoor : MonoBehaviour
     
     [Header("Attachment Settings")]
     [SerializeField] private bool showAttachmentPoints = false; // Show gizmos for attachment points
-    [SerializeField] private float attachmentRange = 0.5f; // Range to detect walls for attachment
+    [SerializeField] private float attachmentRange = 1f; // Range to detect walls for attachment
     
     [Header("Floor Border Attachment")]
     [SerializeField] private bool enableFloorAttachment = true; // Enable auto-attachment to floor borders

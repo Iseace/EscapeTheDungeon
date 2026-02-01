@@ -4,6 +4,7 @@ using System.Collections.Generic;
 [RequireComponent(typeof(LineRenderer))]
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
+[RequireComponent(typeof(MeshCollider))]
 public class RectangularDoor : MonoBehaviour
 {
     public enum RoomType { Door, Wall }
@@ -23,7 +24,12 @@ public class RectangularDoor : MonoBehaviour
 
     [Header("Attachment Settings")]
     [SerializeField] private bool showAttachmentPoints = false; // Show gizmos for attachment points
-    [SerializeField] private float attachmentRange = 0.5f; // Range to detect walls for attachment
+    [SerializeField] private float attachmentRange = 1f; // Range to detect walls for attachment
+
+    [Header("Wall Mode Settings")]
+    [SerializeField] private float wallThickness = 0.2f; // Wall thickness when in Wall mode
+    [SerializeField] private Material wallMaterial; // Material applied when acting as a wall
+    [SerializeField] private float uvScale = 1f; // UV scale for wall mesh tiling
 
     [Header("Floor Border Attachment")]
     [SerializeField] private bool enableFloorAttachment = true; // Enable auto-attachment to floor borders
@@ -34,27 +40,38 @@ public class RectangularDoor : MonoBehaviour
     private LineRenderer lineRenderer;
     private List<Vector3> borderPoints = new List<Vector3>();
 
+    // Wall mode state
+    private Mesh wallMesh;
+    private MeshFilter meshFilter;
+    private MeshRenderer meshRenderer;
+    private MeshCollider meshCollider;
+    private RoomType prevRoomType = RoomType.Door;
+
     // Attachment point properties - now at bottom corners
     public Vector3 LeftAttachmentPoint { get; private set; }
     public Vector3 RightAttachmentPoint { get; private set; }
     public Vector3 LeftAttachmentNormal { get; private set; }
     public Vector3 RightAttachmentNormal { get; private set; }
 
-    // Floor attachment properties
-    private RectangularFloor attachedFloor;
+    // Floor attachment properties - now supports all floor types
+    private MonoBehaviour attachedFloor; // Can be any floor type
     private Vector3 floorSnapPoint; // Point on floor border where door is snapped
     private Vector3 floorSnapNormal; // Normal at the snap point
     private Vector3 prevFloorPosition;
     private Quaternion prevFloorRotation;
-    private float prevFloorWidth;
-    private float prevFloorHeight;
+    
+    // Store floor dimensions based on type
+    private Dictionary<string, float> prevFloorDimensions = new Dictionary<string, float>();
 
     private void OnEnable()
     {
         lineRenderer = GetComponent<LineRenderer>();
-        lineRenderer.useWorldSpace = false; // Use local space so border moves with object
-        GenerateDoorBorder();
-        UpdateAttachmentPoints();
+        lineRenderer.useWorldSpace = false;
+        meshFilter = GetComponent<MeshFilter>();
+        meshRenderer = GetComponent<MeshRenderer>();
+        meshCollider = GetComponent<MeshCollider>();
+
+        RefreshForCurrentType();
 
         if (enableFloorAttachment)
             DetectAndAttachToFloor();
@@ -62,13 +79,16 @@ public class RectangularDoor : MonoBehaviour
 
     private void OnValidate()
     {
-        // Update border in editor when values change
+        // Update in editor when values change
         if (!Application.isPlaying && GetComponent<LineRenderer>() != null)
         {
             lineRenderer = GetComponent<LineRenderer>();
-            lineRenderer.useWorldSpace = false; // Ensure local space
-            GenerateDoorBorder();
-            UpdateAttachmentPoints();
+            lineRenderer.useWorldSpace = false;
+            meshFilter = GetComponent<MeshFilter>();
+            meshRenderer = GetComponent<MeshRenderer>();
+            meshCollider = GetComponent<MeshCollider>();
+
+            RefreshForCurrentType();
 
             if (enableFloorAttachment)
                 DetectAndAttachToFloor();
@@ -77,6 +97,10 @@ public class RectangularDoor : MonoBehaviour
 
     private void Update()
     {
+        // Detect runtime type change (e.g. flipped in Inspector during play)
+        if (roomType != prevRoomType)
+            RefreshForCurrentType();
+
         // Continuously update attachment in play mode if enabled
         if (enableFloorAttachment)
         {
@@ -92,8 +116,156 @@ public class RectangularDoor : MonoBehaviour
         {
             prevFloorPosition = attachedFloor.transform.position;
             prevFloorRotation = attachedFloor.transform.rotation;
-            prevFloorWidth = attachedFloor.GetWidth();
-            prevFloorHeight = attachedFloor.GetHeight();
+            StorePreviousFloorDimensions();
+        }
+    }
+
+    // Routes setup to the correct mode. Called on enable, validate, and whenever roomType changes.
+    private void RefreshForCurrentType()
+    {
+        UpdateAttachmentPoints(); // attachment points are identical in both modes
+
+        if (roomType == RoomType.Wall)
+        {
+            // --- Wall mode ---
+            if (lineRenderer != null)
+                lineRenderer.enabled = false;   // hide door border
+            GenerateWallMesh();                  // build solid mesh + apply material
+        }
+        else
+        {
+            // --- Door mode ---
+            ClearWallMesh();                     // remove solid mesh / material
+            GenerateDoorBorder();                // rebuild line-renderer border
+        }
+
+        prevRoomType = roomType;
+    }
+
+    // Generates the exact same 6-face solid mesh that Wall.cs generates,
+    // using doorWidth as length, doorHeight as height, and wallThickness as thickness.
+    private void GenerateWallMesh()
+    {
+        if (meshFilter == null || meshRenderer == null) return;
+
+        if (wallMesh == null)
+        {
+            wallMesh = new Mesh();
+            wallMesh.name = "DoorAsWall";
+        }
+        wallMesh.Clear();
+
+        float length    = Mathf.Max(0.1f, doorWidth);
+        float height    = Mathf.Max(0.1f, doorHeight);
+        float thickness = Mathf.Max(0.01f, wallThickness);
+
+        float halfLength    = length / 2f;
+        float halfThickness = thickness / 2f;
+
+        List<Vector3> vertices  = new List<Vector3>();
+        List<Vector2> uvs       = new List<Vector2>();
+        List<int>     triangles = new List<int>();
+
+        // Front face (positive Z)
+        vertices.Add(new Vector3(-halfLength, 0,      halfThickness));
+        vertices.Add(new Vector3( halfLength, 0,      halfThickness));
+        vertices.Add(new Vector3( halfLength, height, halfThickness));
+        vertices.Add(new Vector3(-halfLength, height, halfThickness));
+        uvs.Add(new Vector2(0,                  0));
+        uvs.Add(new Vector2(length * uvScale,   0));
+        uvs.Add(new Vector2(length * uvScale,   height * uvScale));
+        uvs.Add(new Vector2(0,                  height * uvScale));
+        triangles.AddRange(new int[] { 0, 1, 2, 0, 2, 3 });
+
+        // Back face (negative Z)
+        vertices.Add(new Vector3(-halfLength, 0,      -halfThickness));
+        vertices.Add(new Vector3( halfLength, 0,      -halfThickness));
+        vertices.Add(new Vector3( halfLength, height, -halfThickness));
+        vertices.Add(new Vector3(-halfLength, height, -halfThickness));
+        uvs.Add(new Vector2(0,                  0));
+        uvs.Add(new Vector2(length * uvScale,   0));
+        uvs.Add(new Vector2(length * uvScale,   height * uvScale));
+        uvs.Add(new Vector2(0,                  height * uvScale));
+        triangles.AddRange(new int[] { 4, 6, 5, 4, 7, 6 });
+
+        // Left cap (negative X)
+        vertices.Add(new Vector3(-halfLength, 0,      -halfThickness));
+        vertices.Add(new Vector3(-halfLength, 0,       halfThickness));
+        vertices.Add(new Vector3(-halfLength, height,  halfThickness));
+        vertices.Add(new Vector3(-halfLength, height, -halfThickness));
+        uvs.Add(new Vector2(0,                    0));
+        uvs.Add(new Vector2(thickness * uvScale,  0));
+        uvs.Add(new Vector2(thickness * uvScale,  height * uvScale));
+        uvs.Add(new Vector2(0,                    height * uvScale));
+        triangles.AddRange(new int[] { 8, 9, 10, 8, 10, 11 });
+
+        // Right cap (positive X)
+        vertices.Add(new Vector3( halfLength, 0,       halfThickness));
+        vertices.Add(new Vector3( halfLength, 0,      -halfThickness));
+        vertices.Add(new Vector3( halfLength, height, -halfThickness));
+        vertices.Add(new Vector3( halfLength, height,  halfThickness));
+        uvs.Add(new Vector2(0,                    0));
+        uvs.Add(new Vector2(thickness * uvScale,  0));
+        uvs.Add(new Vector2(thickness * uvScale,  height * uvScale));
+        uvs.Add(new Vector2(0,                    height * uvScale));
+        triangles.AddRange(new int[] { 12, 13, 14, 12, 14, 15 });
+
+        // Bottom cap (y = 0)
+        vertices.Add(new Vector3(-halfLength, 0,  halfThickness));
+        vertices.Add(new Vector3( halfLength, 0,  halfThickness));
+        vertices.Add(new Vector3( halfLength, 0, -halfThickness));
+        vertices.Add(new Vector3(-halfLength, 0, -halfThickness));
+        uvs.Add(new Vector2(0,                  0));
+        uvs.Add(new Vector2(length * uvScale,   0));
+        uvs.Add(new Vector2(length * uvScale,   thickness * uvScale));
+        uvs.Add(new Vector2(0,                  thickness * uvScale));
+        triangles.AddRange(new int[] { 16, 19, 18, 16, 18, 17 });
+
+        // Top cap (y = height)
+        vertices.Add(new Vector3(-halfLength, height,  halfThickness));
+        vertices.Add(new Vector3( halfLength, height,  halfThickness));
+        vertices.Add(new Vector3( halfLength, height, -halfThickness));
+        vertices.Add(new Vector3(-halfLength, height, -halfThickness));
+        uvs.Add(new Vector2(0,                  0));
+        uvs.Add(new Vector2(length * uvScale,   0));
+        uvs.Add(new Vector2(length * uvScale,   thickness * uvScale));
+        uvs.Add(new Vector2(0,                  thickness * uvScale));
+        triangles.AddRange(new int[] { 20, 21, 22, 20, 22, 23 });
+
+        // Assign mesh
+        wallMesh.vertices  = vertices.ToArray();
+        wallMesh.uv        = uvs.ToArray();
+        wallMesh.triangles = triangles.ToArray();
+        wallMesh.RecalculateNormals();
+        wallMesh.RecalculateBounds();
+
+        meshFilter.sharedMesh = wallMesh;
+
+        // Apply wall material
+        if (wallMaterial != null)
+            meshRenderer.sharedMaterial = wallMaterial;
+
+        // Update collider - enable and assign mesh so it blocks physics
+        if (meshCollider != null)
+        {
+            meshCollider.enabled    = true;
+            meshCollider.convex     = false;
+            meshCollider.sharedMesh = null;
+            meshCollider.sharedMesh = wallMesh;
+        }
+    }
+
+    // Clears the wall mesh and material when switching back to Door mode
+    private void ClearWallMesh()
+    {
+        if (meshFilter != null)
+            meshFilter.sharedMesh = null;
+        if (meshRenderer != null)
+            meshRenderer.sharedMaterial = null;
+        if (meshCollider != null)
+        {
+            meshCollider.sharedMesh = null;
+            meshCollider.enabled = false;   // disable entirely so nothing blocks the opening
         }
     }
 
@@ -238,33 +410,31 @@ public class RectangularDoor : MonoBehaviour
     private void DetectAndAttachToFloor()
     {
         if (!enableFloorAttachment)
-        {
-            snapToFloorBorder = false;
-            attachedFloor = null;
             return;
-        }
 
-        // Get the door's floor connection point (bottom center)
         Vector3 doorFloorPoint = GetFloorConnectionPointWorld();
 
-        // Find all RectangularFloor objects in the scene
-        RectangularFloor[] floors = FindObjectsOfType<RectangularFloor>();
-        RectangularFloor nearestFloor = null;
-        float minDist = float.MaxValue;
+        // Find all floors in the scene (all types)
+        MonoBehaviour[] allFloors = FindAllFloors();
+
+        MonoBehaviour nearestFloor = null;
         Vector3 nearestSnapPoint = Vector3.zero;
         Vector3 nearestBorderNormal = Vector3.zero;
+        float nearestDistance = float.MaxValue;
 
-        foreach (RectangularFloor floor in floors)
+        foreach (MonoBehaviour floor in allFloors)
         {
-            Vector3 closestPoint;
-            Vector3 borderNormal;
-            float dist = GetClosestPointOnFloorBorder(floor, doorFloorPoint, out closestPoint, out borderNormal);
+            if (floor == null) continue;
 
-            if (dist < minDist && dist < floorDetectionRange)
+            Vector3 snapPoint;
+            Vector3 borderNormal;
+            float distance = GetClosestPointOnFloorBorder(floor, doorFloorPoint, out snapPoint, out borderNormal);
+
+            if (distance < floorDetectionRange && distance < nearestDistance)
             {
-                minDist = dist;
+                nearestDistance = distance;
                 nearestFloor = floor;
-                nearestSnapPoint = closestPoint;
+                nearestSnapPoint = snapPoint;
                 nearestBorderNormal = borderNormal;
             }
         }
@@ -285,7 +455,40 @@ public class RectangularDoor : MonoBehaviour
         }
     }
 
-    private float GetClosestPointOnFloorBorder(RectangularFloor floor, Vector3 worldPoint, out Vector3 closestPoint, out Vector3 borderNormal)
+    private MonoBehaviour[] FindAllFloors()
+    {
+        List<MonoBehaviour> floors = new List<MonoBehaviour>();
+        
+        // Find all floor types
+        floors.AddRange(FindObjectsOfType<RectangularFloor>());
+        floors.AddRange(FindObjectsOfType<TShapedFloor>());
+        floors.AddRange(FindObjectsOfType<CrossShapedFloor>());
+        
+        return floors.ToArray();
+    }
+
+    private float GetClosestPointOnFloorBorder(MonoBehaviour floor, Vector3 worldPoint, out Vector3 closestPoint, out Vector3 borderNormal)
+    {
+        // Determine floor type and delegate to appropriate method
+        if (floor is RectangularFloor)
+        {
+            return GetClosestPointOnRectangularFloor((RectangularFloor)floor, worldPoint, out closestPoint, out borderNormal);
+        }
+        else if (floor is TShapedFloor)
+        {
+            return GetClosestPointOnTShapedFloor((TShapedFloor)floor, worldPoint, out closestPoint, out borderNormal);
+        }
+        else if (floor is CrossShapedFloor)
+        {
+            return GetClosestPointOnCrossShapedFloor((CrossShapedFloor)floor, worldPoint, out closestPoint, out borderNormal);
+        }
+
+        closestPoint = Vector3.zero;
+        borderNormal = Vector3.up;
+        return float.MaxValue;
+    }
+
+    private float GetClosestPointOnRectangularFloor(RectangularFloor floor, Vector3 worldPoint, out Vector3 closestPoint, out Vector3 borderNormal)
     {
         // Convert world point to floor's local space
         Vector3 localPoint = floor.transform.InverseTransformPoint(worldPoint);
@@ -345,6 +548,250 @@ public class RectangularDoor : MonoBehaviour
         return Vector3.Distance(worldPoint, closestPoint);
     }
 
+    private float GetClosestPointOnTShapedFloor(TShapedFloor floor, Vector3 worldPoint, out Vector3 closestPoint, out Vector3 borderNormal)
+    {
+        // Convert world point to floor's local space
+        Vector3 localPoint = floor.transform.InverseTransformPoint(worldPoint);
+
+        float topWidth = floor.GetTopWidth();
+        float topHeight = floor.GetTopHeight();
+        float stemWidth = floor.GetStemWidth();
+        float stemHeight = floor.GetStemHeight();
+
+        float halfTopW = topWidth / 2f;
+        float halfStemW = stemWidth / 2f;
+        float topY = stemHeight / 2f;
+        float bottomY = -stemHeight / 2f;
+        float topBarBottom = topY - topHeight;
+
+        // Project onto floor plane (y=0)
+        float x = localPoint.x;
+        float z = localPoint.z;
+
+        // Find closest point on the T-shape border
+        List<EdgeSegment> edges = new List<EdgeSegment>();
+
+        // Define all edge segments of the T-shape
+        // Bottom of stem
+        edges.Add(new EdgeSegment(
+            new Vector3(-halfStemW, 0, bottomY),
+            new Vector3(halfStemW, 0, bottomY),
+            Vector3.back));
+
+        // Right side of stem (bottom part)
+        edges.Add(new EdgeSegment(
+            new Vector3(halfStemW, 0, bottomY),
+            new Vector3(halfStemW, 0, topBarBottom),
+            Vector3.right));
+
+        // Right transition from stem to top bar
+        edges.Add(new EdgeSegment(
+            new Vector3(halfStemW, 0, topBarBottom),
+            new Vector3(halfTopW, 0, topBarBottom),
+            Vector3.back));
+
+        // Right side of top bar
+        edges.Add(new EdgeSegment(
+            new Vector3(halfTopW, 0, topBarBottom),
+            new Vector3(halfTopW, 0, topY),
+            Vector3.right));
+
+        // Top of top bar
+        edges.Add(new EdgeSegment(
+            new Vector3(halfTopW, 0, topY),
+            new Vector3(-halfTopW, 0, topY),
+            Vector3.forward));
+
+        // Left side of top bar
+        edges.Add(new EdgeSegment(
+            new Vector3(-halfTopW, 0, topY),
+            new Vector3(-halfTopW, 0, topBarBottom),
+            Vector3.left));
+
+        // Left transition from top bar to stem
+        edges.Add(new EdgeSegment(
+            new Vector3(-halfTopW, 0, topBarBottom),
+            new Vector3(-halfStemW, 0, topBarBottom),
+            Vector3.back));
+
+        // Left side of stem (bottom part)
+        edges.Add(new EdgeSegment(
+            new Vector3(-halfStemW, 0, topBarBottom),
+            new Vector3(-halfStemW, 0, bottomY),
+            Vector3.left));
+
+        // Find the closest edge
+        float minDistance = float.MaxValue;
+        Vector3 bestPoint = Vector3.zero;
+        Vector3 bestNormal = Vector3.up;
+
+        Vector3 localPoint2D = new Vector3(x, 0, z);
+
+        foreach (EdgeSegment edge in edges)
+        {
+            Vector3 pointOnEdge = ClosestPointOnLineSegment(edge.start, edge.end, localPoint2D);
+            float distance = Vector3.Distance(localPoint2D, pointOnEdge);
+
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                bestPoint = pointOnEdge;
+                bestNormal = edge.normal;
+            }
+        }
+
+        // Convert back to world space
+        closestPoint = floor.transform.TransformPoint(bestPoint);
+        borderNormal = floor.transform.TransformDirection(bestNormal).normalized;
+
+        return Vector3.Distance(worldPoint, closestPoint);
+    }
+
+    private float GetClosestPointOnCrossShapedFloor(CrossShapedFloor floor, Vector3 worldPoint, out Vector3 closestPoint, out Vector3 borderNormal)
+    {
+        // Convert world point to floor's local space
+        Vector3 localPoint = floor.transform.InverseTransformPoint(worldPoint);
+
+        float horizontalWidth = floor.GetHorizontalWidth();
+        float horizontalHeight = floor.GetHorizontalHeight();
+        float verticalWidth = floor.GetVerticalWidth();
+        float verticalHeight = floor.GetVerticalHeight();
+
+        float halfHW = horizontalWidth / 2f;
+        float halfHH = horizontalHeight / 2f;
+        float halfVW = verticalWidth / 2f;
+        float halfVH = verticalHeight / 2f;
+
+        // Project onto floor plane (y=0)
+        float x = localPoint.x;
+        float z = localPoint.z;
+
+        // Define all edge segments of the cross shape
+        List<EdgeSegment> edges = new List<EdgeSegment>();
+
+        // Bottom vertical bar
+        edges.Add(new EdgeSegment(
+            new Vector3(-halfVW, 0, -halfVH),
+            new Vector3(halfVW, 0, -halfVH),
+            Vector3.back));
+
+        // Bottom-right transition to horizontal bar
+        edges.Add(new EdgeSegment(
+            new Vector3(halfVW, 0, -halfVH),
+            new Vector3(halfVW, 0, -halfHH),
+            Vector3.right));
+
+        edges.Add(new EdgeSegment(
+            new Vector3(halfVW, 0, -halfHH),
+            new Vector3(halfHW, 0, -halfHH),
+            Vector3.back));
+
+        // Right side of horizontal bar
+        edges.Add(new EdgeSegment(
+            new Vector3(halfHW, 0, -halfHH),
+            new Vector3(halfHW, 0, halfHH),
+            Vector3.right));
+
+        // Top-right transition
+        edges.Add(new EdgeSegment(
+            new Vector3(halfHW, 0, halfHH),
+            new Vector3(halfVW, 0, halfHH),
+            Vector3.forward));
+
+        edges.Add(new EdgeSegment(
+            new Vector3(halfVW, 0, halfHH),
+            new Vector3(halfVW, 0, halfVH),
+            Vector3.right));
+
+        // Top of vertical bar
+        edges.Add(new EdgeSegment(
+            new Vector3(halfVW, 0, halfVH),
+            new Vector3(-halfVW, 0, halfVH),
+            Vector3.forward));
+
+        // Top-left transition
+        edges.Add(new EdgeSegment(
+            new Vector3(-halfVW, 0, halfVH),
+            new Vector3(-halfVW, 0, halfHH),
+            Vector3.left));
+
+        edges.Add(new EdgeSegment(
+            new Vector3(-halfVW, 0, halfHH),
+            new Vector3(-halfHW, 0, halfHH),
+            Vector3.forward));
+
+        // Left side of horizontal bar
+        edges.Add(new EdgeSegment(
+            new Vector3(-halfHW, 0, halfHH),
+            new Vector3(-halfHW, 0, -halfHH),
+            Vector3.left));
+
+        // Bottom-left transition
+        edges.Add(new EdgeSegment(
+            new Vector3(-halfHW, 0, -halfHH),
+            new Vector3(-halfVW, 0, -halfHH),
+            Vector3.back));
+
+        edges.Add(new EdgeSegment(
+            new Vector3(-halfVW, 0, -halfHH),
+            new Vector3(-halfVW, 0, -halfVH),
+            Vector3.left));
+
+        // Find the closest edge
+        float minDistance = float.MaxValue;
+        Vector3 bestPoint = Vector3.zero;
+        Vector3 bestNormal = Vector3.up;
+
+        Vector3 localPoint2D = new Vector3(x, 0, z);
+
+        foreach (EdgeSegment edge in edges)
+        {
+            Vector3 pointOnEdge = ClosestPointOnLineSegment(edge.start, edge.end, localPoint2D);
+            float distance = Vector3.Distance(localPoint2D, pointOnEdge);
+
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                bestPoint = pointOnEdge;
+                bestNormal = edge.normal;
+            }
+        }
+
+        // Convert back to world space
+        closestPoint = floor.transform.TransformPoint(bestPoint);
+        borderNormal = floor.transform.TransformDirection(bestNormal).normalized;
+
+        return Vector3.Distance(worldPoint, closestPoint);
+    }
+
+    // Helper class to represent an edge segment with its normal
+    private class EdgeSegment
+    {
+        public Vector3 start;
+        public Vector3 end;
+        public Vector3 normal;
+
+        public EdgeSegment(Vector3 s, Vector3 e, Vector3 n)
+        {
+            start = s;
+            end = e;
+            normal = n;
+        }
+    }
+
+    // Helper function to find closest point on a line segment
+    private Vector3 ClosestPointOnLineSegment(Vector3 lineStart, Vector3 lineEnd, Vector3 point)
+    {
+        Vector3 lineDirection = lineEnd - lineStart;
+        float lineLength = lineDirection.magnitude;
+        lineDirection.Normalize();
+
+        float projectionLength = Vector3.Dot(point - lineStart, lineDirection);
+        projectionLength = Mathf.Clamp(projectionLength, 0f, lineLength);
+
+        return lineStart + lineDirection * projectionLength;
+    }
+
     private void SnapToFloorBorder()
     {
         if (attachedFloor == null || !snapToFloorBorder)
@@ -364,6 +811,65 @@ public class RectangularDoor : MonoBehaviour
         }
     }
 
+    private void StorePreviousFloorDimensions()
+    {
+        prevFloorDimensions.Clear();
+        
+        if (attachedFloor is RectangularFloor)
+        {
+            RectangularFloor rf = (RectangularFloor)attachedFloor;
+            prevFloorDimensions["width"] = rf.GetWidth();
+            prevFloorDimensions["height"] = rf.GetHeight();
+        }
+        else if (attachedFloor is TShapedFloor)
+        {
+            TShapedFloor tf = (TShapedFloor)attachedFloor;
+            prevFloorDimensions["topWidth"] = tf.GetTopWidth();
+            prevFloorDimensions["topHeight"] = tf.GetTopHeight();
+            prevFloorDimensions["stemWidth"] = tf.GetStemWidth();
+            prevFloorDimensions["stemHeight"] = tf.GetStemHeight();
+        }
+        else if (attachedFloor is CrossShapedFloor)
+        {
+            CrossShapedFloor cf = (CrossShapedFloor)attachedFloor;
+            prevFloorDimensions["horizontalWidth"] = cf.GetHorizontalWidth();
+            prevFloorDimensions["horizontalHeight"] = cf.GetHorizontalHeight();
+            prevFloorDimensions["verticalWidth"] = cf.GetVerticalWidth();
+            prevFloorDimensions["verticalHeight"] = cf.GetVerticalHeight();
+        }
+    }
+
+    private bool HasFloorDimensionsChanged()
+    {
+        if (attachedFloor is RectangularFloor)
+        {
+            RectangularFloor rf = (RectangularFloor)attachedFloor;
+            return !prevFloorDimensions.ContainsKey("width") ||
+                   Mathf.Abs(rf.GetWidth() - prevFloorDimensions["width"]) > 0.001f ||
+                   Mathf.Abs(rf.GetHeight() - prevFloorDimensions["height"]) > 0.001f;
+        }
+        else if (attachedFloor is TShapedFloor)
+        {
+            TShapedFloor tf = (TShapedFloor)attachedFloor;
+            return !prevFloorDimensions.ContainsKey("topWidth") ||
+                   Mathf.Abs(tf.GetTopWidth() - prevFloorDimensions["topWidth"]) > 0.001f ||
+                   Mathf.Abs(tf.GetTopHeight() - prevFloorDimensions["topHeight"]) > 0.001f ||
+                   Mathf.Abs(tf.GetStemWidth() - prevFloorDimensions["stemWidth"]) > 0.001f ||
+                   Mathf.Abs(tf.GetStemHeight() - prevFloorDimensions["stemHeight"]) > 0.001f;
+        }
+        else if (attachedFloor is CrossShapedFloor)
+        {
+            CrossShapedFloor cf = (CrossShapedFloor)attachedFloor;
+            return !prevFloorDimensions.ContainsKey("horizontalWidth") ||
+                   Mathf.Abs(cf.GetHorizontalWidth() - prevFloorDimensions["horizontalWidth"]) > 0.001f ||
+                   Mathf.Abs(cf.GetHorizontalHeight() - prevFloorDimensions["horizontalHeight"]) > 0.001f ||
+                   Mathf.Abs(cf.GetVerticalWidth() - prevFloorDimensions["verticalWidth"]) > 0.001f ||
+                   Mathf.Abs(cf.GetVerticalHeight() - prevFloorDimensions["verticalHeight"]) > 0.001f;
+        }
+        
+        return false;
+    }
+
     private void UpdateFloorFollowing()
     {
         if (attachedFloor == null || !snapToFloorBorder)
@@ -374,13 +880,10 @@ public class RectangularDoor : MonoBehaviour
 
         Vector3 currentPos = attachedFloor.transform.position;
         Quaternion currentRot = attachedFloor.transform.rotation;
-        float currentWidth = attachedFloor.GetWidth();
-        float currentHeight = attachedFloor.GetHeight();
 
         if (Vector3.Distance(currentPos, prevFloorPosition) > 0.001f ||
             Quaternion.Angle(currentRot, prevFloorRotation) > 0.1f ||
-            Mathf.Abs(currentWidth - prevFloorWidth) > 0.001f ||
-            Mathf.Abs(currentHeight - prevFloorHeight) > 0.001f)
+            HasFloorDimensionsChanged())
         {
             floorChanged = true;
         }
@@ -405,8 +908,7 @@ public class RectangularDoor : MonoBehaviour
     {
         doorWidth = newWidth;
         doorHeight = newHeight;
-        GenerateDoorBorder();
-        UpdateAttachmentPoints();
+        RefreshForCurrentType();
     }
 
     public void SetBorderVisibility(bool visible)

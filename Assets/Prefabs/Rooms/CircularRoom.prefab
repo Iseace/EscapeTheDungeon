@@ -135,7 +135,7 @@ MonoBehaviour:
   uvScale: 1
   enableAttachment: 1
   detectionRange: 1
-  snapToAttachment: 1
+  snapToAttachment: 0
   showConnectionPoint: 0
 --- !u!1 &2927045028772559508
 GameObject:
@@ -307,7 +307,7 @@ MonoBehaviour:
   uvScale: 1
   enableAttachment: 1
   detectionRange: 1
-  snapToAttachment: 1
+  snapToAttachment: 0
   showConnectionPoint: 0
 --- !u!1 &3309794766388631415
 GameObject:
@@ -426,7 +426,7 @@ MonoBehaviour:
   enableDoorAttachment: 1
   doorDetectionRange: 1
   autoDimensionFromDoors: 1
-  snapLeftEndToDoor: 1
+  snapLeftEndToDoor: 0
   snapRightEndToDoor: 0
   showConnectionPoints: 0
 --- !u!64 &5348205701741085774
@@ -625,7 +625,7 @@ MonoBehaviour:
   uvScale: 1
   enableAttachment: 1
   detectionRange: 1
-  snapToAttachment: 1
+  snapToAttachment: 0
   showConnectionPoint: 0
 --- !u!1 &4501315696896219853
 GameObject:
@@ -762,7 +762,7 @@ MonoBehaviour:
   uvScale: 1
   enableAttachment: 1
   detectionRange: 1
-  snapToAttachment: 1
+  snapToAttachment: 0
   showConnectionPoint: 0
 --- !u!1 &4512394087478094046
 GameObject:
@@ -1011,10 +1011,10 @@ MonoBehaviour:
   borderThickness: 0.05
   borderColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   showAttachmentPoints: 0
-  attachmentRange: 0.5
+  attachmentRange: 1
   enableFloorAttachment: 1
   floorDetectionRange: 1
-  snapToFloorBorder: 1
+  snapToFloorBorder: 0
   showFloorConnectionPoint: 0
 --- !u!1 &4755335751609002994
 GameObject:
@@ -1263,10 +1263,10 @@ MonoBehaviour:
   borderThickness: 0.05
   borderColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   showAttachmentPoints: 0
-  attachmentRange: 0.5
+  attachmentRange: 1
   enableFloorAttachment: 1
   floorDetectionRange: 1
-  snapToFloorBorder: 1
+  snapToFloorBorder: 0
   showFloorConnectionPoint: 0
 --- !u!1 &4801714706217364629
 GameObject:
@@ -1296,8 +1296,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4801714706217364629}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 0.78843874, z: -0, w: 0.6151133}
-  m_LocalPosition: {x: 4.879833, y: 0, z: 0.026915431}
+  m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: 5, y: 0, z: 0.026915431}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1515,10 +1515,10 @@ MonoBehaviour:
   borderThickness: 0.05
   borderColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   showAttachmentPoints: 0
-  attachmentRange: 0.5
+  attachmentRange: 1
   enableFloorAttachment: 1
   floorDetectionRange: 1
-  snapToFloorBorder: 1
+  snapToFloorBorder: 0
   showFloorConnectionPoint: 0
 --- !u!1 &5001407739431223453
 GameObject:
@@ -1707,7 +1707,7 @@ MonoBehaviour:
   enableDoorAttachment: 1
   doorDetectionRange: 1
   autoDimensionFromDoors: 1
-  snapLeftEndToDoor: 1
+  snapLeftEndToDoor: 0
   snapRightEndToDoor: 0
   showConnectionPoints: 0
 --- !u!64 &2100573380822373543
@@ -1867,7 +1867,7 @@ MonoBehaviour:
   uvScale: 1
   enableAttachment: 1
   detectionRange: 1
-  snapToAttachment: 1
+  snapToAttachment: 0
   showConnectionPoint: 0
 --- !u!1 &6886445276194020511
 GameObject:
@@ -2004,7 +2004,7 @@ MonoBehaviour:
   uvScale: 1
   enableAttachment: 1
   detectionRange: 1
-  snapToAttachment: 1
+  snapToAttachment: 0
   showConnectionPoint: 0
 --- !u!1 &7301224194577477532
 GameObject:
@@ -2074,7 +2074,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 4c1e5018234aaa94b8f5cb6590a756b5, type: 2}
+  - {fileID: 2100000, guid: c02f50b091aa6a84aaccec3ee6cf6863, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -2116,7 +2116,7 @@ MonoBehaviour:
   cornerRadius: 4
   cornerSegments: 8
   subdivisions: 1
-  floorMaterial: {fileID: 2100000, guid: 4c1e5018234aaa94b8f5cb6590a756b5, type: 2}
+  floorMaterial: {fileID: 2100000, guid: c02f50b091aa6a84aaccec3ee6cf6863, type: 2}
   uvScale: 1
 --- !u!64 &8659622368034551172
 MeshCollider:
@@ -2387,10 +2387,10 @@ MonoBehaviour:
   borderThickness: 0.05
   borderColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   showAttachmentPoints: 0
-  attachmentRange: 0.5
+  attachmentRange: 1
   enableFloorAttachment: 1
   floorDetectionRange: 1
-  snapToFloorBorder: 1
+  snapToFloorBorder: 0
   showFloorConnectionPoint: 0
 --- !u!1 &8527494289312178304
 GameObject:
@@ -2509,7 +2509,7 @@ MonoBehaviour:
   enableDoorAttachment: 1
   doorDetectionRange: 1
   autoDimensionFromDoors: 1
-  snapLeftEndToDoor: 1
+  snapLeftEndToDoor: 0
   snapRightEndToDoor: 0
   showConnectionPoints: 0
 --- !u!64 &2045606118857340556
@@ -2669,7 +2669,7 @@ MonoBehaviour:
   uvScale: 1
   enableAttachment: 1
   detectionRange: 1
-  snapToAttachment: 1
+  snapToAttachment: 0
   showConnectionPoint: 0
 --- !u!1 &8923383468328220376
 GameObject:
@@ -2806,7 +2806,7 @@ MonoBehaviour:
   uvScale: 1
   enableAttachment: 1
   detectionRange: 1
-  snapToAttachment: 1
+  snapToAttachment: 0
   showConnectionPoint: 0
 --- !u!1 &9006364916242863180
 GameObject:
@@ -2925,7 +2925,7 @@ MonoBehaviour:
   enableDoorAttachment: 1
   doorDetectionRange: 1
   autoDimensionFromDoors: 1
-  snapLeftEndToDoor: 1
+  snapLeftEndToDoor: 0
   snapRightEndToDoor: 0
   showConnectionPoints: 0
 --- !u!64 &7757182425427906647
