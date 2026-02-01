@@ -13,9 +13,9 @@ public class TShapedFloor : MonoBehaviour
 
     [Header("T-Shape Dimensions")]
     [SerializeField] private float topWidth = 10f;      // Width of the top horizontal bar
-    [SerializeField] private float topHeight = 3f;      // Height of the top horizontal bar
-    [SerializeField] private float stemWidth = 3f;      // Width of the vertical stem
-    [SerializeField] private float stemHeight = 7f;     // Height of the vertical stem
+    [SerializeField] private float topHeight = 7f;      // Height of the top horizontal bar
+    [SerializeField] private float stemWidth = 7f;      // Width of the vertical stem
+    [SerializeField] private float stemHeight = 10f;     // Height of the vertical stem
 
     [Header("Material Settings")]
     [SerializeField] private Material floorMaterial; // Material to apply to the floor

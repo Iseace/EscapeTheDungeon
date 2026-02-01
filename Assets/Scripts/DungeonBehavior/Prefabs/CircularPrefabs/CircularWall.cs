@@ -11,7 +11,7 @@ public class CircularWall : MonoBehaviour
     [SerializeField] public RoomType roomType = RoomType.Wall;
 
     [Header("Wall Dimensions")]
-    [SerializeField] private float height = 3f; // Wall height
+    [SerializeField] private float height = 2.5f; // Wall height
     [SerializeField] private float length = 10f; // Wall length (arc length)
     [SerializeField] private float thickness = 0.2f; // Wall thickness
     
@@ -30,7 +30,7 @@ public class CircularWall : MonoBehaviour
     
     [Header("Door Attachment")]
     [SerializeField] private bool enableDoorAttachment = true; // Enable auto-attachment to doors
-    [SerializeField] private float doorDetectionRange = 2f; // Range to detect doors
+    [SerializeField] private float doorDetectionRange = 1f; // Range to detect doors
     [SerializeField] private bool autoDimensionFromDoors = true; // Auto-adjust dimensions when both ends attached
     [SerializeField] private bool snapLeftEndToDoor = false; // Snap left end to door
     [SerializeField] private bool snapRightEndToDoor = false; // Snap right end to door

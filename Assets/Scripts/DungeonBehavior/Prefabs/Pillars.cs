@@ -10,9 +10,9 @@ public class Pillar : MonoBehaviour
     [SerializeField] public RoomType roomType = RoomType.Pillar;
 
     [Header("Pillar Dimensions")]
-    [SerializeField] private float height = 3f; // Pillar height
-    [SerializeField] private float width = 0.3f; // Pillar width (X axis)
-    [SerializeField] private float depth = 0.3f; // Pillar depth (Z axis)
+    [SerializeField] private float height = 2.5f; // Pillar height
+    [SerializeField] private float width = 0.5f; // Pillar width (X axis)
+    [SerializeField] private float depth = 0.5f; // Pillar depth (Z axis)
     
     [Header("Mesh Quality")]
     [SerializeField] private int segmentsAlongHeight = 1; // Vertical segments
@@ -23,7 +23,7 @@ public class Pillar : MonoBehaviour
     
     [Header("Attachment Settings")]
     [SerializeField] private bool enableAttachment = true; // Enable auto-attachment to doors/walls/floors
-    [SerializeField] private float detectionRange = 2f; // Range to detect attachment points
+    [SerializeField] private float detectionRange = 1f; // Range to detect attachment points
     [SerializeField] private bool snapToAttachment = false; // Currently snapped
     [SerializeField] private bool showConnectionPoint = false; // Show connection point gizmo
     
@@ -144,6 +144,8 @@ public class Pillar : MonoBehaviour
         CircularWall[] circularWalls = FindObjectsOfType<CircularWall>();
         CircularDoor[] circularDoors = FindObjectsOfType<CircularDoor>();
         RectangularFloor[] rectangularFloors = FindObjectsOfType<RectangularFloor>();
+        TShapedFloor[] tShapedFloors = FindObjectsOfType<TShapedFloor>();
+        CrossShapedFloor[] crossShapedFloors = FindObjectsOfType<CrossShapedFloor>();
 
         // Calculate current pillar connection point in world space (at bottom center)
         Vector3 connectionWorld = GetConnectionPointWorld();
@@ -268,6 +270,52 @@ public class Pillar : MonoBehaviour
                         attachedObject = floor;
                         attachedCornerIndex = cornerIndex;
                         attachedObjectType = "RectangularFloor";
+                        snapToAttachment = true;
+                    }
+                }
+            }
+        }
+
+        // Check T-shaped floors
+        foreach (TShapedFloor floor in tShapedFloors)
+        {
+            if (floor.Type == TShapedFloor.RoomType.Floor)
+            {
+                Vector3 snapPoint;
+                int cornerIndex;
+
+                if (IsPointNearTShapedFloorCorner(floor, connectionWorld, out snapPoint, out cornerIndex))
+                {
+                    float dist = Vector3.Distance(connectionWorld, snapPoint);
+                    if (dist < closestDist)
+                    {
+                        closestDist = dist;
+                        attachedObject = floor;
+                        attachedCornerIndex = cornerIndex;
+                        attachedObjectType = "TShapedFloor";
+                        snapToAttachment = true;
+                    }
+                }
+            }
+        }
+
+        // Check cross-shaped floors
+        foreach (CrossShapedFloor floor in crossShapedFloors)
+        {
+            if (floor.Type == CrossShapedFloor.RoomType.Floor)
+            {
+                Vector3 snapPoint;
+                int cornerIndex;
+
+                if (IsPointNearCrossShapedFloorCorner(floor, connectionWorld, out snapPoint, out cornerIndex))
+                {
+                    float dist = Vector3.Distance(connectionWorld, snapPoint);
+                    if (dist < closestDist)
+                    {
+                        closestDist = dist;
+                        attachedObject = floor;
+                        attachedCornerIndex = cornerIndex;
+                        attachedObjectType = "CrossShapedFloor";
                         snapToAttachment = true;
                     }
                 }
@@ -449,6 +497,15 @@ public class Pillar : MonoBehaviour
                 RectangularFloor floor = (RectangularFloor)attachedObject;
                 targetPoint = GetFloorCornerWorld(floor, attachedCornerIndex);
                 break;
+            case "TShapedFloor":
+                TShapedFloor tFloor = (TShapedFloor)attachedObject;
+                targetPoint = GetTShapedFloorCornerWorld(tFloor, attachedCornerIndex);
+                break;
+
+            case "CrossShapedFloor":
+                CrossShapedFloor cFloor = (CrossShapedFloor)attachedObject;
+                targetPoint = GetCrossShapedFloorCornerWorld(cFloor, attachedCornerIndex);
+                break;
         }
 
         // Calculate the offset from transform.position to connection point
@@ -483,6 +540,108 @@ public class Pillar : MonoBehaviour
 
         return floor.transform.TransformPoint(localCorner);
     }
+    private bool IsPointNearTShapedFloorCorner(TShapedFloor floor, Vector3 point, out Vector3 snapPoint, out int cornerIndex)
+    {
+        Vector3[] worldCorners = GetTShapedFloorCorners(floor);
+        return FindClosestCorner(worldCorners, point, out snapPoint, out cornerIndex);
+    }
+
+    private bool IsPointNearCrossShapedFloorCorner(CrossShapedFloor floor, Vector3 point, out Vector3 snapPoint, out int cornerIndex)
+    {
+        Vector3[] worldCorners = GetCrossShapedFloorCorners(floor);
+        return FindClosestCorner(worldCorners, point, out snapPoint, out cornerIndex);
+    }
+
+    // Shared logic: given an array of world-space corners, find the closest one within detectionRange
+    private bool FindClosestCorner(Vector3[] worldCorners, Vector3 point, out Vector3 snapPoint, out int cornerIndex)
+    {
+        snapPoint = Vector3.zero;
+        cornerIndex = -1;
+        float closestDist = detectionRange;
+
+        for (int i = 0; i < worldCorners.Length; i++)
+        {
+            float dist = Vector3.Distance(point, worldCorners[i]);
+            if (dist < closestDist)
+            {
+                closestDist = dist;
+                cornerIndex = i;
+                snapPoint = worldCorners[i];
+            }
+        }
+
+        return cornerIndex != -1;
+    }
+
+    private Vector3[] GetTShapedFloorCorners(TShapedFloor floor)
+    {
+        float halfTopW  = floor.GetTopWidth() / 2f;
+        float halfStemW = floor.GetStemWidth() / 2f;
+        float topY      = floor.GetStemHeight() / 2f;
+        float bottomY   = -floor.GetStemHeight() / 2f;
+        float topBarBottom = topY - floor.GetTopHeight();
+
+        // 8 corners matching the T-shape vertex layout
+        Vector3[] local = new Vector3[]
+        {
+            new Vector3(-halfStemW, 0, bottomY),      // 0: bottom-left of stem
+            new Vector3( halfStemW, 0, bottomY),      // 1: bottom-right of stem
+            new Vector3( halfStemW, 0, topBarBottom), // 2: inner-right (stem meets bar)
+            new Vector3( halfTopW,  0, topBarBottom), // 3: outer-right of bar bottom
+            new Vector3( halfTopW,  0, topY),         // 4: top-right
+            new Vector3(-halfTopW,  0, topY),         // 5: top-left
+            new Vector3(-halfTopW,  0, topBarBottom), // 6: outer-left of bar bottom
+            new Vector3(-halfStemW, 0, topBarBottom)  // 7: inner-left (stem meets bar)
+        };
+
+        Vector3[] world = new Vector3[local.Length];
+        for (int i = 0; i < local.Length; i++)
+            world[i] = floor.transform.TransformPoint(local[i]);
+        return world;
+    }
+
+    private Vector3 GetTShapedFloorCornerWorld(TShapedFloor floor, int cornerIndex)
+    {
+        Vector3[] corners = GetTShapedFloorCorners(floor);
+        return (cornerIndex >= 0 && cornerIndex < corners.Length) ? corners[cornerIndex] : Vector3.zero;
+    }
+
+    private Vector3[] GetCrossShapedFloorCorners(CrossShapedFloor floor)
+    {
+        float halfHW = floor.GetHorizontalWidth() / 2f;
+        float halfHH = floor.GetHorizontalHeight() / 2f;
+        float halfVW = floor.GetVerticalWidth() / 2f;
+        float halfVH = floor.GetVerticalHeight() / 2f;
+
+        // 12 corners matching the cross-shape vertex layout
+        Vector3[] local = new Vector3[]
+        {
+            new Vector3(-halfVW, 0, -halfVH), // 0
+            new Vector3( halfVW, 0, -halfVH), // 1
+            new Vector3( halfVW, 0, -halfHH), // 2
+            new Vector3( halfHW, 0, -halfHH), // 3
+            new Vector3( halfHW, 0,  halfHH), // 4
+            new Vector3( halfVW, 0,  halfHH), // 5
+            new Vector3( halfVW, 0,  halfVH), // 6
+            new Vector3(-halfVW, 0,  halfVH), // 7
+            new Vector3(-halfVW, 0,  halfHH), // 8
+            new Vector3(-halfHW, 0,  halfHH), // 9
+            new Vector3(-halfHW, 0, -halfHH), // 10
+            new Vector3(-halfVW, 0, -halfHH)  // 11
+        };
+
+        Vector3[] world = new Vector3[local.Length];
+        for (int i = 0; i < local.Length; i++)
+            world[i] = floor.transform.TransformPoint(local[i]);
+        return world;
+    }
+
+    private Vector3 GetCrossShapedFloorCornerWorld(CrossShapedFloor floor, int cornerIndex)
+    {
+        Vector3[] corners = GetCrossShapedFloorCorners(floor);
+        return (cornerIndex >= 0 && cornerIndex < corners.Length) ? corners[cornerIndex] : Vector3.zero;
+    }
+
 
     private Vector3 GetConnectionPointLocal()
     {
@@ -625,21 +784,21 @@ public class Pillar : MonoBehaviour
         vertices[vertIndex] = new Vector3(-halfW, height, -halfD);
         uvs[vertIndex++] = new Vector2(0, 0) * uvScale;
 
-        // Bottom cap triangles (facing down - clockwise from below)
+        // Bottom cap triangles (facing down - counter-clockwise from below)
         triangles[triIndex++] = capVertStart + 0;
-        triangles[triIndex++] = capVertStart + 1;
-        triangles[triIndex++] = capVertStart + 2;
-        triangles[triIndex++] = capVertStart + 0;
-        triangles[triIndex++] = capVertStart + 2;
         triangles[triIndex++] = capVertStart + 3;
+        triangles[triIndex++] = capVertStart + 2;
+        triangles[triIndex++] = capVertStart + 0;
+        triangles[triIndex++] = capVertStart + 2;
+        triangles[triIndex++] = capVertStart + 1;
 
-        // Top cap triangles (facing up - counter-clockwise from above)
+        // Top cap triangles (facing up - clockwise from above)
         triangles[triIndex++] = capVertStart + 4;
-        triangles[triIndex++] = capVertStart + 6;
         triangles[triIndex++] = capVertStart + 5;
-        triangles[triIndex++] = capVertStart + 4;
-        triangles[triIndex++] = capVertStart + 7;
         triangles[triIndex++] = capVertStart + 6;
+        triangles[triIndex++] = capVertStart + 4;
+        triangles[triIndex++] = capVertStart + 6;
+        triangles[triIndex++] = capVertStart + 7;
 
         // Assign mesh data
         mesh.vertices = vertices;
@@ -754,6 +913,15 @@ public class Pillar : MonoBehaviour
                     attachPoint = GetFloorCornerWorld(floor, attachedCornerIndex);
                     
                    
+                    break;
+                case "TShapedFloor":
+                    TShapedFloor tFloorGiz = (TShapedFloor)attachedObject;
+                    attachPoint = GetTShapedFloorCornerWorld(tFloorGiz, attachedCornerIndex);
+                    break;
+
+                case "CrossShapedFloor":
+                    CrossShapedFloor cFloorGiz = (CrossShapedFloor)attachedObject;
+                    attachPoint = GetCrossShapedFloorCornerWorld(cFloorGiz, attachedCornerIndex);
                     break;
             }
             
