@@ -12,14 +12,14 @@ public class CrossShapedFloor : MonoBehaviour
     [SerializeField] public RoomType roomType = RoomType.Floor;
 
     [Header("Cross-Shape Dimensions")]
-    [SerializeField] private float horizontalWidth = 10f;   // Width of the horizontal bar
-    [SerializeField] private float horizontalHeight = 7f;   // Height of the horizontal bar
-    [SerializeField] private float verticalWidth = 7f;      // Width of the vertical bar
-    [SerializeField] private float verticalHeight = 10f;    // Height of the vertical bar
+    [SerializeField] private float horizontalWidth = 14f;   // Total width of the horizontal bar (X axis)
+    [SerializeField] private float horizontalHeight = 6f;   // Thickness of the horizontal bar (Z axis)
+    [SerializeField] private float verticalWidth = 6f;      // Thickness of the vertical bar (X axis)
+    [SerializeField] private float verticalHeight = 14f;    // Total height of the vertical bar (Z axis)
 
     [Header("Material Settings")]
-    [SerializeField] private Material floorMaterial; // Material to apply to the floor
-    [SerializeField] private float uvScale = 1f; // UV scale factor (1 = 1 Unity unit = 1 texture repeat)
+    [SerializeField] private Material floorMaterial;
+    [SerializeField] private float uvScale = 1f;
 
     private Mesh floorMesh;
     private MeshCollider meshCollider;
@@ -30,7 +30,7 @@ public class CrossShapedFloor : MonoBehaviour
         if (floorMesh == null)
         {
             floorMesh = new Mesh();
-            floorMesh.name = "Floor";
+            floorMesh.name = "CrossFloor";
             GetComponent<MeshFilter>().mesh = floorMesh;
         }
 
@@ -42,7 +42,6 @@ public class CrossShapedFloor : MonoBehaviour
 
     private void OnValidate()
     {
-        // Regenerate mesh when values change in editor
         if (Application.isEditor && !Application.isPlaying)
         {
             OnEnable();
@@ -51,7 +50,6 @@ public class CrossShapedFloor : MonoBehaviour
 
     private void ApplyMaterial()
     {
-        // Apply material if one is assigned
         if (floorMaterial != null && meshRenderer != null)
         {
             meshRenderer.sharedMaterial = floorMaterial;
@@ -62,232 +60,135 @@ public class CrossShapedFloor : MonoBehaviour
     {
         floorMesh.Clear();
 
-        // Validate inputs
-        horizontalWidth = Mathf.Max(0.1f, horizontalWidth);
+        // Clamp all dimensions to a safe minimum
+        horizontalWidth  = Mathf.Max(0.1f, horizontalWidth);
         horizontalHeight = Mathf.Max(0.1f, horizontalHeight);
-        verticalWidth = Mathf.Max(0.1f, verticalWidth);
-        verticalHeight = Mathf.Max(0.1f, verticalHeight);
+        verticalWidth    = Mathf.Max(0.1f, verticalWidth);
+        verticalHeight   = Mathf.Max(0.1f, verticalHeight);
 
-        // Generate vertices and triangles
-        var vertices = new System.Collections.Generic.List<Vector3>();
+        var vertices  = new System.Collections.Generic.List<Vector3>();
         var triangles = new System.Collections.Generic.List<int>();
-        var uvs = new System.Collections.Generic.List<Vector2>();
+        var uvs       = new System.Collections.Generic.List<Vector2>();
 
         GenerateCrossShape(vertices, triangles, uvs);
 
-        // Apply to mesh
-        floorMesh.vertices = vertices.ToArray();
+        floorMesh.vertices  = vertices.ToArray();
         floorMesh.triangles = triangles.ToArray();
-        floorMesh.uv = uvs.ToArray();
+        floorMesh.uv        = uvs.ToArray();
         floorMesh.RecalculateNormals();
         floorMesh.RecalculateBounds();
 
-        // Update collider
         if (meshCollider != null)
         {
-            meshCollider.convex = false;
+            meshCollider.convex     = false;
             meshCollider.sharedMesh = null;
             meshCollider.sharedMesh = floorMesh;
         }
     }
 
-    private void GenerateCrossShape(System.Collections.Generic.List<Vector3> vertices, System.Collections.Generic.List<int> triangles, System.Collections.Generic.List<Vector2> uvs)
+    /*
+     * Cross shape – 12 vertices, numbered clockwise from the bottom-left
+     * of the vertical bar.  This layout is the exact order that Pillars.cs
+     * uses in GetCrossShapedFloorCorners(), so pillar snapping works out
+     * of the box.
+     *
+     *          5 ────────── 6
+     *          |            |
+     *   9 ─── 8            7 ─── 4          (not to scale)
+     *   |                        |
+     *  10 ──  11           2 ─── 3
+     *          |            |
+     *          0 ────────── 1
+     *
+     *  halfHW  = horizontalWidth  / 2   (outer X)
+     *  halfHH  = horizontalHeight / 2   (inner Z, where horiz bar sits)
+     *  halfVW  = verticalWidth    / 2   (inner X, where vert bar sits)
+     *  halfVH  = verticalHeight   / 2   (outer Z)
+     */
+    private void GenerateCrossShape(
+        System.Collections.Generic.List<Vector3> vertices,
+        System.Collections.Generic.List<int>     triangles,
+        System.Collections.Generic.List<Vector2> uvs)
     {
-        float halfHorzW = horizontalWidth / 2f;
-        float halfHorzH = horizontalHeight / 2f;
-        float halfVertW = verticalWidth / 2f;
-        float halfVertH = verticalHeight / 2f;
-        
-        // Define the 12 vertices of the cross shape (clockwise from bottom-left)
-        // The cross is centered at origin
-        
-        // Bottom vertical bar (bottom section)
-        vertices.Add(new Vector3(-halfVertW, 0, -halfVertH));      // 0: Bottom-left of vertical bar
-        vertices.Add(new Vector3(halfVertW, 0, -halfVertH));       // 1: Bottom-right of vertical bar
-        
-        // Where vertical bar meets horizontal bar (bottom-left transition)
-        vertices.Add(new Vector3(halfVertW, 0, -halfHorzH));       // 2: Right side of vertical bar at horizontal level
-        vertices.Add(new Vector3(halfHorzW, 0, -halfHorzH));       // 3: Right edge of horizontal bar (bottom)
-        
-        // Right side of horizontal bar
-        vertices.Add(new Vector3(halfHorzW, 0, halfHorzH));        // 4: Top-right of horizontal bar
-        vertices.Add(new Vector3(halfVertW, 0, halfHorzH));        // 5: Right side of vertical bar (top transition)
-        
-        // Top vertical bar (top section)
-        vertices.Add(new Vector3(halfVertW, 0, halfVertH));        // 6: Top-right of vertical bar
-        vertices.Add(new Vector3(-halfVertW, 0, halfVertH));       // 7: Top-left of vertical bar
-        
-        // Left side of vertical bar (top transition)
-        vertices.Add(new Vector3(-halfVertW, 0, halfHorzH));       // 8: Left side of vertical bar at horizontal level
-        vertices.Add(new Vector3(-halfHorzW, 0, halfHorzH));       // 9: Left edge of horizontal bar (top)
-        
-        // Left side of horizontal bar
-        vertices.Add(new Vector3(-halfHorzW, 0, -halfHorzH));      // 10: Bottom-left of horizontal bar
-        vertices.Add(new Vector3(-halfVertW, 0, -halfHorzH));      // 11: Left side of vertical bar (bottom transition)
+        float halfHW = horizontalWidth  / 2f;
+        float halfHH = horizontalHeight / 2f;
+        float halfVW = verticalWidth    / 2f;
+        float halfVH = verticalHeight   / 2f;
 
-        // UV coordinates (planar mapping based on world positions)
+        // --- 12 vertices (y = 0 plane, clockwise from bottom-left) ---
+        vertices.Add(new Vector3(-halfVW,  0, -halfVH));  //  0  bottom-left  of vertical bar
+        vertices.Add(new Vector3( halfVW,  0, -halfVH));  //  1  bottom-right of vertical bar
+        vertices.Add(new Vector3( halfVW,  0, -halfHH));  //  2  inner corner bottom-right
+        vertices.Add(new Vector3( halfHW,  0, -halfHH));  //  3  outer corner bottom-right
+        vertices.Add(new Vector3( halfHW,  0,  halfHH));  //  4  outer corner top-right
+        vertices.Add(new Vector3( halfVW,  0,  halfHH));  //  5  inner corner top-right  (note: see diagram – this is vertex 5 in the ring)
+        vertices.Add(new Vector3( halfVW,  0,  halfVH));  //  6  top-right of vertical bar
+        vertices.Add(new Vector3(-halfVW,  0,  halfVH));  //  7  top-left  of vertical bar
+        vertices.Add(new Vector3(-halfVW,  0,  halfHH));  //  8  inner corner top-left
+        vertices.Add(new Vector3(-halfHW,  0,  halfHH));  //  9  outer corner top-left
+        vertices.Add(new Vector3(-halfHW,  0, -halfHH));  // 10  outer corner bottom-left
+        vertices.Add(new Vector3(-halfVW,  0, -halfHH));  // 11  inner corner bottom-left
+
+        // --- UV coordinates (planar world-space mapping, same style as T-Floor) ---
         for (int i = 0; i < vertices.Count; i++)
         {
             Vector3 v = vertices[i];
             uvs.Add(new Vector2(v.x * uvScale, v.z * uvScale));
         }
 
-        // Triangulate the cross shape - divide into triangles
-        // Center quad (intersection of cross)
-        triangles.AddRange(new int[] { 11, 2, 5 });  // Triangle 1
-        triangles.AddRange(new int[] { 11, 5, 8 });  // Triangle 2
-        
-        // Bottom vertical section
-        triangles.AddRange(new int[] { 0, 2, 1 });   // Triangle 3
-        triangles.AddRange(new int[] { 0, 11, 2 });  // Triangle 4
-        
-        // Right horizontal section
-        triangles.AddRange(new int[] { 2, 4, 3 });   // Triangle 5
-        triangles.AddRange(new int[] { 2, 5, 4 });   // Triangle 6
-        
-        // Top vertical section
-        triangles.AddRange(new int[] { 5, 7, 6 });   // Triangle 7
-        triangles.AddRange(new int[] { 5, 8, 7 });   // Triangle 8
-        
-        // Left horizontal section
-        triangles.AddRange(new int[] { 8, 10, 11 }); // Triangle 9
-        triangles.AddRange(new int[] { 8, 9, 10 });  // Triangle 10
+        // --- Triangulation (fan from vertex 0 is not convex, so we split manually) ---
+        // The cross can be divided into 3 rectangles that share edges cleanly:
+        //   A) Bottom arm   : verts 0, 1, 2, 11
+        //   B) Horizontal bar (full width): verts 11, 2, 5, 6 … actually easier as
+        //      the full horizontal strip including the center:  10, 3, 4, 9
+        //      But overlapping the center is fine if we just triangulate the 12-gon.
+        //
+        // Simplest correct approach: split into 10 triangles via a central fan
+        // anchored at vertex 0.  However vertex 0 does NOT see all other vertices
+        // (the shape is non-convex), so we use an ear-based decomposition instead.
+        //
+        // We break the cross into 5 non-overlapping quads (2 tri each = 10 tri total):
+        //   Quad A – bottom vertical arm    : 0,  1,  2, 11
+        //   Quad B – right horizontal arm   : 2,  3,  4,  5
+        //   Quad C – center rectangle       : 11, 2,  5,  8   (reuses shared edges)
+        //   Quad D – top vertical arm       : 8,  5,  6,  7   (note: 5→6 is the shared edge)
+        //   Quad E – left horizontal arm    : 10, 11, 8,  9
+
+        // Quad A – bottom arm
+        triangles.AddRange(new int[] { 0, 2, 1 });
+        triangles.AddRange(new int[] { 0, 11, 2 });
+
+        // Quad B – right arm
+        triangles.AddRange(new int[] { 2, 4, 3 });
+        triangles.AddRange(new int[] { 2, 5, 4 });
+
+        // Quad C – center
+        triangles.AddRange(new int[] { 11, 5, 2 });
+        triangles.AddRange(new int[] { 11, 8, 5 });
+
+        // Quad D – top arm
+        triangles.AddRange(new int[] { 8, 6, 5 });
+        triangles.AddRange(new int[] { 8, 7, 6 });
+
+        // Quad E – left arm
+        triangles.AddRange(new int[] { 10, 8, 11 });
+        triangles.AddRange(new int[] { 10, 9, 8 });
     }
 
-    public void SetDimensions(float newHorizontalWidth, float newHorizontalHeight, float newVerticalWidth, float newVerticalHeight)
+    // ─── Public setters / getters expected by Door.cs and Pillars.cs ────────
+
+    public void SetDimensions(float newHorizontalWidth, float newHorizontalHeight,
+                              float newVerticalWidth,   float newVerticalHeight)
     {
-        horizontalWidth = newHorizontalWidth;
+        horizontalWidth  = newHorizontalWidth;
         horizontalHeight = newHorizontalHeight;
-        verticalWidth = newVerticalWidth;
-        verticalHeight = newVerticalHeight;
+        verticalWidth    = newVerticalWidth;
+        verticalHeight   = newVerticalHeight;
         GenerateFloorMesh();
     }
 
-    public float GetHorizontalWidth() { return horizontalWidth; }
+    public float GetHorizontalWidth()  { return horizontalWidth; }
     public float GetHorizontalHeight() { return horizontalHeight; }
-    public float GetVerticalWidth() { return verticalWidth; }
-    public float GetVerticalHeight() { return verticalHeight; }
-    
-    // Get corner positions in local space for pillar attachment
-    // Cross shape has 12 corners
-    public Vector3 GetCornerLocal(int cornerIndex)
-    {
-        float halfHorzW = horizontalWidth / 2f;
-        float halfHorzH = horizontalHeight / 2f;
-        float halfVertW = verticalWidth / 2f;
-        float halfVertH = verticalHeight / 2f;
-        
-        switch (cornerIndex)
-        {
-            case 0: return new Vector3(-halfVertW, 0, -halfVertH);     // Bottom-left of vertical bar
-            case 1: return new Vector3(halfVertW, 0, -halfVertH);      // Bottom-right of vertical bar
-            case 2: return new Vector3(halfVertW, 0, -halfHorzH);      // Right vertical at horizontal level (bottom)
-            case 3: return new Vector3(halfHorzW, 0, -halfHorzH);      // Right edge of horizontal bar (bottom)
-            case 4: return new Vector3(halfHorzW, 0, halfHorzH);       // Right edge of horizontal bar (top)
-            case 5: return new Vector3(halfVertW, 0, halfHorzH);       // Right vertical at horizontal level (top)
-            case 6: return new Vector3(halfVertW, 0, halfVertH);       // Top-right of vertical bar
-            case 7: return new Vector3(-halfVertW, 0, halfVertH);      // Top-left of vertical bar
-            case 8: return new Vector3(-halfVertW, 0, halfHorzH);      // Left vertical at horizontal level (top)
-            case 9: return new Vector3(-halfHorzW, 0, halfHorzH);      // Left edge of horizontal bar (top)
-            case 10: return new Vector3(-halfHorzW, 0, -halfHorzH);    // Left edge of horizontal bar (bottom)
-            case 11: return new Vector3(-halfVertW, 0, -halfHorzH);    // Left vertical at horizontal level (bottom)
-            default: return Vector3.zero;
-        }
-    }
-    
-    // Get border edge information for door attachment
-    // Returns true if point is near any edge of the cross
-    public bool GetClosestPointOnBorder(Vector3 localPoint, out Vector3 closestPoint, out Vector3 normal)
-    {
-        closestPoint = Vector3.zero;
-        normal = Vector3.forward;
-        
-        float minDistance = float.MaxValue;
-        
-        float halfHorzW = horizontalWidth / 2f;
-        float halfHorzH = horizontalHeight / 2f;
-        float halfVertW = verticalWidth / 2f;
-        float halfVertH = verticalHeight / 2f;
-        
-        // Define all edges of the cross (12 edges total)
-        // Each edge is defined by two corners and an outward normal
-        
-        // Bottom vertical bar - bottom edge
-        CheckEdge(new Vector3(-halfVertW, 0, -halfVertH), new Vector3(halfVertW, 0, -halfVertH), 
-                  Vector3.back, localPoint, ref minDistance, ref closestPoint, ref normal);
-        
-        // Bottom vertical bar - right edge (partial)
-        CheckEdge(new Vector3(halfVertW, 0, -halfVertH), new Vector3(halfVertW, 0, -halfHorzH), 
-                  Vector3.right, localPoint, ref minDistance, ref closestPoint, ref normal);
-        
-        // Horizontal bar - right edge (bottom section)
-        CheckEdge(new Vector3(halfVertW, 0, -halfHorzH), new Vector3(halfHorzW, 0, -halfHorzH), 
-                  Vector3.back, localPoint, ref minDistance, ref closestPoint, ref normal);
-        
-        // Horizontal bar - right edge (vertical)
-        CheckEdge(new Vector3(halfHorzW, 0, -halfHorzH), new Vector3(halfHorzW, 0, halfHorzH), 
-                  Vector3.right, localPoint, ref minDistance, ref closestPoint, ref normal);
-        
-        // Horizontal bar - right edge (top section)
-        CheckEdge(new Vector3(halfHorzW, 0, halfHorzH), new Vector3(halfVertW, 0, halfHorzH), 
-                  Vector3.forward, localPoint, ref minDistance, ref closestPoint, ref normal);
-        
-        // Top vertical bar - right edge (partial)
-        CheckEdge(new Vector3(halfVertW, 0, halfHorzH), new Vector3(halfVertW, 0, halfVertH), 
-                  Vector3.right, localPoint, ref minDistance, ref closestPoint, ref normal);
-        
-        // Top vertical bar - top edge
-        CheckEdge(new Vector3(halfVertW, 0, halfVertH), new Vector3(-halfVertW, 0, halfVertH), 
-                  Vector3.forward, localPoint, ref minDistance, ref closestPoint, ref normal);
-        
-        // Top vertical bar - left edge (partial)
-        CheckEdge(new Vector3(-halfVertW, 0, halfVertH), new Vector3(-halfVertW, 0, halfHorzH), 
-                  Vector3.left, localPoint, ref minDistance, ref closestPoint, ref normal);
-        
-        // Horizontal bar - left edge (top section)
-        CheckEdge(new Vector3(-halfVertW, 0, halfHorzH), new Vector3(-halfHorzW, 0, halfHorzH), 
-                  Vector3.forward, localPoint, ref minDistance, ref closestPoint, ref normal);
-        
-        // Horizontal bar - left edge (vertical)
-        CheckEdge(new Vector3(-halfHorzW, 0, halfHorzH), new Vector3(-halfHorzW, 0, -halfHorzH), 
-                  Vector3.left, localPoint, ref minDistance, ref closestPoint, ref normal);
-        
-        // Horizontal bar - left edge (bottom section)
-        CheckEdge(new Vector3(-halfHorzW, 0, -halfHorzH), new Vector3(-halfVertW, 0, -halfHorzH), 
-                  Vector3.back, localPoint, ref minDistance, ref closestPoint, ref normal);
-        
-        // Bottom vertical bar - left edge (partial)
-        CheckEdge(new Vector3(-halfVertW, 0, -halfHorzH), new Vector3(-halfVertW, 0, -halfVertH), 
-                  Vector3.left, localPoint, ref minDistance, ref closestPoint, ref normal);
-        
-        return true;
-    }
-    
-    private void CheckEdge(Vector3 edgeStart, Vector3 edgeEnd, Vector3 edgeNormal, 
-                          Vector3 point, ref float minDistance, ref Vector3 closestPoint, ref Vector3 normal)
-    {
-        // Project point onto edge line
-        Vector3 edgeDir = edgeEnd - edgeStart;
-        float edgeLength = edgeDir.magnitude;
-        
-        if (edgeLength < 0.001f) return;
-        
-        edgeDir /= edgeLength;
-        
-        Vector3 toPoint = point - edgeStart;
-        float projection = Vector3.Dot(toPoint, edgeDir);
-        
-        // Clamp to edge bounds
-        projection = Mathf.Clamp(projection, 0, edgeLength);
-        
-        Vector3 pointOnEdge = edgeStart + edgeDir * projection;
-        float distance = Vector3.Distance(point, pointOnEdge);
-        
-        if (distance < minDistance)
-        {
-            minDistance = distance;
-            closestPoint = pointOnEdge;
-            normal = edgeNormal;
-        }
-    }
+    public float GetVerticalWidth()    { return verticalWidth; }
+    public float GetVerticalHeight()   { return verticalHeight; }
 }
