@@ -15,12 +15,19 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private Button clientBtn;
     
     [Header("Network Settings")]
-    [SerializeField] private string gameSceneName = "main";
+    [SerializeField] private string gameSceneName = "Game";
+    // ADDED: Point this to your "Lobby" scene (the Ready Room)
+    [SerializeField] private string lobbySceneName = "Lobby"; 
+
     private NetworkRunner _runner;
     private void Start()
     {
         hostBtn.onClick.AddListener(OnHostRoom);
         clientBtn.onClick.AddListener(OnJoinRoom);
+
+        // ADDED: Ensure cursor is visible to interact with the lobby buttons
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
     
     private async void OnHostRoom()
@@ -47,13 +54,14 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         _runner.AddCallbacks(this);
         _runner.ProvideInput = true;
 
+        // UPDATED: Starting the game in the Lobby scene first
         var result = await _runner.StartGame(new StartGameArgs
         {
             GameMode = mode,
             SessionName = roomName,
             Scene = SceneRef.FromIndex(
                 UnityEngine.SceneManagement.SceneUtility
-                    .GetBuildIndexByScenePath("Scenes/" + gameSceneName)
+                    .GetBuildIndexByScenePath("Scenes/" + lobbySceneName)
             ),
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
         });
@@ -106,7 +114,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
 }
 
-// NetworkInputData struct
+// RESTORED: NetworkInputData struct preserved exactly as requested
 public struct PlayerInputData : INetworkInput
 {
     public Vector3 MoveDirection;

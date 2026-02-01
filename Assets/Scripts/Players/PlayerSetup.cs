@@ -1,5 +1,6 @@
 using UnityEngine;
 using Fusion;
+using UnityEngine.SceneManagement; // Added for the Lobby check
 
 /// <summary>
 /// Attach this to your Player prefab alongside NetworkCharacterController
@@ -64,7 +65,18 @@ public class PlayerSetup : NetworkBehaviour
 
     private void LockCursor()
     {
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        // Check if we are in the Lobby scene. 
+        // If we are, we need the mouse visible to click "Ready".
+        if (SceneManager.GetActiveScene().name == "Lobby")
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
+        else
+        {
+            // Lock the cursor for actual gameplay
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
     }
 }

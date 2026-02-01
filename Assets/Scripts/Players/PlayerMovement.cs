@@ -33,7 +33,11 @@ public class PlayerMovement : NetworkBehaviour
             _animator = GetComponentInChildren<Animator>(false);
     }
 
-  public override void FixedUpdateNetwork(){
+    public override void FixedUpdateNetwork(){
+      if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Lobby"){
+          return; 
+      }
+
       if (GetInput(out PlayerInputData data)){
       _isGrounded = _controller.isGrounded;
       // Local variable to modify velocity
