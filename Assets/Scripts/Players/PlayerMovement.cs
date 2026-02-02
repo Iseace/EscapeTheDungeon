@@ -23,80 +23,65 @@ public class PlayerMovement : NetworkBehaviour
     [Networked] private Vector3 _velocity { get; set; }
     [Networked] private NetworkBool _isGrounded { get; set; }
 
+
     public Camera Camera;
 
     private void Awake()
     {
+    private void Awake()
+    {
         _controller = GetComponent<CharacterController>();
         RefreshAnimatorReference();
-
-        // Get boss hitbox if this is a boss
-        if (isBoss)
-        {
-            _bossHitbox = GetComponentInChildren<BossHitbox>();
-        }
     }
 
-    private void Update()
+    public void RefreshAnimatorReference()
     {
-        if (HasInputAuthority && SceneManager.GetActiveScene().name == "LobbyRoom")
+        if (GraphicsRoot != null)
         {
-            if (Cursor.lockState != CursorLockMode.None || !Cursor.visible)
-            {
-                Cursor.lockState = CursorLockMode.None;
-                Cursor.visible = true;
-            }
+            _animator = GraphicsRoot.GetComponent<Animator>();
+
+            // Si por alguna razón no está en la raíz, buscamos en hijos
+            if (_animator == null)
+                _animator = GraphicsRoot.GetComponentInChildren<Animator>(false);
+        }
+        else
+        {
+            _animator = GetComponentInChildren<Animator>(false);
         }
     }
 
     public override void FixedUpdateNetwork()
     {
-        if (SceneManager.GetActiveScene().name == "LobbyRoom")
-        {
-            StopAnimations();
-            return;
-        }
-
         if (GetInput(out PlayerInputData data))
         {
             _isGrounded = _controller.isGrounded;
-
-            // 1. Rotación del Jugador (Sincronizada con la cámara)
-            Vector3 camEuler = data.CameraRotation.eulerAngles;
-            transform.rotation = Quaternion.Euler(0, camEuler.y, 0);
-
-            // 2. Cálculo de Movimiento Horizontal con modificador de velocidad
-            float currentSpeed = PlayerSpeed;
-
-            // Apply speed reduction if boss is attacking
-            if (isBoss && _bossHitbox != null)
-            {
-                currentSpeed *= _bossHitbox.GetMoveSpeedMultiplier();
-            }
-
-            Vector3 move = transform.rotation * data.MoveDirection * currentSpeed;
-
-            // 3. Cálculo de Salto y Gravedad
+            // Local variable to modify velocity
             Vector3 currentVelocity = _velocity;
-
             if (_isGrounded && currentVelocity.y < 0)
             {
+            {
                 currentVelocity.y = -2f;
-
+            }
+            //Handle Rotation
+            Vector3 camEuler = data.CameraRotation.eulerAngles;
+            transform.rotation = Quaternion.Euler(0, camEuler.y, 0);
+            //Handle Movement
+            Vector3 move = transform.rotation * new Vector3(data.MoveDirection.x, 0, data.MoveDirection.z) * PlayerSpeed;
+            _controller.Move(move * Runner.DeltaTime);
+            //Handle Jump
             if (data.JumpPressed && _isGrounded)
             {
                 currentVelocity.y = JumpForce;
                 if (HasStateAuthority) RPC_TriggerJump();
             }
             //Apply Gravity to the local variable
+            //Apply Gravity to the local variable
             currentVelocity.y += Gravity * Runner.DeltaTime;
             //RE-ASSIGN the modified velocity back to the Networked property
+            //RE-ASSIGN the modified velocity back to the Networked property
             _velocity = currentVelocity;
-
-            // 4. APLICAR MOVIMIENTO (Combinado en un solo vector)
-            Vector3 finalMotion = (move + _velocity) * Runner.DeltaTime;
-            _controller.Move(finalMotion);
-
+            //Move the controller using the updated velocity
+            _controller.Move(_velocity * Runner.DeltaTime);
             UpdateAnimations(move);
         }
     }
@@ -108,7 +93,7 @@ public class PlayerMovement : NetworkBehaviour
             RefreshAnimatorReference();
             if (_animator == null) return;
         }
-
+        // Convert world movement to local for Animator (MoveX, MoveZ)
         Vector3 localMove = transform.InverseTransformDirection(move.normalized);
         _animator.SetFloat("MoveX", localMove.x);
         _animator.SetFloat("MoveZ", localMove.z);
@@ -135,35 +120,26 @@ public class PlayerMovement : NetworkBehaviour
     private void RPC_TriggerJump()
     {
         if (_animator != null) _animator.SetTrigger("Jump");
+    private void RPC_TriggerJump()
+    {
+        if (_animator != null) _animator.SetTrigger("Jump");
     }
 
     public override void Spawned()
     {
         // HasInputAuthority is true for the player who controls this specific prefab
+        // HasInputAuthority is true for the player who controls this specific prefab
         if (HasInputAuthority)
         {
-            // 1. Configuramos la cámara
             Camera = Camera.main;
+            Transform targetTransform = CameraPivot != null ? CameraPivot : transform;
+
+            // Setup local camera follow
             var fpCam = Camera.GetComponent<FirstPersonCamera>();
             if (fpCam != null)
             {
-                fpCam.SetTarget(CameraPivot != null ? CameraPivot : transform, GraphicsRoot.gameObject);
+                fpCam.SetTarget(targetTransform, GraphicsRoot != null ? GraphicsRoot.gameObject : gameObject);
             }
-
-            // 2. HACERTE INVISIBLE PARA TI MISMO
-            if (GraphicsRoot != null)
-            {
-                SetLayerRecursively(GraphicsRoot.gameObject, LayerMask.NameToLayer("LocalPlayerHidden"));
-            }
-        }
-    }
-
-    private void SetLayerRecursively(GameObject obj, int newLayer)
-    {
-        obj.layer = newLayer;
-        foreach (Transform child in obj.transform)
-        {
-            SetLayerRecursively(child.gameObject, newLayer);
         }
     }
 }
