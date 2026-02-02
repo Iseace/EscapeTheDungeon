@@ -11,10 +11,6 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 {
     public NetworkObject PlayerPrefab;
 
-    [Header("Character Prefabs")]
-    public NetworkObject BossPrefab;      //prefab del Boss
-    public NetworkObject SurvivorPrefab;  // prefab del Superviviente
-
     [Header("Dungeon Runner")]
     public NetworkObject dungeonNetworkRunnerPrefab;
     private bool dungeonRunnerSpawned = false;
