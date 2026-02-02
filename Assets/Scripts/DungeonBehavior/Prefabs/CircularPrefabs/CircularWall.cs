@@ -25,15 +25,14 @@ public class CircularWall : MonoBehaviour
 
     [Header("Material Settings")]
     [SerializeField] private Material wallMaterial; // Material to apply to the wall
-    
     [SerializeField] private float uvScale = 1f; // UV scale factor (1 = 1 Unity unit = 1 texture repeat)
     
-    [Header("Door Attachment")]
-    [SerializeField] private bool enableDoorAttachment = true; // Enable auto-attachment to doors
-    [SerializeField] private float doorDetectionRange = 1f; // Range to detect doors
-    [SerializeField] private bool autoDimensionFromDoors = true; // Auto-adjust dimensions when both ends attached
-    [SerializeField] private bool snapLeftEndToDoor = false; // Snap left end to door
-    [SerializeField] private bool snapRightEndToDoor = false; // Snap right end to door
+    [Header("Attachment Settings")]
+    [SerializeField] private bool enableAttachment = true; // Enable auto-attachment to doors and pillars
+    [SerializeField] private float detectionRange = 1f; // Range to detect doors and pillars
+    [SerializeField] private bool autoDimensionFromAttachments = true; // Auto-adjust dimensions when both ends attached
+    [SerializeField] private bool snapLeftEnd = false; // Snap left end to door/pillar
+    [SerializeField] private bool snapRightEnd = false; // Snap right end to door/pillar
     [SerializeField] private bool showConnectionPoints = false; // Show connection point gizmos
     
     private MeshFilter meshFilter;
@@ -41,17 +40,19 @@ public class CircularWall : MonoBehaviour
     private MeshCollider meshCollider;
     private Mesh mesh;
 
-    // Door attachment references
-    private CircularDoor attachedLeftDoor;
-    private CircularDoor attachedRightDoor;
-    private bool leftAttachedToLeftSide; // Which side of the door is attached
+    // Attachment references - can be either Door or Pillar
+    private MonoBehaviour attachedLeftObject;  // Door or Pillar
+    private MonoBehaviour attachedRightObject; // Door or Pillar
+    private bool leftAttachedToLeftSide; // Which side of the door is attached (for doors)
     private bool rightAttachedToLeftSide;
+    private string leftObjectType; // "Door" or "Pillar"
+    private string rightObjectType; // "Door" or "Pillar"
 
-    // Previous door positions for tracking movement
-    private Vector3 prevLeftDoorPos;
-    private Vector3 prevRightDoorPos;
-    private Quaternion prevLeftDoorRot;
-    private Quaternion prevRightDoorRot;
+    // Previous object positions for tracking movement
+    private Vector3 prevLeftObjectPos;
+    private Vector3 prevRightObjectPos;
+    private Quaternion prevLeftObjectRot;
+    private Quaternion prevRightObjectRot;
 
     private bool needsRegeneration = false;
 
@@ -61,8 +62,8 @@ public class CircularWall : MonoBehaviour
         meshRenderer = GetComponent<MeshRenderer>();
         meshCollider = GetComponent<MeshCollider>();
         
-        if (enableDoorAttachment)
-            DetectAndAttachToDoors();
+        if (enableAttachment)
+            DetectAndAttachToObjects();
         
         GenerateWall();
         ApplyMaterial();
@@ -84,8 +85,8 @@ public class CircularWall : MonoBehaviour
         if (curvatureAngle < 1f)
             curvatureAngle = 1f;
         
-        if (enableDoorAttachment)
-            DetectAndAttachToDoors();
+        if (enableAttachment)
+            DetectAndAttachToObjects();
         
         GenerateWall();
         ApplyMaterial();
@@ -94,10 +95,10 @@ public class CircularWall : MonoBehaviour
     private void Update()
     {
         // Continuously update attachment in play mode if enabled
-        if (enableDoorAttachment)
+        if (enableAttachment)
         {
-            DetectAndAttachToDoors();
-            UpdateDoorFollowing();
+            DetectAndAttachToObjects();
+            UpdateAttachmentFollowing();
         }
 
         // Regenerate wall if needed
@@ -110,16 +111,16 @@ public class CircularWall : MonoBehaviour
 
     private void LateUpdate()
     {
-        // Track door positions after all other updates
-        if (attachedLeftDoor != null)
+        // Track object positions after all other updates
+        if (attachedLeftObject != null)
         {
-            prevLeftDoorPos = attachedLeftDoor.transform.position;
-            prevLeftDoorRot = attachedLeftDoor.transform.rotation;
+            prevLeftObjectPos = attachedLeftObject.transform.position;
+            prevLeftObjectRot = attachedLeftObject.transform.rotation;
         }
-        if (attachedRightDoor != null)
+        if (attachedRightObject != null)
         {
-            prevRightDoorPos = attachedRightDoor.transform.position;
-            prevRightDoorRot = attachedRightDoor.transform.rotation;
+            prevRightObjectPos = attachedRightObject.transform.position;
+            prevRightObjectRot = attachedRightObject.transform.rotation;
         }
     }
 
@@ -137,433 +138,390 @@ public class CircularWall : MonoBehaviour
         }
     }
 
-    private void UpdateDoorFollowing()
+    private void UpdateAttachmentFollowing()
     {
-        bool leftDoorMoved = false;
-        bool rightDoorMoved = false;
+        bool leftObjectMoved = false;
+        bool rightObjectMoved = false;
 
-        // Check if left door moved
-        if (attachedLeftDoor != null && snapLeftEndToDoor)
+        // Check if left object moved
+        if (attachedLeftObject != null && snapLeftEnd)
         {
-            Vector3 currentPos = attachedLeftDoor.transform.position;
-            Quaternion currentRot = attachedLeftDoor.transform.rotation;
+            Vector3 currentPos = attachedLeftObject.transform.position;
+            Quaternion currentRot = attachedLeftObject.transform.rotation;
             
-            if (Vector3.Distance(currentPos, prevLeftDoorPos) > 0.001f || 
-                Quaternion.Angle(currentRot, prevLeftDoorRot) > 0.1f)
+            if (Vector3.Distance(currentPos, prevLeftObjectPos) > 0.001f || 
+                Quaternion.Angle(currentRot, prevLeftObjectRot) > 0.1f)
             {
-                leftDoorMoved = true;
+                leftObjectMoved = true;
             }
         }
 
-        // Check if right door moved
-        if (attachedRightDoor != null && snapRightEndToDoor)
+        // Check if right object moved
+        if (attachedRightObject != null && snapRightEnd)
         {
-            Vector3 currentPos = attachedRightDoor.transform.position;
-            Quaternion currentRot = attachedRightDoor.transform.rotation;
+            Vector3 currentPos = attachedRightObject.transform.position;
+            Quaternion currentRot = attachedRightObject.transform.rotation;
             
-            if (Vector3.Distance(currentPos, prevRightDoorPos) > 0.001f || 
-                Quaternion.Angle(currentRot, prevRightDoorRot) > 0.1f)
+            if (Vector3.Distance(currentPos, prevRightObjectPos) > 0.001f || 
+                Quaternion.Angle(currentRot, prevRightObjectRot) > 0.1f)
             {
-                rightDoorMoved = true;
+                rightObjectMoved = true;
             }
         }
 
-        // If doors moved, recalculate wall dimensions and position
-        if ((leftDoorMoved || rightDoorMoved) && autoDimensionFromDoors)
+        // If objects moved, recalculate wall dimensions and position
+        if ((leftObjectMoved || rightObjectMoved) && autoDimensionFromAttachments && snapLeftEnd && snapRightEnd)
         {
-            RecalculateDimensionsFromDoors();
+            RecalculateDimensionsFromAttachments();
+        }
+        else if (leftObjectMoved && snapLeftEnd)
+        {
+            SnapToLeftObject();
+        }
+        else if (rightObjectMoved && snapRightEnd)
+        {
+            SnapToRightObject();
         }
     }
 
-    private void DetectAndAttachToDoors()
+    private void DetectAndAttachToObjects()
     {
-        // Find all doors in the scene
-        CircularDoor[] doors = FindObjectsOfType<CircularDoor>();
-        
-        if (doors.Length == 0)
-        {
-            attachedLeftDoor = null;
-            attachedRightDoor = null;
-            snapLeftEndToDoor = false;
-            snapRightEndToDoor = false;
-            return;
-        }
+        // Find all doors and pillars in the scene
+        Door[] doors = FindObjectsOfType<Door>();
+        Pillar[] pillars = FindObjectsOfType<Pillar>();
 
         // Calculate current wall connection points in world space (at mid-height)
         Vector3 leftConnWorld = GetLeftConnectionPointWorld();
         Vector3 rightConnWorld = GetRightConnectionPointWorld();
 
         // Store previous attachments
-        CircularDoor prevLeftDoor = attachedLeftDoor;
-        CircularDoor prevRightDoor = attachedRightDoor;
+        MonoBehaviour prevLeftObject = attachedLeftObject;
+        MonoBehaviour prevRightObject = attachedRightObject;
 
         // Reset attachment flags
-        snapLeftEndToDoor = false;
-        snapRightEndToDoor = false;
-        attachedLeftDoor = null;
-        attachedRightDoor = null;
+        snapLeftEnd = false;
+        snapRightEnd = false;
+        attachedLeftObject = null;
+        attachedRightObject = null;
+        leftObjectType = "";
+        rightObjectType = "";
 
-        // Check left connection point for door attachment
-        float closestLeftDist = doorDetectionRange;
-        foreach (CircularDoor door in doors)
+        // Check left connection point for attachment
+        float closestLeftDist = detectionRange;
+        
+        // Check doors
+        foreach (Door door in doors)
         {
-            if (door.Type == CircularDoor.RoomType.Door)
+            if (door.Type == Door.RoomType.Door)
             {
                 Vector3 snapPoint;
                 bool isLeftSide;
-                
+
                 if (door.IsPointNearAttachment(leftConnWorld, out snapPoint, out isLeftSide))
                 {
                     float dist = Vector3.Distance(leftConnWorld, snapPoint);
                     if (dist < closestLeftDist)
                     {
                         closestLeftDist = dist;
-                        snapLeftEndToDoor = true;
-                        attachedLeftDoor = door;
+                        snapLeftEnd = true;
+                        attachedLeftObject = door;
                         leftAttachedToLeftSide = isLeftSide;
+                        leftObjectType = "Door";
                     }
                 }
             }
         }
 
-        // Check right connection point for door attachment
-        float closestRightDist = doorDetectionRange;
-        foreach (CircularDoor door in doors)
+        // Check pillars
+        foreach (Pillar pillar in pillars)
         {
-            if (door.Type == CircularDoor.RoomType.Door)
+            if (pillar.Type == Pillar.RoomType.Pillar)
+            {
+                Vector3 pillarConnection = pillar.GetConnectionPointWorld();
+                float dist = Vector3.Distance(leftConnWorld, pillarConnection);
+                
+                if (dist < closestLeftDist)
+                {
+                    closestLeftDist = dist;
+                    snapLeftEnd = true;
+                    attachedLeftObject = pillar;
+                    leftObjectType = "Pillar";
+                }
+            }
+        }
+
+        // Check right connection point for attachment
+        float closestRightDist = detectionRange;
+        
+        // Check doors
+        foreach (Door door in doors)
+        {
+            if (door.Type == Door.RoomType.Door)
             {
                 Vector3 snapPoint;
                 bool isLeftSide;
-                
+
                 if (door.IsPointNearAttachment(rightConnWorld, out snapPoint, out isLeftSide))
                 {
                     float dist = Vector3.Distance(rightConnWorld, snapPoint);
                     if (dist < closestRightDist)
                     {
                         closestRightDist = dist;
-                        snapRightEndToDoor = true;
-                        attachedRightDoor = door;
+                        snapRightEnd = true;
+                        attachedRightObject = door;
                         rightAttachedToLeftSide = isLeftSide;
+                        rightObjectType = "Door";
                     }
                 }
             }
         }
 
-        // Initialize door tracking if new attachments were made
-        if (attachedLeftDoor != null && attachedLeftDoor != prevLeftDoor)
+        // Check pillars
+        foreach (Pillar pillar in pillars)
         {
-            prevLeftDoorPos = attachedLeftDoor.transform.position;
-            prevLeftDoorRot = attachedLeftDoor.transform.rotation;
+            if (pillar.Type == Pillar.RoomType.Pillar)
+            {
+                Vector3 pillarConnection = pillar.GetConnectionPointWorld();
+                float dist = Vector3.Distance(rightConnWorld, pillarConnection);
+                
+                if (dist < closestRightDist)
+                {
+                    closestRightDist = dist;
+                    snapRightEnd = true;
+                    attachedRightObject = pillar;
+                    rightObjectType = "Pillar";
+                }
+            }
         }
-        if (attachedRightDoor != null && attachedRightDoor != prevRightDoor)
+
+        // Initialize object tracking if new attachments were made
+        if (attachedLeftObject != null && attachedLeftObject != prevLeftObject)
         {
-            prevRightDoorPos = attachedRightDoor.transform.position;
-            prevRightDoorRot = attachedRightDoor.transform.rotation;
+            prevLeftObjectPos = attachedLeftObject.transform.position;
+            prevLeftObjectRot = attachedLeftObject.transform.rotation;
+        }
+        if (attachedRightObject != null && attachedRightObject != prevRightObject)
+        {
+            prevRightObjectPos = attachedRightObject.transform.position;
+            prevRightObjectRot = attachedRightObject.transform.rotation;
         }
 
         // If both ends are attached and auto-dimension is enabled, recalculate dimensions
-        if (snapLeftEndToDoor && snapRightEndToDoor && autoDimensionFromDoors)
+        if (snapLeftEnd && snapRightEnd && autoDimensionFromAttachments)
         {
-            RecalculateDimensionsFromDoors();
+            RecalculateDimensionsFromAttachments();
         }
         // If only one end is attached, snap that end
-        else if (snapLeftEndToDoor && !snapRightEndToDoor)
+        else if (snapLeftEnd && !snapRightEnd)
         {
-            SnapToLeftDoor();
+            SnapToLeftObject();
         }
-        else if (!snapLeftEndToDoor && snapRightEndToDoor)
+        else if (!snapLeftEnd && snapRightEnd)
         {
-            SnapToRightDoor();
+            SnapToRightObject();
         }
     }
 
-    private void RecalculateDimensionsFromDoors()
+    private void RecalculateDimensionsFromAttachments()
     {
-        if (attachedLeftDoor == null || attachedRightDoor == null)
+        if (attachedLeftObject == null || attachedRightObject == null)
             return;
 
-        // Get the attachment points from both doors
-        Vector3 leftDoorPoint = leftAttachedToLeftSide ? 
-            attachedLeftDoor.GetLeftAttachmentPointWorld() : 
-            attachedLeftDoor.GetRightAttachmentPointWorld();
-        
-        Vector3 rightDoorPoint = rightAttachedToLeftSide ? 
-            attachedRightDoor.GetLeftAttachmentPointWorld() : 
-            attachedRightDoor.GetRightAttachmentPointWorld();
+        // Get attachment points from both objects
+        Vector3 leftPoint = GetAttachmentPoint(attachedLeftObject, leftObjectType, leftAttachedToLeftSide);
+        Vector3 rightPoint = GetAttachmentPoint(attachedRightObject, rightObjectType, rightAttachedToLeftSide);
 
-        // Calculate the distance between the two door attachment points
-        float distance3D = Vector3.Distance(leftDoorPoint, rightDoorPoint);
-        
-        // Project to XZ plane for arc calculation
-        Vector3 leftPoint2D = new Vector3(leftDoorPoint.x, 0, leftDoorPoint.z);
-        Vector3 rightPoint2D = new Vector3(rightDoorPoint.x, 0, rightDoorPoint.z);
-        float distance2D = Vector3.Distance(leftPoint2D, rightPoint2D);
+        // Calculate distance and midpoint
+        float distance = Vector3.Distance(leftPoint, rightPoint);
+        Vector3 midpoint = (leftPoint + rightPoint) / 2f;
 
-        // Calculate the direction from left to right door
-        Vector3 direction = (rightDoorPoint - leftDoorPoint).normalized;
-        Vector3 direction2D = (rightPoint2D - leftPoint2D).normalized;
+        // Update wall position
+        transform.position = midpoint;
 
-        // Calculate the angle between the doors
-        Vector3 leftForward = leftAttachedToLeftSide ? 
-            -attachedLeftDoor.transform.right : 
-            attachedLeftDoor.transform.right;
-        
-        Vector3 rightForward = rightAttachedToLeftSide ? 
-            -attachedRightDoor.transform.right : 
-            attachedRightDoor.transform.right;
-
-        // Project to XZ plane
-        leftForward = new Vector3(leftForward.x, 0, leftForward.z).normalized;
-        rightForward = new Vector3(rightForward.x, 0, rightForward.z).normalized;
-
-        // Calculate the angle between door normals
-        float angleRad = Vector3.Angle(leftForward, rightForward) * Mathf.Deg2Rad;
-        
-        // If doors are roughly parallel, use straight wall
-        if (angleRad < 0.1f)
+        // Calculate direction and rotation
+        Vector3 direction = (rightPoint - leftPoint).normalized;
+        if (direction.magnitude > 0.001f)
         {
-            curvatureAngle = 1f; // Minimum curvature (almost straight)
-            length = distance2D;
-        }
-        else
-        {
-            // Calculate arc parameters
-            // For a circular arc: length = radius * angle
-            // We want to find the radius and angle that fits between the two doors
-            
-            // Use the distance as the chord length
-            float chordLength = distance2D;
-            
-            // Estimate curvature angle from door orientations
-            float doorAngleDiff = Vector3.SignedAngle(leftForward, rightForward, Vector3.up);
-            curvatureAngle = Mathf.Abs(doorAngleDiff);
-            
-            // Clamp angle
-            curvatureAngle = Mathf.Clamp(curvatureAngle, 1f, 360f);
-            
-            // Calculate arc length from chord and angle
-            angleRad = curvatureAngle * Mathf.Deg2Rad;
-            float radius = chordLength / (2f * Mathf.Sin(angleRad / 2f));
-            length = radius * angleRad;
+            transform.rotation = Quaternion.LookRotation(direction, Vector3.up);
         }
 
-        // Position the wall so its left connection point aligns with the left door
-        // Calculate where the pivot should be
-        Vector3 leftConnLocal = GetLeftConnectionPointLocal();
-        Vector3 desiredPivotPos = leftDoorPoint - transform.TransformDirection(leftConnLocal);
-        transform.position = desiredPivotPos;
+        // Update length to match distance
+        length = distance;
 
-        // Calculate rotation to align with doors
-        Vector3 midPoint = (leftDoorPoint + rightDoorPoint) / 2f;
-        Vector3 toMid = (midPoint - leftDoorPoint).normalized;
-        float rotationAngle = Mathf.Atan2(toMid.x, toMid.z) * Mathf.Rad2Deg;
-        
-        // Adjust rotation based on curvature
-        rotationAngle -= curvatureAngle / 2f;
-        
-        transform.rotation = Quaternion.Euler(0, rotationAngle, 0);
-
-        // Mark for regeneration
+        // Regenerate wall with new dimensions
         needsRegeneration = true;
     }
 
-    private void SnapToLeftDoor()
+    private void SnapToLeftObject()
     {
-        if (attachedLeftDoor == null)
+        if (attachedLeftObject == null)
             return;
 
-        Vector3 snapPoint = leftAttachedToLeftSide ? 
-            attachedLeftDoor.GetLeftAttachmentPointWorld() : 
-            attachedLeftDoor.GetRightAttachmentPointWorld();
-
-        Vector3 leftConnWorld = GetLeftConnectionPointWorld();
-        transform.position += snapPoint - leftConnWorld;
+        Vector3 attachPoint = GetAttachmentPoint(attachedLeftObject, leftObjectType, leftAttachedToLeftSide);
+        Vector3 leftConnectionLocal = GetLeftConnectionPointLocal();
+        
+        // Move wall so left connection point aligns with attachment point
+        Vector3 offset = attachPoint - transform.TransformPoint(leftConnectionLocal);
+        transform.position += offset;
     }
 
-    private void SnapToRightDoor()
+    private void SnapToRightObject()
     {
-        if (attachedRightDoor == null)
+        if (attachedRightObject == null)
             return;
 
-        Vector3 snapPoint = rightAttachedToLeftSide ? 
-            attachedRightDoor.GetLeftAttachmentPointWorld() : 
-            attachedRightDoor.GetRightAttachmentPointWorld();
-
-        Vector3 rightConnWorld = GetRightConnectionPointWorld();
-        transform.position += snapPoint - rightConnWorld;
+        Vector3 attachPoint = GetAttachmentPoint(attachedRightObject, rightObjectType, rightAttachedToLeftSide);
+        Vector3 rightConnectionLocal = GetRightConnectionPointLocal();
+        
+        // Move wall so right connection point aligns with attachment point
+        Vector3 offset = attachPoint - transform.TransformPoint(rightConnectionLocal);
+        transform.position += offset;
     }
 
-    // Calculate the center point of the bottom arc (for pivot positioning)
-    private Vector3 GetBottomCenterLocal()
+    private Vector3 GetAttachmentPoint(MonoBehaviour obj, string objType, bool isLeftSide)
     {
-        // Calculate the geometric center of the arc at y=0
-        float angleRad = curvatureAngle * Mathf.Deg2Rad;
-        float baseRadius = length / angleRad;
-        
-        // Center is at the midpoint angle
-        float centerAngle = angleRad / 2f;
-        float x = Mathf.Sin(centerAngle) * baseRadius;
-        float z = (1f - Mathf.Cos(centerAngle)) * baseRadius;
-        
-        return new Vector3(x, 0, z);
+        if (objType == "Door")
+        {
+            Door door = (Door)obj;
+            return isLeftSide ? door.GetLeftAttachmentPointWorld() : door.GetRightAttachmentPointWorld();
+        }
+        else if (objType == "Pillar")
+        {
+            Pillar pillar = (Pillar)obj;
+            return pillar.GetConnectionPointWorld();
+        }
+        return Vector3.zero;
     }
 
-    // Get left connection point in local space (at mid-height)
     private Vector3 GetLeftConnectionPointLocal()
     {
-        // Left endpoint at angle 0, mid-height
-        Vector3 centerOffset = GetBottomCenterLocal();
-        return new Vector3(0, 0, 0) - centerOffset;
-    }
-
-    // Get right connection point in local space (at mid-height)
-    private Vector3 GetRightConnectionPointLocal()
-    {
+        // Calculate the left end position in local space (at bottom, y=0)
         float angleRad = curvatureAngle * Mathf.Deg2Rad;
         float baseRadius = length / angleRad;
         
-        // Right endpoint at final angle, mid-height
+        // Left end is at angle = 0
+        float x = 0;
+        float z = 0;
+        
+        Vector3 pivotOffset = new Vector3(0, 0, baseRadius);
+        return new Vector3(x, 0, z) - pivotOffset;
+    }
+
+    private Vector3 GetRightConnectionPointLocal()
+    {
+        // Calculate the right end position in local space (at bottom, y=0)
+        float angleRad = curvatureAngle * Mathf.Deg2Rad;
+        float baseRadius = length / angleRad;
+        
+        // Right end is at angle = curvatureAngle
         float x = Mathf.Sin(angleRad) * baseRadius;
         float z = (1f - Mathf.Cos(angleRad)) * baseRadius;
         
-        Vector3 centerOffset = GetBottomCenterLocal();
-        return new Vector3(x, height / 2f, z) - centerOffset;
+        Vector3 pivotOffset = new Vector3(0, 0, baseRadius);
+        return new Vector3(x, 0, z) - pivotOffset;
     }
 
-    // Get left connection point in world space
     public Vector3 GetLeftConnectionPointWorld()
     {
         return transform.TransformPoint(GetLeftConnectionPointLocal());
     }
 
-    // Get right connection point in world space
     public Vector3 GetRightConnectionPointWorld()
     {
         return transform.TransformPoint(GetRightConnectionPointLocal());
     }
 
-    // Legacy methods for backward compatibility (now point to bottom of endpoints)
-    private Vector3 GetLeftEndpointWorld()
-    {
-        Vector3 centerOffset = GetBottomCenterLocal();
-        return transform.TransformPoint(new Vector3(0, 0, 0) - centerOffset);
-    }
-
-    private Vector3 GetRightEndpointWorld()
-    {
-        float angleRad = curvatureAngle * Mathf.Deg2Rad;
-        float baseRadius = length / angleRad;
-        
-        float x = Mathf.Sin(angleRad) * baseRadius;
-        float z = (1f - Mathf.Cos(angleRad)) * baseRadius;
-        
-        Vector3 centerOffset = GetBottomCenterLocal();
-        Vector3 localPoint = new Vector3(x, 0, z) - centerOffset;
-        return transform.TransformPoint(localPoint);
-    }
-
     private void GenerateWall()
     {
-        mesh = new Mesh();
-        mesh.name = "Circular Wall";
+        if (meshFilter == null) return;
 
-        // Calculate base radius from length and angle
+        if (mesh == null)
+        {
+            mesh = new Mesh();
+            mesh.name = "CircularWall";
+        }
+        mesh.Clear();
+
+        // Enforce minimum angle
+        curvatureAngle = Mathf.Max(1f, curvatureAngle);
+
+        // Clamp values for safety
+        length = Mathf.Max(0.1f, length);
+        height = Mathf.Max(0.1f, height);
+        thickness = Mathf.Max(0.01f, thickness);
+        segmentsAlongLength = Mathf.Max(1, segmentsAlongLength);
+        segmentsAlongHeight = Mathf.Max(1, segmentsAlongHeight);
+
+        // Calculate curvature
         float angleRad = curvatureAngle * Mathf.Deg2Rad;
-        float baseRadius = length / angleRad;
-        
+        float baseRadius = length / angleRad; // R = arc_length / angle_in_radians
+
+        // Curve direction
         float direction = curveInward ? 1f : -1f;
-        
-        // Calculate the offset to center the pivot at the middle of the bottom arc
-        Vector3 pivotOffset = GetBottomCenterLocal();
-        
-        // Calculate vertex counts
-        int wallVertexCount = (segmentsAlongLength + 1) * (segmentsAlongHeight + 1) * 2; // Inner and outer surfaces
-        int sideCapVertexCount = (segmentsAlongHeight + 1) * 2 * 2; // Left and right caps
-        int topBottomCapVertexCount = (segmentsAlongLength + 1) * 2 * 2; // Top and bottom caps
-        int totalVertexCount = wallVertexCount + sideCapVertexCount + topBottomCapVertexCount;
-        
-        Vector3[] vertices = new Vector3[totalVertexCount];
-        Vector2[] uvs = new Vector2[totalVertexCount];
-        
-        // Calculate triangle counts
-        int wallTriangleCount = segmentsAlongLength * segmentsAlongHeight * 12; // Outer and inner surfaces
-        int sideCapTriangleCount = segmentsAlongHeight * 2 * 6; // Left and right caps
-        int topBottomCapTriangleCount = segmentsAlongLength * 2 * 6; // Top and bottom caps
-        int[] triangles = new int[wallTriangleCount + sideCapTriangleCount + topBottomCapTriangleCount];
+
+        // Calculate pivot offset to position the arc centered at the GameObject's origin
+        Vector3 pivotOffset = new Vector3(0, 0, baseRadius);
+
+        // Calculate vertex and triangle counts
+        int verticesPerRing = (segmentsAlongLength + 1) * 2; // outer + inner per segment
+        int totalVertices = verticesPerRing * (segmentsAlongHeight + 1);
+
+        // Add side cap vertices
+        int sideCapVertices = (segmentsAlongHeight + 1) * 2 * 2; // left and right caps
+
+        // Add top and bottom cap vertices
+        int topBottomCapVertices = (segmentsAlongLength + 1) * 2 * 2; // top and bottom caps
+
+        totalVertices += sideCapVertices + topBottomCapVertices;
+
+        // Triangle counts
+        int outerTriangles = segmentsAlongLength * segmentsAlongHeight * 6;
+        int innerTriangles = segmentsAlongLength * segmentsAlongHeight * 6;
+        int sideCapTriangles = segmentsAlongHeight * 2 * 6; // left and right caps
+        int topBottomCapTriangles = segmentsAlongLength * 2 * 6; // top and bottom caps
+        int totalTriangles = outerTriangles + innerTriangles + sideCapTriangles + topBottomCapTriangles;
+
+        Vector3[] vertices = new Vector3[totalVertices];
+        Vector2[] uvs = new Vector2[totalVertices];
+        int[] triangles = new int[totalTriangles];
 
         int vertIndex = 0;
         int triIndex = 0;
 
-        // Generate vertices for outer surface (away from center)
+        // === OUTER SURFACE (convex side) ===
         for (int h = 0; h <= segmentsAlongHeight; h++)
         {
             float yPos = (h / (float)segmentsAlongHeight) * height;
-            
-            for (int l = 0; l <= segmentsAlongLength; l++)
-            {
-                float t = l / (float)segmentsAlongLength;
-                float currentAngle = t * angleRad;
-                
-                // Calculate position on arc at base radius
-                float x = Mathf.Sin(currentAngle) * baseRadius;
-                float z = (1f - Mathf.Cos(currentAngle)) * baseRadius;
-                
-                // Calculate normal direction (perpendicular to arc, pointing outward)
-                Vector3 normal = new Vector3(Mathf.Sin(currentAngle), 0, -Mathf.Cos(currentAngle));
-                
-                // Offset by half thickness in normal direction
-                Vector3 offset = normal * (thickness / 2f) * direction;
-                
-                // Apply pivot offset to center the wall
-                vertices[vertIndex] = new Vector3(x, yPos, z) + offset - pivotOffset;
-                
-                // UV mapping: U along arc length, V along height (world-space scaled)
-                float arcLength = t * length; // Current position along arc
-                uvs[vertIndex] = new Vector2(arcLength * uvScale, yPos * uvScale);
-                vertIndex++;
-            }
-        }
 
-        // Generate vertices for inner surface (toward center)
-        for (int h = 0; h <= segmentsAlongHeight; h++)
-        {
-            float yPos = (h / (float)segmentsAlongHeight) * height;
-            
             for (int l = 0; l <= segmentsAlongLength; l++)
             {
                 float t = l / (float)segmentsAlongLength;
                 float currentAngle = t * angleRad;
-                
-                // Calculate position on arc at base radius
-                float x = Mathf.Sin(currentAngle) * baseRadius;
-                float z = (1f - Mathf.Cos(currentAngle)) * baseRadius;
-                
-                // Calculate normal direction (perpendicular to arc, pointing outward)
+
+                // Calculate position on the base arc
+                float x_base = Mathf.Sin(currentAngle) * baseRadius;
+                float z_base = (1f - Mathf.Cos(currentAngle)) * baseRadius;
+                Vector3 basePos = new Vector3(x_base, yPos, z_base) - pivotOffset;
+
+                // Calculate normal direction (perpendicular to the curve)
                 Vector3 normal = new Vector3(Mathf.Sin(currentAngle), 0, -Mathf.Cos(currentAngle));
-                
-                // Offset by half thickness in opposite normal direction
-                Vector3 offset = normal * (thickness / 2f) * direction;
-                
-                // Apply pivot offset to center the wall
-                vertices[vertIndex] = new Vector3(x, yPos, z) - offset - pivotOffset;
-                
-                // UV mapping (same as outer for consistent tiling)
+
+                // Outer vertex (push outward)
+                vertices[vertIndex] = basePos + normal * (thickness / 2f) * direction;
                 float arcLength = t * length;
                 uvs[vertIndex] = new Vector2(arcLength * uvScale, yPos * uvScale);
                 vertIndex++;
             }
         }
 
-        int vertsPerRow = segmentsAlongLength + 1;
-
         // Generate triangles for outer surface
         for (int h = 0; h < segmentsAlongHeight; h++)
         {
             for (int l = 0; l < segmentsAlongLength; l++)
             {
-                int bottomLeft = h * vertsPerRow + l;
+                int bottomLeft = h * (segmentsAlongLength + 1) + l;
                 int bottomRight = bottomLeft + 1;
-                int topLeft = bottomLeft + vertsPerRow;
+                int topLeft = (h + 1) * (segmentsAlongLength + 1) + l;
                 int topRight = topLeft + 1;
 
                 // First triangle
@@ -578,15 +536,39 @@ public class CircularWall : MonoBehaviour
             }
         }
 
+        // === INNER SURFACE (concave side) ===
+        int innerStartIndex = vertIndex;
+        for (int h = 0; h <= segmentsAlongHeight; h++)
+        {
+            float yPos = (h / (float)segmentsAlongHeight) * height;
+
+            for (int l = 0; l <= segmentsAlongLength; l++)
+            {
+                float t = l / (float)segmentsAlongLength;
+                float currentAngle = t * angleRad;
+
+                float x_base = Mathf.Sin(currentAngle) * baseRadius;
+                float z_base = (1f - Mathf.Cos(currentAngle)) * baseRadius;
+                Vector3 basePos = new Vector3(x_base, yPos, z_base) - pivotOffset;
+
+                Vector3 normal = new Vector3(Mathf.Sin(currentAngle), 0, -Mathf.Cos(currentAngle));
+
+                // Inner vertex (push inward)
+                vertices[vertIndex] = basePos - normal * (thickness / 2f) * direction;
+                float arcLength = t * length;
+                uvs[vertIndex] = new Vector2(arcLength * uvScale, yPos * uvScale);
+                vertIndex++;
+            }
+        }
+
         // Generate triangles for inner surface (reversed winding)
-        int innerOffset = (segmentsAlongHeight + 1) * vertsPerRow;
         for (int h = 0; h < segmentsAlongHeight; h++)
         {
             for (int l = 0; l < segmentsAlongLength; l++)
             {
-                int bottomLeft = innerOffset + h * vertsPerRow + l;
+                int bottomLeft = innerStartIndex + h * (segmentsAlongLength + 1) + l;
                 int bottomRight = bottomLeft + 1;
-                int topLeft = bottomLeft + vertsPerRow;
+                int topLeft = innerStartIndex + (h + 1) * (segmentsAlongLength + 1) + l;
                 int topRight = topLeft + 1;
 
                 // First triangle (reversed)
@@ -601,41 +583,43 @@ public class CircularWall : MonoBehaviour
             }
         }
 
-        // Store starting index for side caps
+        // === SIDE CAPS (left and right ends) ===
         int sideCapVertexStart = vertIndex;
 
-        // === LEFT SIDE CAP (at angle 0) ===
+        // LEFT side cap (at angle = 0, start of arc)
         for (int h = 0; h <= segmentsAlongHeight; h++)
         {
             float yPos = (h / (float)segmentsAlongHeight) * height;
+            float currentAngle = 0f;
             
-            // At angle 0, calculate normal perpendicular to the curve
-            Vector3 normal = new Vector3(Mathf.Sin(0), 0, -Mathf.Cos(0)); // (0, 0, -1)
-            Vector3 basePos = new Vector3(0, yPos, 0) - pivotOffset;
+            float x_base = Mathf.Sin(currentAngle) * baseRadius;
+            float z_base = (1f - Mathf.Cos(currentAngle)) * baseRadius;
+            Vector3 basePos = new Vector3(x_base, yPos, z_base) - pivotOffset;
             
-            // Outer vertex (offset in direction)
+            Vector3 normal = new Vector3(Mathf.Sin(currentAngle), 0, -Mathf.Cos(currentAngle));
+            
+            // Outer vertex
             vertices[vertIndex] = basePos + normal * (thickness / 2f) * direction;
             uvs[vertIndex] = new Vector2(0, yPos * uvScale);
             vertIndex++;
             
-            // Inner vertex (offset in opposite direction)
+            // Inner vertex
             vertices[vertIndex] = basePos - normal * (thickness / 2f) * direction;
             uvs[vertIndex] = new Vector2(thickness * uvScale, yPos * uvScale);
             vertIndex++;
         }
 
-        // === RIGHT SIDE CAP (at final angle) ===
+        // RIGHT side cap (at angle = curvatureAngle, end of arc)
         for (int h = 0; h <= segmentsAlongHeight; h++)
         {
             float yPos = (h / (float)segmentsAlongHeight) * height;
+            float currentAngle = angleRad;
             
-            // Calculate base position and normal at final angle
-            float x_base = Mathf.Sin(angleRad) * baseRadius;
-            float z_base = (1f - Mathf.Cos(angleRad)) * baseRadius;
+            float x_base = Mathf.Sin(currentAngle) * baseRadius;
+            float z_base = (1f - Mathf.Cos(currentAngle)) * baseRadius;
             Vector3 basePos = new Vector3(x_base, yPos, z_base) - pivotOffset;
             
-            // Use perpendicular normal pointing outward from the curve
-            Vector3 normal = new Vector3(Mathf.Sin(angleRad), 0, -Mathf.Cos(angleRad));
+            Vector3 normal = new Vector3(Mathf.Sin(currentAngle), 0, -Mathf.Cos(currentAngle));
             
             // Outer vertex
             vertices[vertIndex] = basePos + normal * (thickness / 2f) * direction;
@@ -798,7 +782,7 @@ public class CircularWall : MonoBehaviour
     // Visualize attachment status and connection points in editor
     private void OnDrawGizmos()
     {
-        if (!enableDoorAttachment && !showConnectionPoints) return;
+        if (!enableAttachment && !showConnectionPoints) return;
 
         // Draw connection points (at mid-height)
         if (showConnectionPoints)
@@ -823,38 +807,34 @@ public class CircularWall : MonoBehaviour
             Gizmos.DrawWireSphere(transform.position, 0.1f);
         }
 
-        if (!enableDoorAttachment) return;
+        if (!enableAttachment) return;
 
         Vector3 leftEnd = GetLeftConnectionPointWorld();
         Vector3 rightEnd = GetRightConnectionPointWorld();
 
         // Draw left connection status
-        if (snapLeftEndToDoor && attachedLeftDoor != null)
+        if (snapLeftEnd && attachedLeftObject != null)
         {
             Gizmos.color = Color.green;
             Gizmos.DrawWireSphere(leftEnd, 0.2f);
             
-            Vector3 doorPoint = leftAttachedToLeftSide ? 
-                attachedLeftDoor.GetLeftAttachmentPointWorld() : 
-                attachedLeftDoor.GetRightAttachmentPointWorld();
-            Gizmos.DrawLine(leftEnd, doorPoint);
+            Vector3 objectPoint = GetAttachmentPoint(attachedLeftObject, leftObjectType, leftAttachedToLeftSide);
+            Gizmos.DrawLine(leftEnd, objectPoint);
         }
 
         // Draw right connection status
-        if (snapRightEndToDoor && attachedRightDoor != null)
+        if (snapRightEnd && attachedRightObject != null)
         {
             Gizmos.color = Color.green;
             Gizmos.DrawWireSphere(rightEnd, 0.2f);
             
-            Vector3 doorPoint = rightAttachedToLeftSide ? 
-                attachedRightDoor.GetLeftAttachmentPointWorld() : 
-                attachedRightDoor.GetRightAttachmentPointWorld();
-            Gizmos.DrawLine(rightEnd, doorPoint);
+            Vector3 objectPoint = GetAttachmentPoint(attachedRightObject, rightObjectType, rightAttachedToLeftSide);
+            Gizmos.DrawLine(rightEnd, objectPoint);
         }
 
         // Draw detection range
         Gizmos.color = new Color(0, 1, 0, 0.2f);
-        Gizmos.DrawWireSphere(leftEnd, doorDetectionRange);
-        Gizmos.DrawWireSphere(rightEnd, doorDetectionRange);
+        Gizmos.DrawWireSphere(leftEnd, detectionRange);
+        Gizmos.DrawWireSphere(rightEnd, detectionRange);
     }
 }

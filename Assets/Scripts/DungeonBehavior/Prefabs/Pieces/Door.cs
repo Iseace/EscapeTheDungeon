@@ -5,7 +5,7 @@ using System.Collections.Generic;
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
 [RequireComponent(typeof(MeshCollider))]
-public class RectangularDoor : MonoBehaviour
+public class Door : MonoBehaviour
 {
     public enum RoomType { Door, Wall }
     public RoomType Type { get { return roomType; } }
@@ -194,45 +194,44 @@ public class RectangularDoor : MonoBehaviour
         vertices.Add(new Vector3(-halfLength, height,  halfThickness));
         vertices.Add(new Vector3(-halfLength, height, -halfThickness));
         uvs.Add(new Vector2(0,                    0));
-        uvs.Add(new Vector2(thickness * uvScale,  0));
-        uvs.Add(new Vector2(thickness * uvScale,  height * uvScale));
+        uvs.Add(new Vector2(thickness * uvScale, 0));
+        uvs.Add(new Vector2(thickness * uvScale, height * uvScale));
         uvs.Add(new Vector2(0,                    height * uvScale));
         triangles.AddRange(new int[] { 8, 9, 10, 8, 10, 11 });
 
         // Right cap (positive X)
-        vertices.Add(new Vector3( halfLength, 0,       halfThickness));
-        vertices.Add(new Vector3( halfLength, 0,      -halfThickness));
-        vertices.Add(new Vector3( halfLength, height, -halfThickness));
-        vertices.Add(new Vector3( halfLength, height,  halfThickness));
+        vertices.Add(new Vector3(halfLength, 0,      -halfThickness));
+        vertices.Add(new Vector3(halfLength, 0,       halfThickness));
+        vertices.Add(new Vector3(halfLength, height,  halfThickness));
+        vertices.Add(new Vector3(halfLength, height, -halfThickness));
         uvs.Add(new Vector2(0,                    0));
-        uvs.Add(new Vector2(thickness * uvScale,  0));
-        uvs.Add(new Vector2(thickness * uvScale,  height * uvScale));
+        uvs.Add(new Vector2(thickness * uvScale, 0));
+        uvs.Add(new Vector2(thickness * uvScale, height * uvScale));
         uvs.Add(new Vector2(0,                    height * uvScale));
-        triangles.AddRange(new int[] { 12, 13, 14, 12, 14, 15 });
+        triangles.AddRange(new int[] { 12, 14, 13, 12, 15, 14 });
 
         // Bottom cap (y = 0)
-        vertices.Add(new Vector3(-halfLength, 0,  halfThickness));
-        vertices.Add(new Vector3( halfLength, 0,  halfThickness));
-        vertices.Add(new Vector3( halfLength, 0, -halfThickness));
         vertices.Add(new Vector3(-halfLength, 0, -halfThickness));
+        vertices.Add(new Vector3( halfLength, 0, -halfThickness));
+        vertices.Add(new Vector3( halfLength, 0,  halfThickness));
+        vertices.Add(new Vector3(-halfLength, 0,  halfThickness));
         uvs.Add(new Vector2(0,                  0));
         uvs.Add(new Vector2(length * uvScale,   0));
         uvs.Add(new Vector2(length * uvScale,   thickness * uvScale));
         uvs.Add(new Vector2(0,                  thickness * uvScale));
-        triangles.AddRange(new int[] { 16, 19, 18, 16, 18, 17 });
+        triangles.AddRange(new int[] { 16, 17, 18, 16, 18, 19 });
 
         // Top cap (y = height)
-        vertices.Add(new Vector3(-halfLength, height,  halfThickness));
-        vertices.Add(new Vector3( halfLength, height,  halfThickness));
-        vertices.Add(new Vector3( halfLength, height, -halfThickness));
         vertices.Add(new Vector3(-halfLength, height, -halfThickness));
+        vertices.Add(new Vector3( halfLength, height, -halfThickness));
+        vertices.Add(new Vector3( halfLength, height,  halfThickness));
+        vertices.Add(new Vector3(-halfLength, height,  halfThickness));
         uvs.Add(new Vector2(0,                  0));
         uvs.Add(new Vector2(length * uvScale,   0));
         uvs.Add(new Vector2(length * uvScale,   thickness * uvScale));
         uvs.Add(new Vector2(0,                  thickness * uvScale));
-        triangles.AddRange(new int[] { 20, 21, 22, 20, 22, 23 });
+        triangles.AddRange(new int[] { 20, 22, 21, 20, 23, 22 });
 
-        // Assign mesh
         wallMesh.vertices  = vertices.ToArray();
         wallMesh.uv        = uvs.ToArray();
         wallMesh.triangles = triangles.ToArray();
@@ -240,32 +239,30 @@ public class RectangularDoor : MonoBehaviour
         wallMesh.RecalculateBounds();
 
         meshFilter.sharedMesh = wallMesh;
-
-        // Apply wall material
-        if (wallMaterial != null)
-            meshRenderer.sharedMaterial = wallMaterial;
-
-        // Update collider - enable and assign mesh so it blocks physics
         if (meshCollider != null)
         {
-            meshCollider.enabled    = true;
-            meshCollider.convex     = false;
+            meshCollider.convex = false;
             meshCollider.sharedMesh = null;
             meshCollider.sharedMesh = wallMesh;
         }
+
+        if (wallMaterial != null)
+            meshRenderer.sharedMaterial = wallMaterial;
     }
 
-    // Clears the wall mesh and material when switching back to Door mode
     private void ClearWallMesh()
     {
-        if (meshFilter != null)
+        if (meshFilter != null && meshFilter.sharedMesh != null)
+        {
             meshFilter.sharedMesh = null;
-        if (meshRenderer != null)
-            meshRenderer.sharedMaterial = null;
+        }
         if (meshCollider != null)
         {
             meshCollider.sharedMesh = null;
-            meshCollider.enabled = false;   // disable entirely so nothing blocks the opening
+        }
+        if (meshRenderer != null && wallMaterial != null)
+        {
+            meshRenderer.sharedMaterial = null;
         }
     }
 
@@ -274,25 +271,17 @@ public class RectangularDoor : MonoBehaviour
         if (lineRenderer == null)
             lineRenderer = GetComponent<LineRenderer>();
 
-        lineRenderer.useWorldSpace = false; // Ensure local space
+        lineRenderer.useWorldSpace = false;
 
         borderPoints.Clear();
 
         // Door frame centered at the bottom middle (pivot at bottom-center)
-        // Calculate half width to center the door
         float halfWidth = doorWidth / 2f;
 
-        // Bottom-left corner (-halfWidth, 0, 0)
-        Vector3 bottomLeft = new Vector3(-halfWidth, 0, 0);
-
-        // Bottom-right corner (halfWidth, 0, 0)
-        Vector3 bottomRight = new Vector3(halfWidth, 0, 0);
-
-        // Top-left corner (-halfWidth, doorHeight, 0)
-        Vector3 topLeft = new Vector3(-halfWidth, doorHeight, 0);
-
-        // Top-right corner (halfWidth, doorHeight, 0)
-        Vector3 topRight = new Vector3(halfWidth, doorHeight, 0);
+        Vector3 bottomLeft  = new Vector3(-halfWidth, 0,          0);
+        Vector3 bottomRight = new Vector3( halfWidth, 0,          0);
+        Vector3 topLeft     = new Vector3(-halfWidth, doorHeight, 0);
+        Vector3 topRight    = new Vector3( halfWidth, doorHeight, 0);
 
         // Build the border path (counterclockwise from bottom-left)
         // Bottom edge
@@ -409,78 +398,95 @@ public class RectangularDoor : MonoBehaviour
 
     private void DetectAndAttachToFloor()
     {
-        if (!enableFloorAttachment)
+        // Find all floor types in the scene
+        MonoBehaviour[] allFloors = GetAllFloors();
+        
+        if (allFloors.Length == 0)
+        {
+            attachedFloor = null;
+            snapToFloorBorder = false;
             return;
+        }
 
         Vector3 doorFloorPoint = GetFloorConnectionPointWorld();
-
-        // Find all floors in the scene (all types)
-        MonoBehaviour[] allFloors = FindAllFloors();
-
-        MonoBehaviour nearestFloor = null;
-        Vector3 nearestSnapPoint = Vector3.zero;
-        Vector3 nearestBorderNormal = Vector3.zero;
-        float nearestDistance = float.MaxValue;
+        
+        // Find closest floor border point
+        float closestDist = floorDetectionRange;
+        MonoBehaviour closestFloor = null;
+        Vector3 closestSnapPoint = Vector3.zero;
+        Vector3 closestBorderNormal = Vector3.zero;
 
         foreach (MonoBehaviour floor in allFloors)
         {
-            if (floor == null) continue;
-
             Vector3 snapPoint;
             Vector3 borderNormal;
-            float distance = GetClosestPointOnFloorBorder(floor, doorFloorPoint, out snapPoint, out borderNormal);
-
-            if (distance < floorDetectionRange && distance < nearestDistance)
+            float dist = GetClosestPointOnFloorBorder(floor, doorFloorPoint, out snapPoint, out borderNormal);
+            
+            if (dist < closestDist)
             {
-                nearestDistance = distance;
-                nearestFloor = floor;
-                nearestSnapPoint = snapPoint;
-                nearestBorderNormal = borderNormal;
+                closestDist = dist;
+                closestFloor = floor;
+                closestSnapPoint = snapPoint;
+                closestBorderNormal = borderNormal;
             }
         }
 
-        // Update attachment status
-        if (nearestFloor != null)
+        // Update attachment
+        if (closestFloor != null)
         {
-            attachedFloor = nearestFloor;
-            floorSnapPoint = nearestSnapPoint;
-            floorSnapNormal = nearestBorderNormal;
+            // Attach to this floor
+            if (attachedFloor != closestFloor)
+            {
+                attachedFloor = closestFloor;
+                prevFloorPosition = attachedFloor.transform.position;
+                prevFloorRotation = attachedFloor.transform.rotation;
+                StorePreviousFloorDimensions();
+            }
+            
+            floorSnapPoint = closestSnapPoint;
+            floorSnapNormal = closestBorderNormal;
             snapToFloorBorder = true;
+            
             SnapToFloorBorder();
         }
         else
         {
-            snapToFloorBorder = false;
             attachedFloor = null;
+            snapToFloorBorder = false;
         }
     }
 
-    private MonoBehaviour[] FindAllFloors()
+    private MonoBehaviour[] GetAllFloors()
     {
         List<MonoBehaviour> floors = new List<MonoBehaviour>();
         
-        // Find all floor types
+        // Add all floor types
         floors.AddRange(FindObjectsOfType<RectangularFloor>());
         floors.AddRange(FindObjectsOfType<TShapedFloor>());
         floors.AddRange(FindObjectsOfType<CrossShapedFloor>());
+        floors.AddRange(FindObjectsOfType<Circularfloor>());
         
         return floors.ToArray();
     }
 
     private float GetClosestPointOnFloorBorder(MonoBehaviour floor, Vector3 worldPoint, out Vector3 closestPoint, out Vector3 borderNormal)
     {
-        // Determine floor type and delegate to appropriate method
-        if (floor is RectangularFloor)
+        // Check floor type and delegate to appropriate method
+        if (floor is Circularfloor)
         {
-            return GetClosestPointOnRectangularFloor((RectangularFloor)floor, worldPoint, out closestPoint, out borderNormal);
+            return GetClosestPointOnCircularFloorBorder((Circularfloor)floor, worldPoint, out closestPoint, out borderNormal);
+        }
+        else if (floor is RectangularFloor)
+        {
+            return GetClosestPointOnRectangularFloorBorder((RectangularFloor)floor, worldPoint, out closestPoint, out borderNormal);
         }
         else if (floor is TShapedFloor)
         {
-            return GetClosestPointOnTShapedFloor((TShapedFloor)floor, worldPoint, out closestPoint, out borderNormal);
+            return GetClosestPointOnTShapedFloorBorder((TShapedFloor)floor, worldPoint, out closestPoint, out borderNormal);
         }
         else if (floor is CrossShapedFloor)
         {
-            return GetClosestPointOnCrossShapedFloor((CrossShapedFloor)floor, worldPoint, out closestPoint, out borderNormal);
+            return GetClosestPointOnCrossShapedFloorBorder((CrossShapedFloor)floor, worldPoint, out closestPoint, out borderNormal);
         }
 
         closestPoint = Vector3.zero;
@@ -488,37 +494,156 @@ public class RectangularDoor : MonoBehaviour
         return float.MaxValue;
     }
 
-    private float GetClosestPointOnRectangularFloor(RectangularFloor floor, Vector3 worldPoint, out Vector3 closestPoint, out Vector3 borderNormal)
+    // === CIRCULAR FLOOR SUPPORT ===
+    private float GetClosestPointOnCircularFloorBorder(Circularfloor floor, Vector3 worldPoint, out Vector3 closestPoint, out Vector3 borderNormal)
     {
+        // Get floor dimensions using reflection (since fields are private)
+        float width = GetCircularFloorWidth(floor);
+        float height = GetCircularFloorHeight(floor);
+        float cornerRadius = floor.cornerRadius; // This is public
+        
         // Convert world point to floor's local space
         Vector3 localPoint = floor.transform.InverseTransformPoint(worldPoint);
-
-        float width = floor.GetWidth();
-        float height = floor.GetHeight();
-        float halfW = width / 2f;
-        float halfH = height / 2f;
-
-        // Project onto floor plane (y=0)
         float x = localPoint.x;
         float z = localPoint.z;
-
-        // Calculate distances to each edge
+        
+        float halfW = width / 2f;
+        float halfH = height / 2f;
+        
+        Vector3 closestLocal;
+        Vector3 normalLocal;
+        
+        // Clamp to rectangle bounds (before corner rounding)
+        float clampedX = Mathf.Clamp(x, -halfW, halfW);
+        float clampedZ = Mathf.Clamp(z, -halfH, halfH);
+        
+        // Calculate distance to each edge
         float distToLeft = Mathf.Abs(x + halfW);
         float distToRight = Mathf.Abs(x - halfW);
         float distToBottom = Mathf.Abs(z + halfH);
         float distToTop = Mathf.Abs(z - halfH);
-
-        // Find minimum distance
+        
         float minDist = Mathf.Min(distToLeft, distToRight, distToBottom, distToTop);
+        
+        // Check if we're in a corner region
+        bool inCornerRegion = false;
+        Vector3 cornerCenter = Vector3.zero;
+        
+        if (cornerRadius > 0.01f)
+        {
+            // Determine which corner region we might be in
+            if (distToLeft < cornerRadius && distToBottom < cornerRadius)
+            {
+                inCornerRegion = true;
+                cornerCenter = new Vector3(-halfW + cornerRadius, 0, -halfH + cornerRadius);
+            }
+            else if (distToRight < cornerRadius && distToBottom < cornerRadius)
+            {
+                inCornerRegion = true;
+                cornerCenter = new Vector3(halfW - cornerRadius, 0, -halfH + cornerRadius);
+            }
+            else if (distToLeft < cornerRadius && distToTop < cornerRadius)
+            {
+                inCornerRegion = true;
+                cornerCenter = new Vector3(-halfW + cornerRadius, 0, halfH - cornerRadius);
+            }
+            else if (distToRight < cornerRadius && distToTop < cornerRadius)
+            {
+                inCornerRegion = true;
+                cornerCenter = new Vector3(halfW - cornerRadius, 0, halfH - cornerRadius);
+            }
+        }
+        
+        if (inCornerRegion)
+        {
+            // Project to corner arc
+            Vector3 toPoint = new Vector3(x, 0, z) - cornerCenter;
+            toPoint.y = 0;
+            float distFromCorner = toPoint.magnitude;
+            
+            if (distFromCorner > 0.001f)
+            {
+                Vector3 direction = toPoint.normalized;
+                closestLocal = cornerCenter + direction * cornerRadius;
+                normalLocal = direction;
+            }
+            else
+            {
+                closestLocal = cornerCenter + new Vector3(cornerRadius, 0, 0);
+                normalLocal = Vector3.right;
+            }
+        }
+        else
+        {
+            // Project to nearest edge
+            if (minDist == distToLeft)
+            {
+                closestLocal = new Vector3(-halfW, 0, clampedZ);
+                normalLocal = Vector3.left;
+            }
+            else if (minDist == distToRight)
+            {
+                closestLocal = new Vector3(halfW, 0, clampedZ);
+                normalLocal = Vector3.right;
+            }
+            else if (minDist == distToBottom)
+            {
+                closestLocal = new Vector3(clampedX, 0, -halfH);
+                normalLocal = Vector3.back;
+            }
+            else // top
+            {
+                closestLocal = new Vector3(clampedX, 0, halfH);
+                normalLocal = Vector3.forward;
+            }
+        }
+        
+        // Convert back to world space
+        closestPoint = floor.transform.TransformPoint(closestLocal);
+        borderNormal = floor.transform.TransformDirection(normalLocal).normalized;
+        
+        return Vector3.Distance(worldPoint, closestPoint);
+    }
 
-        // Clamp to floor bounds
+    // Helper methods to get Circular floor properties using reflection
+    private float GetCircularFloorWidth(Circularfloor floor)
+    {
+        var field = floor.GetType().GetField("width", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        return field != null ? (float)field.GetValue(floor) : 10f;
+    }
+
+    private float GetCircularFloorHeight(Circularfloor floor)
+    {
+        var field = floor.GetType().GetField("height", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        return field != null ? (float)field.GetValue(floor) : 10f;
+    }
+
+    // === RECTANGULAR FLOOR SUPPORT ===
+    private float GetClosestPointOnRectangularFloorBorder(RectangularFloor floor, Vector3 worldPoint, out Vector3 closestPoint, out Vector3 borderNormal)
+    {
+        float width = floor.GetWidth();
+        float height = floor.GetHeight();
+        
+        Vector3 localPoint = floor.transform.InverseTransformPoint(worldPoint);
+        float x = localPoint.x;
+        float z = localPoint.z;
+        
+        float halfW = width / 2f;
+        float halfH = height / 2f;
+        
         float clampedX = Mathf.Clamp(x, -halfW, halfW);
         float clampedZ = Mathf.Clamp(z, -halfH, halfH);
-
+        
+        float distToLeft = Mathf.Abs(x + halfW);
+        float distToRight = Mathf.Abs(x - halfW);
+        float distToBottom = Mathf.Abs(z + halfH);
+        float distToTop = Mathf.Abs(z - halfH);
+        
+        float minDist = Mathf.Min(distToLeft, distToRight, distToBottom, distToTop);
+        
         Vector3 closestLocal;
         Vector3 normalLocal;
-
-        // Determine which edge is closest
+        
         if (minDist == distToLeft)
         {
             closestLocal = new Vector3(-halfW, 0, clampedZ);
@@ -534,262 +659,138 @@ public class RectangularDoor : MonoBehaviour
             closestLocal = new Vector3(clampedX, 0, -halfH);
             normalLocal = Vector3.back;
         }
-        else // top
+        else
         {
             closestLocal = new Vector3(clampedX, 0, halfH);
             normalLocal = Vector3.forward;
         }
-
-        // Convert back to world space
+        
         closestPoint = floor.transform.TransformPoint(closestLocal);
         borderNormal = floor.transform.TransformDirection(normalLocal).normalized;
-
-        // Return distance
+        
         return Vector3.Distance(worldPoint, closestPoint);
     }
 
-    private float GetClosestPointOnTShapedFloor(TShapedFloor floor, Vector3 worldPoint, out Vector3 closestPoint, out Vector3 borderNormal)
+
+
+    // === CROSS-SHAPED FLOOR SUPPORT ===
+    private float GetClosestPointOnCrossShapedFloorBorder(CrossShapedFloor floor, Vector3 worldPoint, out Vector3 closestPoint, out Vector3 borderNormal)
     {
-        // Convert world point to floor's local space
+        float horizWidth = floor.GetHorizontalWidth();
+        float horizHeight = floor.GetHorizontalHeight();
+        float vertWidth = floor.GetVerticalWidth();
+        float vertHeight = floor.GetVerticalHeight();
+        
         Vector3 localPoint = floor.transform.InverseTransformPoint(worldPoint);
-
-        float topWidth = floor.GetTopWidth();
-        float topHeight = floor.GetTopHeight();
-        float stemWidth = floor.GetStemWidth();
-        float stemHeight = floor.GetStemHeight();
-
-        float halfTopW = topWidth / 2f;
-        float halfStemW = stemWidth / 2f;
-        float topY = stemHeight / 2f;
-        float bottomY = -stemHeight / 2f;
-        float topBarBottom = topY - topHeight;
-
-        // Project onto floor plane (y=0)
         float x = localPoint.x;
         float z = localPoint.z;
-
-        // Find closest point on the T-shape border
-        List<EdgeSegment> edges = new List<EdgeSegment>();
-
-        // Define all edge segments of the T-shape
-        // Bottom of stem
-        edges.Add(new EdgeSegment(
-            new Vector3(-halfStemW, 0, bottomY),
-            new Vector3(halfStemW, 0, bottomY),
-            Vector3.back));
-
-        // Right side of stem (bottom part)
-        edges.Add(new EdgeSegment(
-            new Vector3(halfStemW, 0, bottomY),
-            new Vector3(halfStemW, 0, topBarBottom),
-            Vector3.right));
-
-        // Right transition from stem to top bar
-        edges.Add(new EdgeSegment(
-            new Vector3(halfStemW, 0, topBarBottom),
-            new Vector3(halfTopW, 0, topBarBottom),
-            Vector3.back));
-
-        // Right side of top bar
-        edges.Add(new EdgeSegment(
-            new Vector3(halfTopW, 0, topBarBottom),
-            new Vector3(halfTopW, 0, topY),
-            Vector3.right));
-
-        // Top of top bar
-        edges.Add(new EdgeSegment(
-            new Vector3(halfTopW, 0, topY),
-            new Vector3(-halfTopW, 0, topY),
-            Vector3.forward));
-
-        // Left side of top bar
-        edges.Add(new EdgeSegment(
-            new Vector3(-halfTopW, 0, topY),
-            new Vector3(-halfTopW, 0, topBarBottom),
-            Vector3.left));
-
-        // Left transition from top bar to stem
-        edges.Add(new EdgeSegment(
-            new Vector3(-halfTopW, 0, topBarBottom),
-            new Vector3(-halfStemW, 0, topBarBottom),
-            Vector3.back));
-
-        // Left side of stem (bottom part)
-        edges.Add(new EdgeSegment(
-            new Vector3(-halfStemW, 0, topBarBottom),
-            new Vector3(-halfStemW, 0, bottomY),
-            Vector3.left));
-
-        // Find the closest edge
-        float minDistance = float.MaxValue;
-        Vector3 bestPoint = Vector3.zero;
-        Vector3 bestNormal = Vector3.up;
-
-        Vector3 localPoint2D = new Vector3(x, 0, z);
-
-        foreach (EdgeSegment edge in edges)
+        
+        float halfHorizWidth = horizWidth / 2f;
+        float halfHorizHeight = horizHeight / 2f;
+        float halfVertWidth = vertWidth / 2f;
+        float halfVertHeight = vertHeight / 2f;
+        
+        bool inHorizontal = z >= -halfHorizHeight && z <= halfHorizHeight;
+        bool inVertical = x >= -halfVertWidth && x <= halfVertWidth;
+        
+        Vector3 closestLocal = Vector3.zero;
+        Vector3 normalLocal = Vector3.up;
+        float minDistSq = float.MaxValue;
+        
+        if (inHorizontal)
         {
-            Vector3 pointOnEdge = ClosestPointOnLineSegment(edge.start, edge.end, localPoint2D);
-            float distance = Vector3.Distance(localPoint2D, pointOnEdge);
-
-            if (distance < minDistance)
+            float clampedX = Mathf.Clamp(x, -halfHorizWidth, halfHorizWidth);
+            float clampedZ = Mathf.Clamp(z, -halfHorizHeight, halfHorizHeight);
+            
+            float distToLeft = Mathf.Abs(x + halfHorizWidth);
+            float distToRight = Mathf.Abs(x - halfHorizWidth);
+            float distToBottom = Mathf.Abs(z + halfHorizHeight);
+            float distToTop = Mathf.Abs(z - halfHorizHeight);
+            
+            float minDist = Mathf.Min(distToLeft, distToRight, distToBottom, distToTop);
+            
+            Vector3 candidate = Vector3.zero;
+            Vector3 candidateNormal = Vector3.up;
+            
+            if (minDist == distToLeft && !inVertical)
             {
-                minDistance = distance;
-                bestPoint = pointOnEdge;
-                bestNormal = edge.normal;
+                candidate = new Vector3(-halfHorizWidth, 0, clampedZ);
+                candidateNormal = Vector3.left;
+            }
+            else if (minDist == distToRight && !inVertical)
+            {
+                candidate = new Vector3(halfHorizWidth, 0, clampedZ);
+                candidateNormal = Vector3.right;
+            }
+            else if (minDist == distToBottom)
+            {
+                candidate = new Vector3(clampedX, 0, -halfHorizHeight);
+                candidateNormal = Vector3.back;
+            }
+            else if (minDist == distToTop)
+            {
+                candidate = new Vector3(clampedX, 0, halfHorizHeight);
+                candidateNormal = Vector3.forward;
+            }
+            
+            float distSq = (new Vector3(x, 0, z) - candidate).sqrMagnitude;
+            if (distSq < minDistSq)
+            {
+                minDistSq = distSq;
+                closestLocal = candidate;
+                normalLocal = candidateNormal;
             }
         }
-
-        // Convert back to world space
-        closestPoint = floor.transform.TransformPoint(bestPoint);
-        borderNormal = floor.transform.TransformDirection(bestNormal).normalized;
-
-        return Vector3.Distance(worldPoint, closestPoint);
-    }
-
-    private float GetClosestPointOnCrossShapedFloor(CrossShapedFloor floor, Vector3 worldPoint, out Vector3 closestPoint, out Vector3 borderNormal)
-    {
-        // Convert world point to floor's local space
-        Vector3 localPoint = floor.transform.InverseTransformPoint(worldPoint);
-
-        float horizontalWidth = floor.GetHorizontalWidth();
-        float horizontalHeight = floor.GetHorizontalHeight();
-        float verticalWidth = floor.GetVerticalWidth();
-        float verticalHeight = floor.GetVerticalHeight();
-
-        float halfHW = horizontalWidth / 2f;
-        float halfHH = horizontalHeight / 2f;
-        float halfVW = verticalWidth / 2f;
-        float halfVH = verticalHeight / 2f;
-
-        // Project onto floor plane (y=0)
-        float x = localPoint.x;
-        float z = localPoint.z;
-
-        // Define all edge segments of the cross shape
-        List<EdgeSegment> edges = new List<EdgeSegment>();
-
-        // Bottom vertical bar
-        edges.Add(new EdgeSegment(
-            new Vector3(-halfVW, 0, -halfVH),
-            new Vector3(halfVW, 0, -halfVH),
-            Vector3.back));
-
-        // Bottom-right transition to horizontal bar
-        edges.Add(new EdgeSegment(
-            new Vector3(halfVW, 0, -halfVH),
-            new Vector3(halfVW, 0, -halfHH),
-            Vector3.right));
-
-        edges.Add(new EdgeSegment(
-            new Vector3(halfVW, 0, -halfHH),
-            new Vector3(halfHW, 0, -halfHH),
-            Vector3.back));
-
-        // Right side of horizontal bar
-        edges.Add(new EdgeSegment(
-            new Vector3(halfHW, 0, -halfHH),
-            new Vector3(halfHW, 0, halfHH),
-            Vector3.right));
-
-        // Top-right transition
-        edges.Add(new EdgeSegment(
-            new Vector3(halfHW, 0, halfHH),
-            new Vector3(halfVW, 0, halfHH),
-            Vector3.forward));
-
-        edges.Add(new EdgeSegment(
-            new Vector3(halfVW, 0, halfHH),
-            new Vector3(halfVW, 0, halfVH),
-            Vector3.right));
-
-        // Top of vertical bar
-        edges.Add(new EdgeSegment(
-            new Vector3(halfVW, 0, halfVH),
-            new Vector3(-halfVW, 0, halfVH),
-            Vector3.forward));
-
-        // Top-left transition
-        edges.Add(new EdgeSegment(
-            new Vector3(-halfVW, 0, halfVH),
-            new Vector3(-halfVW, 0, halfHH),
-            Vector3.left));
-
-        edges.Add(new EdgeSegment(
-            new Vector3(-halfVW, 0, halfHH),
-            new Vector3(-halfHW, 0, halfHH),
-            Vector3.forward));
-
-        // Left side of horizontal bar
-        edges.Add(new EdgeSegment(
-            new Vector3(-halfHW, 0, halfHH),
-            new Vector3(-halfHW, 0, -halfHH),
-            Vector3.left));
-
-        // Bottom-left transition
-        edges.Add(new EdgeSegment(
-            new Vector3(-halfHW, 0, -halfHH),
-            new Vector3(-halfVW, 0, -halfHH),
-            Vector3.back));
-
-        edges.Add(new EdgeSegment(
-            new Vector3(-halfVW, 0, -halfHH),
-            new Vector3(-halfVW, 0, -halfVH),
-            Vector3.left));
-
-        // Find the closest edge
-        float minDistance = float.MaxValue;
-        Vector3 bestPoint = Vector3.zero;
-        Vector3 bestNormal = Vector3.up;
-
-        Vector3 localPoint2D = new Vector3(x, 0, z);
-
-        foreach (EdgeSegment edge in edges)
+        
+        if (inVertical)
         {
-            Vector3 pointOnEdge = ClosestPointOnLineSegment(edge.start, edge.end, localPoint2D);
-            float distance = Vector3.Distance(localPoint2D, pointOnEdge);
-
-            if (distance < minDistance)
+            float clampedX = Mathf.Clamp(x, -halfVertWidth, halfVertWidth);
+            float clampedZ = Mathf.Clamp(z, -halfVertHeight, halfVertHeight);
+            
+            float distToLeft = Mathf.Abs(x + halfVertWidth);
+            float distToRight = Mathf.Abs(x - halfVertWidth);
+            float distToBottom = Mathf.Abs(z + halfVertHeight);
+            float distToTop = Mathf.Abs(z - halfVertHeight);
+            
+            float minDist = Mathf.Min(distToLeft, distToRight, distToBottom, distToTop);
+            
+            Vector3 candidate = Vector3.zero;
+            Vector3 candidateNormal = Vector3.up;
+            
+            if (minDist == distToLeft)
             {
-                minDistance = distance;
-                bestPoint = pointOnEdge;
-                bestNormal = edge.normal;
+                candidate = new Vector3(-halfVertWidth, 0, clampedZ);
+                candidateNormal = Vector3.left;
+            }
+            else if (minDist == distToRight)
+            {
+                candidate = new Vector3(halfVertWidth, 0, clampedZ);
+                candidateNormal = Vector3.right;
+            }
+            else if (minDist == distToBottom && !inHorizontal)
+            {
+                candidate = new Vector3(clampedX, 0, -halfVertHeight);
+                candidateNormal = Vector3.back;
+            }
+            else if (minDist == distToTop && !inHorizontal)
+            {
+                candidate = new Vector3(clampedX, 0, halfVertHeight);
+                candidateNormal = Vector3.forward;
+            }
+            
+            float distSq = (new Vector3(x, 0, z) - candidate).sqrMagnitude;
+            if (distSq < minDistSq)
+            {
+                minDistSq = distSq;
+                closestLocal = candidate;
+                normalLocal = candidateNormal;
             }
         }
-
-        // Convert back to world space
-        closestPoint = floor.transform.TransformPoint(bestPoint);
-        borderNormal = floor.transform.TransformDirection(bestNormal).normalized;
-
+        
+        closestPoint = floor.transform.TransformPoint(closestLocal);
+        borderNormal = floor.transform.TransformDirection(normalLocal).normalized;
+        
         return Vector3.Distance(worldPoint, closestPoint);
-    }
-
-    // Helper class to represent an edge segment with its normal
-    private class EdgeSegment
-    {
-        public Vector3 start;
-        public Vector3 end;
-        public Vector3 normal;
-
-        public EdgeSegment(Vector3 s, Vector3 e, Vector3 n)
-        {
-            start = s;
-            end = e;
-            normal = n;
-        }
-    }
-
-    // Helper function to find closest point on a line segment
-    private Vector3 ClosestPointOnLineSegment(Vector3 lineStart, Vector3 lineEnd, Vector3 point)
-    {
-        Vector3 lineDirection = lineEnd - lineStart;
-        float lineLength = lineDirection.magnitude;
-        lineDirection.Normalize();
-
-        float projectionLength = Vector3.Dot(point - lineStart, lineDirection);
-        projectionLength = Mathf.Clamp(projectionLength, 0f, lineLength);
-
-        return lineStart + lineDirection * projectionLength;
     }
 
     private void SnapToFloorBorder()
@@ -837,6 +838,13 @@ public class RectangularDoor : MonoBehaviour
             prevFloorDimensions["verticalWidth"] = cf.GetVerticalWidth();
             prevFloorDimensions["verticalHeight"] = cf.GetVerticalHeight();
         }
+        else if (attachedFloor is Circularfloor)
+        {
+            Circularfloor cf = (Circularfloor)attachedFloor;
+            prevFloorDimensions["width"] = GetCircularFloorWidth(cf);
+            prevFloorDimensions["height"] = GetCircularFloorHeight(cf);
+            prevFloorDimensions["cornerRadius"] = cf.cornerRadius;
+        }
     }
 
     private bool HasFloorDimensionsChanged()
@@ -865,6 +873,14 @@ public class RectangularDoor : MonoBehaviour
                    Mathf.Abs(cf.GetHorizontalHeight() - prevFloorDimensions["horizontalHeight"]) > 0.001f ||
                    Mathf.Abs(cf.GetVerticalWidth() - prevFloorDimensions["verticalWidth"]) > 0.001f ||
                    Mathf.Abs(cf.GetVerticalHeight() - prevFloorDimensions["verticalHeight"]) > 0.001f;
+        }
+        else if (attachedFloor is Circularfloor)
+        {
+            Circularfloor cf = (Circularfloor)attachedFloor;
+            return !prevFloorDimensions.ContainsKey("width") ||
+                   Mathf.Abs(GetCircularFloorWidth(cf) - prevFloorDimensions["width"]) > 0.001f ||
+                   Mathf.Abs(GetCircularFloorHeight(cf) - prevFloorDimensions["height"]) > 0.001f ||
+                   Mathf.Abs(cf.cornerRadius - prevFloorDimensions["cornerRadius"]) > 0.001f;
         }
         
         return false;
@@ -988,5 +1004,133 @@ public class RectangularDoor : MonoBehaviour
             Gizmos.color = Color.yellow;
             Gizmos.DrawRay(floorSnapPoint, floorSnapNormal * 0.5f);
         }
+    }
+
+    // === T-SHAPED FLOOR SUPPORT ===
+    private float GetClosestPointOnTShapedFloorBorder(TShapedFloor floor, Vector3 worldPoint, out Vector3 closestPoint, out Vector3 borderNormal)
+    {
+        // Convert world point to floor's local space
+        Vector3 localPoint = floor.transform.InverseTransformPoint(worldPoint);
+
+        float topWidth = floor.GetTopWidth();
+        float topHeight = floor.GetTopHeight();
+        float stemWidth = floor.GetStemWidth();
+        float stemHeight = floor.GetStemHeight();
+
+        float halfTopW = topWidth / 2f;
+        float halfStemW = stemWidth / 2f;
+        float topY = stemHeight / 2f;
+        float bottomY = -stemHeight / 2f;
+        float topBarBottom = topY - topHeight;
+
+        // Project onto floor plane (y=0)
+        float x = localPoint.x;
+        float z = localPoint.z;
+
+        // Find closest point on the T-shape border
+        List<EdgeSegment> edges = new List<EdgeSegment>();
+
+        // Define all edge segments of the T-shape
+        // Bottom of stem
+        edges.Add(new EdgeSegment(
+            new Vector3(-halfStemW, 0, bottomY),
+            new Vector3(halfStemW, 0, bottomY),
+            Vector3.back));
+
+        // Right side of stem (bottom part)
+        edges.Add(new EdgeSegment(
+            new Vector3(halfStemW, 0, bottomY),
+            new Vector3(halfStemW, 0, topBarBottom),
+            Vector3.right));
+
+        // Right transition from stem to top bar
+        edges.Add(new EdgeSegment(
+            new Vector3(halfStemW, 0, topBarBottom),
+            new Vector3(halfTopW, 0, topBarBottom),
+            Vector3.back));
+
+        // Right side of top bar
+        edges.Add(new EdgeSegment(
+            new Vector3(halfTopW, 0, topBarBottom),
+            new Vector3(halfTopW, 0, topY),
+            Vector3.right));
+
+        // Top of top bar
+        edges.Add(new EdgeSegment(
+            new Vector3(halfTopW, 0, topY),
+            new Vector3(-halfTopW, 0, topY),
+            Vector3.forward));
+
+        // Left side of top bar
+        edges.Add(new EdgeSegment(
+            new Vector3(-halfTopW, 0, topY),
+            new Vector3(-halfTopW, 0, topBarBottom),
+            Vector3.left));
+
+        // Left transition from top bar to stem
+        edges.Add(new EdgeSegment(
+            new Vector3(-halfTopW, 0, topBarBottom),
+            new Vector3(-halfStemW, 0, topBarBottom),
+            Vector3.back));
+
+        // Left side of stem (bottom part)
+        edges.Add(new EdgeSegment(
+            new Vector3(-halfStemW, 0, topBarBottom),
+            new Vector3(-halfStemW, 0, bottomY),
+            Vector3.left));
+
+        // Find the closest edge
+        float minDistance = float.MaxValue;
+        Vector3 bestPoint = Vector3.zero;
+        Vector3 bestNormal = Vector3.up;
+
+        Vector3 localPoint2D = new Vector3(x, 0, z);
+
+        foreach (EdgeSegment edge in edges)
+        {
+            Vector3 pointOnEdge = ClosestPointOnLineSegment(edge.start, edge.end, localPoint2D);
+            float distance = Vector3.Distance(localPoint2D, pointOnEdge);
+
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                bestPoint = pointOnEdge;
+                bestNormal = edge.normal;
+            }
+        }
+
+        // Convert back to world space
+        closestPoint = floor.transform.TransformPoint(bestPoint);
+        borderNormal = floor.transform.TransformDirection(bestNormal).normalized;
+
+        return Vector3.Distance(worldPoint, closestPoint);
+    }
+
+    // Helper class for edge segments
+    private class EdgeSegment
+    {
+        public Vector3 start;
+        public Vector3 end;
+        public Vector3 normal;
+
+        public EdgeSegment(Vector3 s, Vector3 e, Vector3 n)
+        {
+            start = s;
+            end = e;
+            normal = n;
+        }
+    }
+
+    // Helper function to find closest point on a line segment
+    private Vector3 ClosestPointOnLineSegment(Vector3 lineStart, Vector3 lineEnd, Vector3 point)
+    {
+        Vector3 lineDirection = lineEnd - lineStart;
+        float lineLength = lineDirection.magnitude;
+        lineDirection.Normalize();
+
+        float projectionLength = Vector3.Dot(point - lineStart, lineDirection);
+        projectionLength = Mathf.Clamp(projectionLength, 0f, lineLength);
+
+        return lineStart + lineDirection * projectionLength;
     }
 }

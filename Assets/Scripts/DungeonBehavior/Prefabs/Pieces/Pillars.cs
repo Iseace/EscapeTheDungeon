@@ -36,7 +36,7 @@ public class Pillar : MonoBehaviour
     private MonoBehaviour attachedObject; // The object (Wall, Door, or Floor) we're attached to
     private bool attachedToLeftSide; // Which side of the object we're attached to (for walls/doors)
     private int attachedCornerIndex; // Which corner of the floor we're attached to (0-3: BL, BR, TR, TL)
-    private string attachedObjectType; // Track type: "RectangularWall", "RectangularDoor", "CircularWall", "CircularDoor", "RectangularFloor"
+    private string attachedObjectType; // Track type: "RectangularWall", "Door", "CircularWall", "RectangularFloor"
 
     // Previous position for tracking movement
     private Vector3 prevObjectPos;
@@ -140,9 +140,8 @@ public class Pillar : MonoBehaviour
     {
         // Find all walls, doors, and floors in the scene
         Wall[] rectangularWalls = FindObjectsOfType<Wall>();
-        RectangularDoor[] rectangularDoors = FindObjectsOfType<RectangularDoor>();
+        Door[] Doors = FindObjectsOfType<Door>();
         CircularWall[] circularWalls = FindObjectsOfType<CircularWall>();
-        CircularDoor[] circularDoors = FindObjectsOfType<CircularDoor>();
         RectangularFloor[] rectangularFloors = FindObjectsOfType<RectangularFloor>();
         TShapedFloor[] tShapedFloors = FindObjectsOfType<TShapedFloor>();
         CrossShapedFloor[] crossShapedFloors = FindObjectsOfType<CrossShapedFloor>();
@@ -185,9 +184,9 @@ public class Pillar : MonoBehaviour
         }
 
         // Check rectangular doors
-        foreach (RectangularDoor door in rectangularDoors)
+        foreach (Door door in Doors)
         {
-            if (door.Type == RectangularDoor.RoomType.Door)
+            if (door.Type == Door.RoomType.Door)
             {
                 Vector3 snapPoint;
                 bool isLeftSide;
@@ -200,7 +199,7 @@ public class Pillar : MonoBehaviour
                         closestDist = dist;
                         attachedObject = door;
                         attachedToLeftSide = isLeftSide;
-                        attachedObjectType = "RectangularDoor";
+                        attachedObjectType = "Door";
                         snapToAttachment = true;
                     }
                 }
@@ -224,29 +223,6 @@ public class Pillar : MonoBehaviour
                         attachedObject = wall;
                         attachedToLeftSide = isLeftSide;
                         attachedObjectType = "CircularWall";
-                        snapToAttachment = true;
-                    }
-                }
-            }
-        }
-
-        // Check circular doors
-        foreach (CircularDoor door in circularDoors)
-        {
-            if (door.Type == CircularDoor.RoomType.Door)
-            {
-                Vector3 snapPoint;
-                bool isLeftSide;
-                
-                if (IsPointNearCircularDoorAttachment(door, connectionWorld, out snapPoint, out isLeftSide))
-                {
-                    float dist = Vector3.Distance(connectionWorld, snapPoint);
-                    if (dist < closestDist)
-                    {
-                        closestDist = dist;
-                        attachedObject = door;
-                        attachedToLeftSide = isLeftSide;
-                        attachedObjectType = "CircularDoor";
                         snapToAttachment = true;
                     }
                 }
@@ -405,36 +381,10 @@ public class Pillar : MonoBehaviour
         return false;
     }
 
-    private bool IsPointNearCircularWallAttachment(CircularWall wall, Vector3 point, out Vector3 snapPoint, out bool isLeftSide)
+    public bool IsPointNearCircularWallAttachment(CircularWall wall, Vector3 point, out Vector3 snapPoint, out bool isLeftSide)
     {
         Vector3 leftPoint = wall.GetLeftConnectionPointWorld();
         Vector3 rightPoint = wall.GetRightConnectionPointWorld();
-
-        float distLeft = Vector3.Distance(point, leftPoint);
-        float distRight = Vector3.Distance(point, rightPoint);
-
-        if (distLeft < distRight && distLeft < detectionRange)
-        {
-            snapPoint = leftPoint;
-            isLeftSide = true;
-            return true;
-        }
-        else if (distRight < detectionRange)
-        {
-            snapPoint = rightPoint;
-            isLeftSide = false;
-            return true;
-        }
-
-        snapPoint = Vector3.zero;
-        isLeftSide = false;
-        return false;
-    }
-
-    private bool IsPointNearCircularDoorAttachment(CircularDoor door, Vector3 point, out Vector3 snapPoint, out bool isLeftSide)
-    {
-        Vector3 leftPoint = door.GetLeftAttachmentPointWorld();
-        Vector3 rightPoint = door.GetRightAttachmentPointWorld();
 
         float distLeft = Vector3.Distance(point, leftPoint);
         float distRight = Vector3.Distance(point, rightPoint);
@@ -472,11 +422,11 @@ public class Pillar : MonoBehaviour
                     rectWall.GetRightConnectionPointWorld();
                 break;
 
-            case "RectangularDoor":
-                RectangularDoor rectDoor = (RectangularDoor)attachedObject;
+            case "Door":
+                Door door = (Door)attachedObject;
                 targetPoint = attachedToLeftSide ? 
-                    rectDoor.GetLeftAttachmentPointWorld() : 
-                    rectDoor.GetRightAttachmentPointWorld();
+                    door.GetLeftAttachmentPointWorld() : 
+                    door.GetRightAttachmentPointWorld();
                 break;
 
             case "CircularWall":
@@ -484,13 +434,6 @@ public class Pillar : MonoBehaviour
                 targetPoint = attachedToLeftSide ? 
                     circWall.GetLeftConnectionPointWorld() : 
                     circWall.GetRightConnectionPointWorld();
-                break;
-
-            case "CircularDoor":
-                CircularDoor circDoor = (CircularDoor)attachedObject;
-                targetPoint = attachedToLeftSide ? 
-                    circDoor.GetLeftAttachmentPointWorld() : 
-                    circDoor.GetRightAttachmentPointWorld();
                 break;
 
             case "RectangularFloor":
@@ -887,11 +830,11 @@ public class Pillar : MonoBehaviour
                         rectWall.GetRightConnectionPointWorld();
                     break;
 
-                case "RectangularDoor":
-                    RectangularDoor rectDoor = (RectangularDoor)attachedObject;
+                case "Door":
+                    Door door = (Door)attachedObject;
                     attachPoint = attachedToLeftSide ? 
-                        rectDoor.GetLeftAttachmentPointWorld() : 
-                        rectDoor.GetRightAttachmentPointWorld();
+                        door.GetLeftAttachmentPointWorld() : 
+                        door.GetRightAttachmentPointWorld();
                     break;
 
                 case "CircularWall":
@@ -899,13 +842,6 @@ public class Pillar : MonoBehaviour
                     attachPoint = attachedToLeftSide ? 
                         circWall.GetLeftConnectionPointWorld() : 
                         circWall.GetRightConnectionPointWorld();
-                    break;
-
-                case "CircularDoor":
-                    CircularDoor circDoor = (CircularDoor)attachedObject;
-                    attachPoint = attachedToLeftSide ? 
-                        circDoor.GetLeftAttachmentPointWorld() : 
-                        circDoor.GetRightAttachmentPointWorld();
                     break;
 
                 case "RectangularFloor":
