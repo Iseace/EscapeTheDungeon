@@ -5,6 +5,7 @@ Obj/
 Build/
 .vscode/
 .vs/
+*.vsconfig
 UserSettings/
 *.csproj
 *.slnx

@@ -7,9 +7,7 @@ public class PlayerMovement : NetworkBehaviour
     private Animator _animator;
 
     [Header("References")]
-    [Tooltip("Assign the Graphics parent object that contains all skin options")]
     public Transform GraphicsRoot;
-    [Tooltip("Assign the CameraPivot transform (should be at y=1.8)")]
     public Transform CameraPivot;
 
     [Header("Movement Settings")]
@@ -17,11 +15,11 @@ public class PlayerMovement : NetworkBehaviour
     public float JumpForce = 5f;
     public float Gravity = -9.81f;
 
-    public Camera Camera;
+    // Networked properties host to clients
+    [Networked] private Vector3 _velocity { get; set; }
+    [Networked] private NetworkBool _isGrounded { get; set; }
 
-    private Vector3 _velocity;
-    private bool _isGrounded;
-    private bool _jumpPressed;
+    public Camera Camera;
 
     private void Awake()
     {
@@ -33,108 +31,84 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (GraphicsRoot != null)
         {
-            _animator = GraphicsRoot.GetComponentInChildren<Animator>(false);
+            _animator = GraphicsRoot.GetComponent<Animator>();
+
+            // Si por alguna razón no está en la raíz, buscamos en hijos
+            if (_animator == null)
+                _animator = GraphicsRoot.GetComponentInChildren<Animator>(false);
         }
         else
         {
             _animator = GetComponentInChildren<Animator>(false);
         }
-
-        if (_animator == null)
-        {
-            Debug.LogWarning("Animator not found! Make sure one skin is active in the Graphics folder.");
-        }
-        else
-        {
-            Debug.Log($"Animator found on: {_animator.gameObject.name}");
-        }
-    }
-
-    void Update()
-    {
-        if (HasStateAuthority == false)
-            return;
-
-        if (Input.GetButtonDown("Jump"))
-        {
-            _jumpPressed = true;
-        }
     }
 
     public override void FixedUpdateNetwork()
     {
-        // Only move own player
-        if (HasStateAuthority == false)
+        if (GetInput(out PlayerInputData data))
         {
-            return;
+            _isGrounded = _controller.isGrounded;
+            // Local variable to modify velocity
+            Vector3 currentVelocity = _velocity;
+            if (_isGrounded && currentVelocity.y < 0)
+            {
+                currentVelocity.y = -2f;
+            }
+            //Handle Rotation
+            Vector3 camEuler = data.CameraRotation.eulerAngles;
+            transform.rotation = Quaternion.Euler(0, camEuler.y, 0);
+            //Handle Movement
+            Vector3 move = transform.rotation * new Vector3(data.MoveDirection.x, 0, data.MoveDirection.z) * PlayerSpeed;
+            _controller.Move(move * Runner.DeltaTime);
+            //Handle Jump
+            if (data.JumpPressed && _isGrounded)
+            {
+                currentVelocity.y = JumpForce;
+                if (HasStateAuthority) RPC_TriggerJump();
+            }
+            //Apply Gravity to the local variable
+            currentVelocity.y += Gravity * Runner.DeltaTime;
+            //RE-ASSIGN the modified velocity back to the Networked property
+            _velocity = currentVelocity;
+            //Move the controller using the updated velocity
+            _controller.Move(_velocity * Runner.DeltaTime);
+            UpdateAnimations(move);
         }
+    }
 
-        if (Camera == null)
+    private void UpdateAnimations(Vector3 move)
+    {
+        if (_animator == null)
         {
-            return;
+            RefreshAnimatorReference();
+            if (_animator == null) return;
         }
-
-        _isGrounded = _controller.isGrounded;
-
-        if (_isGrounded && _velocity.y < 0)
-        {
-            _velocity.y = -2f;
-        }
-
-        float horizontal = Input.GetAxis("Horizontal");
-        float vertical = Input.GetAxis("Vertical");
-
-        var cameraRotationY = Quaternion.Euler(0, Camera.transform.rotation.eulerAngles.y, 0);
-        Vector3 move = cameraRotationY * new Vector3(horizontal, 0, vertical) * Runner.DeltaTime * PlayerSpeed;
-
-        _controller.Move(move);
-
-        // Rotate character to match camera's horizontal rotation
-        transform.rotation = Quaternion.Euler(0, Camera.transform.rotation.eulerAngles.y, 0);
-
-        if (_jumpPressed && _isGrounded)
-        {
-            _velocity.y = JumpForce;
-
-            // Trigger jump animation via RPC so all clients see it
-            RPC_TriggerJump();
-        }
-
-        _velocity.y += Gravity * Runner.DeltaTime;
-        _controller.Move(_velocity * Runner.DeltaTime);
-
-        // Update animator - NetworkMecanimAnimator handles syncing these
-        if (_animator != null)
-        {
-            Vector3 localMove = transform.InverseTransformDirection(move.normalized);
-            _animator.SetFloat("MoveX", localMove.x * (move.magnitude > 0 ? 1 : 0));
-            _animator.SetFloat("MoveZ", localMove.z * (move.magnitude > 0 ? 1 : 0));
-            _animator.SetBool("IsGrounded", _isGrounded);
-        }
-
-        _jumpPressed = false;
+        // Convert world movement to local for Animator (MoveX, MoveZ)
+        Vector3 localMove = transform.InverseTransformDirection(move.normalized);
+        _animator.SetFloat("MoveX", localMove.x);
+        _animator.SetFloat("MoveZ", localMove.z);
+        _animator.SetBool("IsGrounded", _isGrounded);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_TriggerJump()
     {
-        if (_animator != null)
-        {
-            _animator.SetTrigger("Jump");
-        }
+        if (_animator != null) _animator.SetTrigger("Jump");
     }
 
     public override void Spawned()
     {
-        if (HasStateAuthority)
+        // HasInputAuthority is true for the player who controls this specific prefab
+        if (HasInputAuthority)
         {
             Camera = Camera.main;
             Transform targetTransform = CameraPivot != null ? CameraPivot : transform;
-            Camera.GetComponent<FirstPersonCamera>().SetTarget(targetTransform, GraphicsRoot != null ? GraphicsRoot.gameObject : gameObject);
 
-            if (CameraPivot == null)
+            // Setup local camera follow
+            var fpCam = Camera.GetComponent<FirstPersonCamera>();
+            if (fpCam != null)
             {
-                Debug.LogWarning("CameraPivot not assigned! Camera will follow root transform at ground level.");
+                fpCam.SetTarget(targetTransform, GraphicsRoot != null ? GraphicsRoot.gameObject : gameObject);
             }
         }
     }
