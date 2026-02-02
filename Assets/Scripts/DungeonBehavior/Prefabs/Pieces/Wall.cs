@@ -170,7 +170,7 @@ public class Wall : MonoBehaviour
     private void DetectAndAttachToObjects()
     {
         // Find all doors and pillars in the scene
-        RectangularDoor[] doors = FindObjectsOfType<RectangularDoor>();
+        Door[] doors = FindObjectsOfType<Door>();
         Pillar[] pillars = FindObjectsOfType<Pillar>();
 
         // Calculate current wall connection points in world space (at bottom)
@@ -193,9 +193,9 @@ public class Wall : MonoBehaviour
         float closestLeftDist = detectionRange;
         
         // Check doors
-        foreach (RectangularDoor door in doors)
+        foreach (Door door in doors)
         {
-            if (door.Type == RectangularDoor.RoomType.Door)
+            if (door.Type == Door.RoomType.Door)
             {
                 Vector3 snapPoint;
                 bool isLeftSide;
@@ -237,9 +237,9 @@ public class Wall : MonoBehaviour
         float closestRightDist = detectionRange;
         
         // Check doors
-        foreach (RectangularDoor door in doors)
+        foreach (Door door in doors)
         {
-            if (door.Type == RectangularDoor.RoomType.Door)
+            if (door.Type == Door.RoomType.Door)
             {
                 Vector3 snapPoint;
                 bool isLeftSide;
@@ -349,7 +349,7 @@ public class Wall : MonoBehaviour
     {
         if (objectType == "Door")
         {
-            RectangularDoor door = (RectangularDoor)obj;
+            Door door = (Door)obj;
             return isLeftSide ? door.GetLeftAttachmentPointWorld() : door.GetRightAttachmentPointWorld();
         }
         else if (objectType == "Pillar")
