@@ -13,6 +13,8 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     [Header("UI References")]
     [SerializeField] private TMP_InputField hostRoomInput;
     [SerializeField] private Button hostBtn;
+    [SerializeField] private TMP_InputField clientRoomInput;
+    [SerializeField] private Button clientBtn;
 
     [Header("Network Settings")]
     [SerializeField] private string lobbySceneName = "LobbyRoom";
@@ -34,79 +36,22 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         OnJoinLobby();
     }
 
-    public async void OnJoinLobby()
-    {
-        Debug.Log("[NETWORK] Joining lobby to fetch sessions...");
-
-        if (_runner == null)
-        {
-            _runner = gameObject.AddComponent<NetworkRunner>();
-            _runner.AddCallbacks(this);
-        }
-
-        var result = await _runner.JoinSessionLobby(SessionLobby.ClientServer);
-        
-        if (result.Ok)
-        {
-            Debug.Log("[NETWORK] Successfully joined lobby");
-        }
-        else
-        {
-            Debug.LogError($"[NETWORK] Failed to join lobby: {result.ShutdownReason}");
-            Debug.LogWarning("[NETWORK] Session list will not be available. You can still create rooms.");
-        }
-    }
-
     private async void OnHostRoom()
     {
         string roomName = hostRoomInput.text.Trim();
         if (string.IsNullOrEmpty(roomName))
             return;
 
-        // If runner is running, shutdown first
-        if (_runner != null && _runner.IsRunning)
-        {
-            await _runner.Shutdown();
-        }
-
-        // Check if there's already a NetworkRunner on this GameObject and remove it
-        var existingRunners = GetComponents<NetworkRunner>();
-        foreach (var runner in existingRunners)
-        {
-            DestroyImmediate(runner);
-        }
-        
-        _runner = null;
-
-        // Wait one frame to ensure cleanup
-        await System.Threading.Tasks.Task.Yield();
-
         await StartGame(GameMode.Host, roomName);
     }
 
-    public async void JoinGame(SessionInfo sessionInfo)
+    private async void OnJoinRoom()
     {
-        Debug.Log($"[NETWORK] Joining session: {sessionInfo.Name}");
+        string roomName = clientRoomInput.text.Trim();
+        if (string.IsNullOrEmpty(roomName))
+            return;
 
-        // If runner is running, shutdown first
-        if (_runner != null && _runner.IsRunning)
-        {
-            await _runner.Shutdown();
-        }
-
-        // Check if there's already a NetworkRunner on this GameObject and remove it
-        var existingRunners = GetComponents<NetworkRunner>();
-        foreach (var runner in existingRunners)
-        {
-            DestroyImmediate(runner);
-        }
-        
-        _runner = null;
-
-        // Wait one frame to ensure cleanup
-        await System.Threading.Tasks.Task.Yield();
-
-        await StartGame(GameMode.Client, sessionInfo.Name);
+        await StartGame(GameMode.Client, roomName);
     }
 
     private async System.Threading.Tasks.Task StartGame(GameMode mode, string roomName)
@@ -136,32 +81,6 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         }
     }
 
-    // Method to start the actual game (call this when players are ready)
-    public async void StartGameSession()
-    {
-        if (_runner == null || !_runner.IsRunning)
-        {
-            Debug.LogError("[NETWORK] Cannot start game - runner not active");
-            return;
-        }
-
-        if (_runner.GameMode != GameMode.Host)
-        {
-            Debug.LogWarning("[NETWORK] Only the host can start the game");
-            return;
-        }
-
-        Debug.Log("[NETWORK] Starting game session...");
-
-        // Set session to closed so no one can join
-        _runner.SessionInfo.IsOpen = false;
-
-        // Load the game scene
-        await _runner.LoadScene(SceneRef.FromIndex(
-            SceneUtility.GetBuildIndexByScenePath("Scenes/" + gameSceneName)
-        ));
-    }
-
     // Used callbacks
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
@@ -173,98 +92,13 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         Debug.Log($"Runner shutdown: {reason}");
     }
 
-    public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
-    {
-        Debug.Log($"[NETWORK] Session list updated. Found {sessionList.Count} sessions");
-
-        if (LobbyListManager == null)
-        {
-            Debug.LogWarning("[NETWORK] LobbyListManager reference is missing!");
-            return;
-        }
-
-        if (sessionList.Count == 0)
-        {
-            LobbyListManager.OnNoSessionFound();
-        }
-        else
-        {
-            LobbyListManager.ClearList();
-            foreach (SessionInfo session in sessionList)
-            {
-                Debug.Log($"[NETWORK] Session: {session.Name} - Players: {session.PlayerCount}/{session.MaxPlayers}");
-                LobbyListManager.AddToList(session);
-            }
-        }
-    }
-
-    public void OnSceneLoadDone(NetworkRunner runner)
-    {
-        // Check if we just loaded the game scene (not the lobby scene)
-        string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-        
-        Debug.Log($"[NETWORK] Scene loaded: {currentSceneName}");
-        
-        if (currentSceneName != lobbySceneName && runner.GameMode == GameMode.Host)
-        {
-            Debug.Log($"[NETWORK] Game scene '{currentSceneName}' loaded - marking session as started");
-            
-            // Close the session so no new players can join
-            if (runner.SessionInfo != null)
-            {
-                runner.SessionInfo.IsOpen = false;
-                Debug.Log("[NETWORK] Session marked as closed (IsOpen = false)");
-            }
-        }
-    }
-
     // Input handling
-    // Primero, necesitas las referencias a tus acciones (se asignan en el Inspector)
-    [Header("Input Action References")]
-    public InputActionReference moveAction;
-    public InputActionReference attackAction;
-    public InputActionReference interactAction;
-    public InputActionReference specialAction;
-
-    // Debajo de tus variables, añade esto:
-    private void OnEnable()
-    {
-        if (moveAction != null) moveAction.action.Enable();
-        if (attackAction != null) attackAction.action.Enable();
-        if (interactAction != null) interactAction.action.Enable();
-        if (specialAction != null) specialAction.action.Enable();
-    }
-
-    private void OnDisable()
-    {
-        // Es buena práctica apagarlas cuando el objeto se destruye
-        if (moveAction != null) moveAction.action.Disable();
-        if (attackAction != null) attackAction.action.Disable();
-        if (interactAction != null) interactAction.action.Disable();
-        if (specialAction != null) specialAction.action.Disable();
-    }
-
     public void OnInput(NetworkRunner runner, NetworkInput input)
     {
         var myInput = new PlayerInputData();
-
-        // El "Move" ahora lee el Vector2 del joystick o WASD automáticamente
-        if (moveAction != null)
-        {
-            Vector2 moveVal = moveAction.action.ReadValue<Vector2>();
-            myInput.MoveDirection = new Vector3(moveVal.x, 0, moveVal.y);
-        }
-
-        // Las acciones detectan si se presionó el botón en pantalla O la tecla
-        if (attackAction != null)
-            myInput.AttackPressed = attackAction.action.WasPressedThisFrame();
-        
-        if (interactAction != null)
-            myInput.InteractPressed = interactAction.action.WasPressedThisFrame();
-        
-        if (specialAction != null)
-            myInput.SpecialPressed = specialAction.action.WasPressedThisFrame();
-
+        myInput.MoveDirection = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
+        myInput.JumpPressed = Input.GetButton("Jump");
+        myInput.InteractPressed = Input.GetKey(KeyCode.E);
         if (Camera.main != null)
             myInput.CameraRotation = Camera.main.transform.rotation;
 
@@ -292,7 +126,5 @@ public struct PlayerInputData : INetworkInput
     public Vector3 MoveDirection;
     public NetworkBool JumpPressed;
     public Quaternion CameraRotation;
-    public NetworkBool InteractPressed; //  (Tecla E / Especial 1)
-    public NetworkBool AttackPressed;   //  (Click / Ataque Básico)
-    public NetworkBool SpecialPressed;  //  (Tecla Q / Especial 2)
+    public NetworkBool InteractPressed;
 }
