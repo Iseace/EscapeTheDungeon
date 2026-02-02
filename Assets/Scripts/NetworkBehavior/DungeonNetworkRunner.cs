@@ -18,7 +18,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
         Debug.Log($"CurrentSeed: {SharedSeed}");
 
         // Find the DungeonCreator in the scene
-        dungeonCreator = FindObjectOfType<DungeonCreator>();
+        dungeonCreator = FindFirstObjectByType<DungeonCreator>();
 
         if (dungeonCreator == null)
         {
@@ -29,8 +29,8 @@ public class DungeonNetworkRunner : NetworkBehaviour
         Debug.Log("DungeonCreator found!");
 
         // Master client generates the seed ONLY if it's not set yet
-        bool shouldGenerateSeed = Runner.GameMode == GameMode.Shared 
-            ? Runner.IsSharedModeMasterClient 
+        bool shouldGenerateSeed = Runner.GameMode == GameMode.Shared
+            ? Runner.IsSharedModeMasterClient
             : Object.HasStateAuthority;
 
         if (shouldGenerateSeed && SharedSeed == 0)
@@ -38,7 +38,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
             // Generate a random seed
             int newSeed = Random.Range(1, int.MaxValue);
             SharedSeed = newSeed;
-            
+
             Debug.Log($"[MASTER CLIENT] Generated seed: {SharedSeed}");
         }
         else if (SharedSeed != 0)
