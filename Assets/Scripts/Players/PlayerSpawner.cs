@@ -9,7 +9,7 @@ using System.Linq;
 public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 {
     public NetworkObject PlayerPrefab;
-    
+
     [Header("Dungeon Runner")]
     public NetworkObject dungeonNetworkRunnerPrefab;
     private bool dungeonRunnerSpawned = false;

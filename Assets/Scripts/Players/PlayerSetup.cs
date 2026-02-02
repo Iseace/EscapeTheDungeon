@@ -1,66 +1,115 @@
 using UnityEngine;
 using Fusion;
-using UnityEngine.SceneManagement; // Added for the Lobby check
+using UnityEngine.Animations;
 
-/// <summary>
-/// Attach this to your Player prefab alongside NetworkCharacterController
-/// </summary>
 public class PlayerSetup : NetworkBehaviour
 {
     [Header("Camera Setup")]
-    [SerializeField] private Transform cameraPivot; // Optional: leave empty to use player transform
-    [SerializeField] private GameObject graphics; // The Graphics GameObject with visual model
-    [SerializeField] private float cameraHeight = 1.6f; // Height offset if no pivot
+    [SerializeField] private Transform cameraPivot;
+    [SerializeField] private GameObject graphicsContainer; // El objeto "Graphics" que contiene a los personajes
+    [SerializeField] private float cameraHeight = 1.6f;
+
+    [Header("Visual Models")]
+    [SerializeField] private GameObject[] characterModels; // Arrastra aquí a Mago, Guerrero, etc.
+    [SerializeField] private Avatar[] characterAvatars; // Arrastra aquí los Avatares correspondientes
+
+    // Esta variable sincroniza el personaje para TODOS en la red
+    [Networked]
+    public int SelectedCharacterIndex { get; set; }
+    public ParentConstraint wandConstraint;
 
     public override void Spawned()
     {
-        // Only configure the camera for the LOCAL player
+        // 1. Configuración de Cámara (Solo local)
         if (HasInputAuthority)
         {
             SetupCamera();
             LockCursor();
+
+            // 2. Leer la selección guardada y avisar al servidor
+            int idGuardado = PlayerPrefs.GetInt("SelectedCharacterID", 0);
+
+            // Enviamos un RPC para que el Host asigne nuestro personaje
+            Rpc_RequestCharacterSelection(idGuardado);
+        }
+    }
+
+    // El cliente le pide al servidor: "Ponme el modelo X"
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    public void Rpc_RequestCharacterSelection(int index)
+    {
+        // Solo el StateAuthority (Host) puede cambiar valores [Networked]
+        SelectedCharacterIndex = index;
+    }
+
+    // Render se encarga de la visual en tiempo real sin afectar la física
+    public override void Render()
+    {
+        if (graphicsContainer == null) return;
+
+        Animator anim = graphicsContainer.GetComponent<Animator>();
+        int currentID = SelectedCharacterIndex;
+
+        // 1. CICLO PARA MODELOS Y AVATARS
+        for (int i = 0; i < characterModels.Length; i++)
+        {
+            bool isSelected = (i == currentID);
+
+            if (characterModels[i].activeSelf != isSelected)
+            {
+                characterModels[i].SetActive(isSelected);
+            }
+
+            if (isSelected && anim != null && characterAvatars.Length > i)
+            {
+                if (anim.avatar != characterAvatars[i])
+                {
+                    anim.avatar = characterAvatars[i];
+                    anim.Rebind();
+                    anim.Update(0);
+                    Debug.Log($"Avatar sincronizado: {characterModels[i].name}");
+                }
+            }
+        }
+
+        // 2. NUEVO: SINCRONIZAR EL PESO DEL CONSTRAINT (MANO IZQ/DER)
+        if (wandConstraint != null)
+        {
+            for (int s = 0; s < wandConstraint.sourceCount; s++)
+            {
+                ConstraintSource source = wandConstraint.GetSource(s);
+
+                // Si el índice del 'Source' coincide con el ID del personaje, peso 1 (activo)
+                // Si no, peso 0 (inactivo)
+                float targetWeight = (s == currentID) ? 1f : 0f;
+
+                if (source.weight != targetWeight)
+                {
+                    source.weight = targetWeight;
+                    wandConstraint.SetSource(s, source);
+                }
+            }
         }
     }
 
     private void SetupCamera()
     {
-        // Find the Main Camera in the scene
         Camera mainCam = Camera.main;
+        if (mainCam == null) return;
 
-        if (mainCam == null)
-        {
-            Debug.LogError("Main Camera not found in scene!");
-            return;
-        }
-
-        // Get the FirstPersonCamera component
         FirstPersonCamera fpCamera = mainCam.GetComponent<FirstPersonCamera>();
+        if (fpCamera == null) return;
 
-        if (fpCamera == null)
-        {
-            Debug.LogError("FirstPersonCamera component not found on Main Camera!");
-            return;
-        }
-
-        // Use camera pivot if assigned, otherwise create one at runtime
         Transform cameraTarget = cameraPivot;
-
         if (cameraTarget == null)
         {
-            // Create a pivot at runtime
             GameObject pivot = new GameObject("CameraPivot_Runtime");
             pivot.transform.SetParent(transform);
             pivot.transform.localPosition = new Vector3(0, cameraHeight, 0);
-            pivot.transform.localRotation = Quaternion.identity;
             cameraTarget = pivot.transform;
-
-            Debug.Log($"Created runtime camera pivot at height {cameraHeight}");
         }
 
-        // Assign this player to the camera
-        fpCamera.SetTarget(cameraTarget, graphics);
-
-        Debug.Log($"Camera set to follow local player: {gameObject.name}");
+        fpCamera.SetTarget(cameraTarget, graphicsContainer);
     }
 
     private void LockCursor()
