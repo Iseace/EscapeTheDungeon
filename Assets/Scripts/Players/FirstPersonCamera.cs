@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class FirstPersonCamera : MonoBehaviour
 {
@@ -6,12 +7,16 @@ public class FirstPersonCamera : MonoBehaviour
     public GameObject PlayerGraphics;
     public float MouseSensitivity = 10f;
 
+    public InputActionReference lookAction;
+
     // Usamos tu capa existente
     public string InvisibleLayerName = "LocalPlayerHidden";
 
     private float verticalRotation;
     private float horizontalRotation;
     private bool isInitialized = false;
+    private void OnEnable() => lookAction.action.Enable();
+    private void OnDisable() => lookAction.action.Disable();
 
     public void SetTarget(Transform newTarget, GameObject graphics)
     {
@@ -33,18 +38,20 @@ public class FirstPersonCamera : MonoBehaviour
     {
         if (Target == null || !isInitialized) return;
 
-        // Lo llamamos en LateUpdate para que si cambias de skin (Mage/Assassin),
-        // la nueva skin también se vuelva invisible al instante.
         ApplyInvisibleLayer();
-
         transform.position = Target.position;
 
-        float mouseX = Input.GetAxis("Mouse X");
-        float mouseY = Input.GetAxis("Mouse Y");
+        // 3. Leemos el Vector2 del "Look" (Mouse o Touch)
+        Vector2 lookInput = lookAction.action.ReadValue<Vector2>();
 
-        verticalRotation -= mouseY * MouseSensitivity;
+        // Multiplicamos por un factor pequeño (0.1f) porque el New Input System
+        // da valores más altos que el viejo GetAxis
+        float mouseX = lookInput.x * MouseSensitivity * 0.1f;
+        float mouseY = lookInput.y * MouseSensitivity * 0.1f;
+
+        verticalRotation -= mouseY;
         verticalRotation = Mathf.Clamp(verticalRotation, -70f, 70f);
-        horizontalRotation += mouseX * MouseSensitivity;
+        horizontalRotation += mouseX;
 
         transform.rotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0);
     }
