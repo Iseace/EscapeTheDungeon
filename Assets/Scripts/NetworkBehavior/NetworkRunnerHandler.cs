@@ -5,6 +5,7 @@ using Fusion.Sockets;
 using TMPro;
 using System.Collections.Generic;
 using System;
+using UnityEngine.InputSystem;
 
 public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 {
@@ -18,7 +19,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private string lobbySceneName = "LobbyRoom";
 
     private NetworkRunner _runner;
-    
+
     private void Start()
     {
         hostBtn.onClick.AddListener(OnHostRoom);
@@ -85,12 +86,42 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     }
 
     // Input handling
+    // Primero, necesitas las referencias a tus acciones (se asignan en el Inspector)
+    public InputAction moveAction;
+    public InputAction attackAction;
+    public InputAction interactAction;
+    public InputAction specialAction;
+    // Debajo de tus variables, añade esto:
+    private void OnEnable()
+    {
+        moveAction.Enable();
+        attackAction.Enable();
+        interactAction.Enable();
+        specialAction.Enable();
+    }
+
+    private void OnDisable()
+    {
+        // Es buena práctica apagarlas cuando el objeto se destruye
+        moveAction.Disable();
+        attackAction.Disable();
+        interactAction.Disable();
+        specialAction.Disable();
+    }
+
     public void OnInput(NetworkRunner runner, NetworkInput input)
     {
         var myInput = new PlayerInputData();
-        myInput.MoveDirection = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
-        myInput.JumpPressed = Input.GetButton("Jump");
-        myInput.InteractPressed = Input.GetKey(KeyCode.E);
+
+        // El "Move" ahora lee el Vector2 del joystick o WASD automáticamente
+        Vector2 moveVal = moveAction.ReadValue<Vector2>();
+        myInput.MoveDirection = new Vector3(moveVal.x, 0, moveVal.y);
+
+        // Las acciones detectan si se presionó el botón en pantalla O la tecla
+        myInput.AttackPressed = attackAction.IsPressed();
+        myInput.InteractPressed = interactAction.IsPressed();
+        myInput.SpecialPressed = specialAction.IsPressed();
+
         if (Camera.main != null)
             myInput.CameraRotation = Camera.main.transform.rotation;
 
@@ -121,5 +152,7 @@ public struct PlayerInputData : INetworkInput
     public Vector3 MoveDirection;
     public NetworkBool JumpPressed;
     public Quaternion CameraRotation;
-    public NetworkBool InteractPressed;
+    public NetworkBool InteractPressed; //  (Tecla E / Especial 1)
+    public NetworkBool AttackPressed;   //  (Click / Ataque Básico)
+    public NetworkBool SpecialPressed;  //  (Tecla Q / Especial 2)
 }
