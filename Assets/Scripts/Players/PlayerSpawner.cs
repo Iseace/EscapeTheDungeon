@@ -15,13 +15,13 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
     private bool dungeonRunnerSpawned = false;
 
     [Header("Boss System")]
-    [SerializeField] private string menuSceneName = "LobbyMenu";
+    [SerializeField] private string menuSceneName = "LobbyList";
     [SerializeField] private int menuSceneIndex = 0;
     
     private bool bossSelected = false;
     private PlayerRef bossPlayer;
 
-private void Start()
+    private void Start()
     {
         var runner = FindFirstObjectByType<NetworkRunner>();
         if (runner != null) runner.AddCallbacks(this);
@@ -39,7 +39,8 @@ private void Start()
             if (!dungeonRunnerSpawned)
             {
                 var existing = FindFirstObjectByType<DungeonNetworkRunner>();
-                if (existing == null){
+                if (existing == null)
+                {
                     runner.Spawn(dungeonNetworkRunnerPrefab, Vector3.zero, Quaternion.identity);
                     dungeonRunnerSpawned = true;
                 }
@@ -51,7 +52,7 @@ private void Start()
         Quaternion spawnRot = Quaternion.identity;
 
         // LOBBY LINE-UP: Positioning players side-by-side
-        if (SceneManager.GetActiveScene().name == "Lobby")
+        if (SceneManager.GetActiveScene().name == "LobbyRoom")
         {
             float spacing = 1.5f; 
             spawnPos = new Vector3(player.PlayerId * spacing, 0f, 0f);
@@ -122,7 +123,7 @@ private void Start()
         string currentScene = SceneManager.GetActiveScene().name;
         
         // Re-spawning logic for transitions into Lobby or Game
-        if (currentScene == "Game" || currentScene == "Lobby")
+        if (currentScene == "Game" || currentScene == "LobbyRoom")
         {
             Debug.Log($"[SPAWNER] Scene {currentScene} loaded, spawning players");
             dungeonRunnerSpawned = false;
@@ -184,6 +185,11 @@ private void Start()
             Debug.LogError($"[BOSS DISCONNECT] Failed to load menu: {e.Message}");
             runner.Shutdown();
         }
+    }
+
+    private void OnDestroy()
+    {
+        dungeonRunnerSpawned = false;
     }
 
     // Boilerplate Fusion callbacks

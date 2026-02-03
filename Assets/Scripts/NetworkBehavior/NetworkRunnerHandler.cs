@@ -13,7 +13,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private Button hostBtn;
     [SerializeField] private TMP_InputField clientRoomInput;
     [SerializeField] private Button clientBtn;
-    
+
     [Header("Network Settings")]
     [SerializeField] private string lobbySceneName = "Lobby";
 
@@ -27,25 +27,25 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
-    
+
     private async void OnHostRoom()
     {
         string roomName = hostRoomInput.text.Trim();
         if (string.IsNullOrEmpty(roomName))
             return;
-        
+
         await StartGame(GameMode.Host, roomName);
     }
-    
+
     private async void OnJoinRoom()
     {
         string roomName = clientRoomInput.text.Trim();
         if (string.IsNullOrEmpty(roomName))
             return;
-        
+
         await StartGame(GameMode.Client, roomName);
     }
-    
+
     private async System.Threading.Tasks.Task StartGame(GameMode mode, string roomName)
     {
         _runner = gameObject.AddComponent<NetworkRunner>();
@@ -62,7 +62,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
             ),
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
         });
-        
+
         if (result.Ok)
         {
             Debug.Log($"Connected to room: {roomName} as {mode}");
@@ -72,30 +72,31 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
             Debug.LogError($"Failed to connect: {result.ShutdownReason}");
         }
     }
-    
+
     // Used callbacks
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
         Debug.Log($"Player {player} joined");
     }
-    
+
     public void OnShutdown(NetworkRunner runner, ShutdownReason reason)
     {
         Debug.Log($"Runner shutdown: {reason}");
     }
-    
+
     // Input handling
     public void OnInput(NetworkRunner runner, NetworkInput input)
     {
         var myInput = new PlayerInputData();
         myInput.MoveDirection = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
         myInput.JumpPressed = Input.GetButton("Jump");
+        myInput.InteractPressed = Input.GetKey(KeyCode.E);
         if (Camera.main != null)
             myInput.CameraRotation = Camera.main.transform.rotation;
 
         input.Set(myInput);
     }
-    
+
     // Required by interface (unused)
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
@@ -120,4 +121,5 @@ public struct PlayerInputData : INetworkInput
     public Vector3 MoveDirection;
     public NetworkBool JumpPressed;
     public Quaternion CameraRotation;
+    public NetworkBool InteractPressed;
 }

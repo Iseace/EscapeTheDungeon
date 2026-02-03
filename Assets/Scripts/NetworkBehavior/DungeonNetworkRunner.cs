@@ -15,6 +15,11 @@ public class DungeonNetworkRunner : NetworkBehaviour
         
         dungeonCreator = FindAnyObjectByType<DungeonCreator>();
 
+        if (dungeonCreator == null)
+        {
+            Debug.LogError("DungeonCreator NOT found in scene!");
+        }
+
         bool shouldGenerateSeed = Runner.GameMode == GameMode.Shared 
             ? Runner.IsSharedModeMasterClient 
             : Object.HasStateAuthority;
