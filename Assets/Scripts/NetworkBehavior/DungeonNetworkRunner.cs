@@ -1,6 +1,6 @@
 using UnityEngine;
 using Fusion;
-using UnityEngine.SceneManagement; // Added to check for the Game scene
+using UnityEngine.SceneManagement; 
 
 public class DungeonNetworkRunner : NetworkBehaviour
 {
@@ -13,11 +13,8 @@ public class DungeonNetworkRunner : NetworkBehaviour
     {
         Debug.Log($"=== DungeonNetworkRunner.Spawned() ===");
         
-        // We still try to find it, but we won't throw an error here 
-        // because we might spawn this in the Lobby first.
-        dungeonCreator = FindObjectOfType<DungeonCreator>();
+        dungeonCreator = FindAnyObjectByType<DungeonCreator>();
 
-        // Master client generates the seed ONLY if it's not set yet
         bool shouldGenerateSeed = Runner.GameMode == GameMode.Shared 
             ? Runner.IsSharedModeMasterClient 
             : Object.HasStateAuthority;
@@ -32,32 +29,18 @@ public class DungeonNetworkRunner : NetworkBehaviour
 
     public override void Render()
     {
-        // 1. Only try to generate once
-        if (hasGeneratedLocally)
-            return;
+        if (hasGeneratedLocally) return;
+        if (SceneManager.GetActiveScene().name != "Game") return;
+        if (SharedSeed == 0) return;
 
-        // 2. IMPORTANT: Only generate if we are in the "Game" scene
-        // This prevents the dungeon from trying to spawn in your Lobby
-        if (SceneManager.GetActiveScene().name != "Game")
-            return;
-
-        // 3. Wait for a valid seed
-        if (SharedSeed == 0)
-            return;
-
-        // 4. Re-find the DungeonCreator if it was lost during scene transition
         if (dungeonCreator == null)
         {
-            dungeonCreator = FindObjectOfType<DungeonCreator>();
-            if (dungeonCreator == null) return; // Wait until it's loaded
+            dungeonCreator = FindAnyObjectByType<DungeonCreator>();
+            if (dungeonCreator == null) return; 
         }
 
-        // Generate the dungeon!
         Debug.Log($"[Player {Runner.LocalPlayer}] Generating dungeon in Game Scene with seed: {SharedSeed}");
-
         dungeonCreator.CreateDungeonWithSeed(SharedSeed);
         hasGeneratedLocally = true;
-
-        Debug.Log($"[Player {Runner.LocalPlayer}] Dungeon generation complete!");
     }
 }
