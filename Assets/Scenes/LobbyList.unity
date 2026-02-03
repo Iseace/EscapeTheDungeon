@@ -1582,8 +1582,7 @@ MonoBehaviour:
   hostBtn: {fileID: 2109985793}
   clientRoomInput: {fileID: 1393086452}
   clientBtn: {fileID: 910966864}
-  gameSceneName: Game
-  lobbySceneName: Lobby
+  lobbySceneName: LobbyRoom
 --- !u!1 &1690451954
 GameObject:
   m_ObjectHideFlags: 0

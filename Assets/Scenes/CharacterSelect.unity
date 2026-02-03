@@ -6024,7 +6024,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterSelector
   rotationSpeed: 5
-  serverSceneName: Lobby
+  serverSceneName: LobbyList
 --- !u!4 &1257256193 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 4f077ee5fddc0de45839c42ea9830408, type: 3}

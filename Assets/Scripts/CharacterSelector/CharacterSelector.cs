@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement; // Necesario para cambiar de escena
 public class CharacterSelector : MonoBehaviour
 {
     public float rotationSpeed = 5f;
-    public string serverSceneName = "Lobby"; // Cambia esto al nombre exacto de tu escena de servidores
+    public string serverSceneName = "LobbyRoom"; // Cambia esto al nombre exacto de tu escena de servidores
 
     private int currentIndex = 0;
     private Quaternion targetRotation;

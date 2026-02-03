@@ -15,7 +15,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private Button clientBtn;
 
     [Header("Network Settings")]
-    [SerializeField] private string lobbySceneName = "Lobby";
+    [SerializeField] private string lobbySceneName = "LobbyRoom";
 
     private NetworkRunner _runner;
     
