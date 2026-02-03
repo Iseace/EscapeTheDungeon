@@ -1,16 +1,25 @@
 using UnityEngine;
 using System.Collections.Generic;
-using UnityEngine.SceneManagement; // Necesario para cambiar de escena
+using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem; // 1. NECESARIO para las acciones
 
 public class CharacterSelector : MonoBehaviour
 {
     public float rotationSpeed = 5f;
-    public string serverSceneName = "LobbyRoom"; // Cambia esto al nombre exacto de tu escena de servidores
+    public string serverSceneName = "LobbyRoom";
+
+    // 2. Variable para leer el movimiento (Flechas, WASD, Stick)
+    public InputAction navigateAction;
 
     private int currentIndex = 0;
     private Quaternion targetRotation;
     private List<Animator> characterAnimators = new List<Animator>();
     private int totalCharacters;
+    private float previousNavInput = 0f; // Para detectar cambios (como GetKeyDown)
+
+    // 3. ACTIVAR Y DESACTIVAR las acciones (Obligatorio)
+    private void OnEnable() => navigateAction.Enable();
+    private void OnDisable() => navigateAction.Disable();
 
     void Start()
     {
@@ -26,20 +35,31 @@ public class CharacterSelector : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
-            RotateCarousel(-1);
+        // 4. LÓGICA DE INPUT - Detecta cambios (funciona como GetKeyDown)
+        float navInput = navigateAction.ReadValue<Vector2>().x;
 
-        if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
-            RotateCarousel(1);
+        // Detecta cuando se presiona (cambio de 0 a valor positivo/negativo)
+        if (previousNavInput == 0f)
+        {
+            if (navInput > 0.5f) // Derecha
+            {
+                RotateCarousel(-1);
+            }
+            else if (navInput < -0.5f) // Izquierda
+            {
+                RotateCarousel(1);
+            }
+        }
 
+        previousNavInput = navInput;
+
+        // Tu lógica de suavizado original
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
     }
 
     void RotateCarousel(int direction)
     {
         currentIndex += direction;
-        // No necesitamos el if de bucle aquí si usamos el operador % en el cálculo del ángulo
-
         float angle = currentIndex * (360f / totalCharacters);
         targetRotation = Quaternion.Euler(0, -angle, 0);
 
@@ -50,37 +70,25 @@ public class CharacterSelector : MonoBehaviour
     {
         for (int i = 0; i < characterAnimators.Count; i++)
         {
-            // Calculamos quién está al frente basándonos en el currentIndex
             int correctIndex = GetNormalizedIndex();
             bool isSelectedState = (i == correctIndex);
             characterAnimators[i].SetBool("isSelected", isSelectedState);
         }
     }
 
-    // Función auxiliar para normalizar el índice (evita números negativos y fuera de rango)
     private int GetNormalizedIndex()
     {
         int r = currentIndex % totalCharacters;
         return (r < 0) ? -r : (totalCharacters - r) % totalCharacters;
     }
 
-    // --- FUNCIÓN PARA EL BOTÓN DE CONFIRMAR ---
     public void ConfirmGoBack()
     {
-        // 1. Obtener el índice real del personaje seleccionado
         int personajeSeleccionado = GetNormalizedIndex();
-
-        // 2. Guardar en PlayerPrefs
         PlayerPrefs.SetInt("SelectedCharacterID", personajeSeleccionado);
-
-        // Opcional: Si tienes un InputField para el nombre, guárdalo aquí también
-        // PlayerPrefs.SetString("PlayerNick", myInputField.text);
-
         PlayerPrefs.Save();
 
         Debug.Log("Personaje " + personajeSeleccionado + " guardado. Volviendo a servidores...");
-
-        // 3. Volver a la escena de servidores
         SceneManager.LoadScene(serverSceneName);
     }
 }
