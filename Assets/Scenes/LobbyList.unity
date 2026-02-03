@@ -1325,6 +1325,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerSpawner
   PlayerPrefab: {fileID: 6293013754538618073, guid: c71f20dc8891381488230ede61c54a8e, type: 3}
   dungeonNetworkRunnerPrefab: {fileID: 6750589672458909840, guid: c73683454a7eca7a088415433d0c5dbd, type: 3}
+  menuSceneName: LobbyList
+  menuSceneIndex: 0
 --- !u!4 &1626271135
 Transform:
   m_ObjectHideFlags: 0
