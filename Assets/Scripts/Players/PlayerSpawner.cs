@@ -17,7 +17,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
     [Header("Boss System")]
     [SerializeField] private string menuSceneName = "LobbyMenu";
     [SerializeField] private int menuSceneIndex = 0;
-    
+
     private bool bossSelected = false;
     private PlayerRef bossPlayer;
 
@@ -30,9 +30,9 @@ private void Start()
     public void PlayerJoinedLogic(NetworkRunner runner, PlayerRef player)
     {
         if (runner == null || !runner.IsServer) return;
-        
+
         Debug.Log($"[SPAWNER] Player {player.PlayerId} joining");
-        
+
         // Handle Dungeon Runner logic only in the Game scene
         if (SceneManager.GetActiveScene().name == "Game")
         {
@@ -45,7 +45,7 @@ private void Start()
                 }
             }
         }
-        
+
         // Default spawn position
         Vector3 spawnPos = new Vector3(3f, 1f, 3f);
         Quaternion spawnRot = Quaternion.identity;
@@ -53,7 +53,7 @@ private void Start()
         // LOBBY LINE-UP: Positioning players side-by-side
         if (SceneManager.GetActiveScene().name == "Lobby")
         {
-            float spacing = 1.5f; 
+            float spacing = 1.5f;
             spawnPos = new Vector3(player.PlayerId * spacing, 0f, 0f);
             spawnRot = Quaternion.identity;
         }
@@ -89,7 +89,7 @@ private void Start()
 
         // RANDOM BOSS SELECTION
         List<PlayerRef> players = Runner.ActivePlayers.ToList();
-        
+
         Debug.Log($"[BOSS SELECTION] Selecting boss from {players.Count} players");
         foreach (var p in players)
         {
@@ -98,7 +98,7 @@ private void Start()
 
         int randomIndex = UnityEngine.Random.Range(0, players.Count);
         bossPlayer = players[randomIndex];
-        
+
         Debug.Log($"[BOSS SELECTION] Random Index: {randomIndex}");
         Debug.Log($"[BOSS SELECTION] BOSS IS: Player {bossPlayer.PlayerId}");
 
@@ -120,7 +120,7 @@ private void Start()
         if (!runner.IsServer) return;
 
         string currentScene = SceneManager.GetActiveScene().name;
-        
+
         // Re-spawning logic for transitions into Lobby or Game
         if (currentScene == "Game" || currentScene == "Lobby")
         {
@@ -136,27 +136,27 @@ private void Start()
     }
 
     // --- INTERFACE IMPLEMENTATIONS ---
-    public void OnPlayerJoined(NetworkRunner runner, PlayerRef player) 
-    { 
-        PlayerJoinedLogic(runner, player); 
+    public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
+    {
+        PlayerJoinedLogic(runner, player);
     }
-    
-    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) 
-    { 
+
+    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
+    {
         Debug.Log($"[SPAWNER] Player {player.PlayerId} disconnected");
-        
+
         // Check if boss disconnected
         if (bossSelected && player == bossPlayer)
         {
             Debug.Log($"[BOSS DISCONNECT] BOSS Player {player.PlayerId} LEFT");
             Debug.Log($"[BOSS DISCONNECT] Returning all players to menu");
-            
+
             ReturnToMenu(runner);
             return;
         }
-        
+
         Debug.Log($"[SPAWNER] Regular player left, game continues");
-        
+
         if (runner.IsServer && runner.TryGetPlayerObject(player, out NetworkObject playerObj))
         {
             runner.Despawn(playerObj);
@@ -165,31 +165,37 @@ private void Start()
 
     private void ReturnToMenu(NetworkRunner runner)
     {
+        if (runner == null) return;
+
         try
         {
             int sceneIndex = SceneUtility.GetBuildIndexByScenePath("Scenes/" + menuSceneName);
             if (sceneIndex >= 0)
             {
-                Debug.Log($"[BOSS DISCONNECT] Loading menu: {menuSceneName} at index {sceneIndex}");
                 runner.LoadScene(SceneRef.FromIndex(sceneIndex));
             }
             else
             {
-                Debug.Log($"[BOSS DISCONNECT] Loading menu by index: {menuSceneIndex}");
                 runner.LoadScene(SceneRef.FromIndex(menuSceneIndex));
             }
+
+            Debug.Log("[BOSS DISCONNECT] Shutting down runner...");
+            runner.Shutdown();
         }
         catch (Exception e)
         {
-            Debug.LogError($"[BOSS DISCONNECT] Failed to load menu: {e.Message}");
-            runner.Shutdown();
+            Debug.LogError($"[BOSS DISCONNECT] Failed during cleanup: {e.Message}");
+            if (runner != null)
+            {
+                runner.Shutdown();
+            }
         }
     }
 
     // Boilerplate Fusion callbacks
     public void OnInput(NetworkRunner runner, NetworkInput input) { }
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
-    public void OnShutdown(NetworkRunner runner, ShutdownReason reason) 
+    public void OnShutdown(NetworkRunner runner, ShutdownReason reason)
     {
         Debug.Log($"[SPAWNER] Runner shutdown: {reason}");
     }
