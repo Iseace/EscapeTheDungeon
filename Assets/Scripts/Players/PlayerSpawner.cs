@@ -67,13 +67,6 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
         Debug.Log($"[SPAWNER] Player {player.PlayerId} joining");
 
-        // Prevent duplicate spawns - check if player already has an object
-        if (runner.TryGetPlayerObject(player, out NetworkObject existingPlayerObj))
-        {
-            Debug.LogWarning($"[SPAWNER] Player {player.PlayerId} already has an object! Skipping spawn.");
-            return;
-        }
-
         // Handle Dungeon Runner logic only in the Game scene
         if (SceneManager.GetActiveScene().name == "Game")
         {
@@ -96,11 +89,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
         if (SceneManager.GetActiveScene().name == "LobbyRoom")
         {
             float spacing = 1.5f;
-            int totalPlayers = runner.ActivePlayers.Count();
-            float totalWidth = (totalPlayers - 1) * spacing;
-            float startOffset = -totalWidth / 2f;
-            
-            spawnPos = new Vector3(startOffset + (totalPlayers - 1) * spacing, 0f, 0f);
+            spawnPos = new Vector3(player.PlayerId * spacing, 0f, 0f);
             spawnRot = Quaternion.identity;
         }
 
@@ -142,7 +131,38 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
         if (Runner.ActivePlayers.Count() == 0) return;
         foreach (var p in Runner.ActivePlayers)
         {
-            if (!Runner.TryGetPlayerObject(p, out _)) return;
+            if (!Runner.TryGetPlayerObject(player, out NetworkObject _))
+            {
+                allSpawned = false;
+                break;
+            }
+        }
+
+        if (!allSpawned) return;
+
+        // RANDOM BOSS SELECTION
+        List<PlayerRef> players = Runner.ActivePlayers.ToList();
+
+        Debug.Log($"[BOSS SELECTION] Selecting boss from {players.Count} players");
+        foreach (var p in players)
+        {
+            Debug.Log($"[BOSS SELECTION] - Player {p.PlayerId}");
+        }
+
+        int randomIndex = UnityEngine.Random.Range(0, players.Count);
+        bossPlayer = players[randomIndex];
+
+        Debug.Log($"[BOSS SELECTION] Random Index: {randomIndex}");
+        Debug.Log($"[BOSS SELECTION] BOSS IS: Player {bossPlayer.PlayerId}");
+
+        // Assign boss role
+        if (Runner.TryGetPlayerObject(bossPlayer, out NetworkObject bossObj))
+        {
+            PlayerRole role = bossObj.GetComponent<PlayerRole>();
+            if (role != null)
+            {
+                role.SetBoss();
+            }
         }
 
         isSwappingBoss = true;
@@ -213,6 +233,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
         }
     }
 
+    // --- INTERFACE IMPLEMENTATIONS ---
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
         PlayerJoinedLogic(runner, player);
@@ -251,25 +272,22 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             int sceneIndex = SceneUtility.GetBuildIndexByScenePath("Scenes/" + menuSceneName);
             if (sceneIndex >= 0)
             {
-                await runner.LoadScene(SceneRef.FromIndex(sceneIndex));
+                runner.LoadScene(SceneRef.FromIndex(sceneIndex));
             }
             else
             {
-                await runner.LoadScene(SceneRef.FromIndex(menuSceneIndex));
+                runner.LoadScene(SceneRef.FromIndex(menuSceneIndex));
             }
 
-            // Wait a moment for scene to load
-            await System.Threading.Tasks.Task.Delay(500);
-
             Debug.Log("[BOSS DISCONNECT] Shutting down runner...");
-            await runner.Shutdown();
+            runner.Shutdown();
         }
         catch (Exception e)
         {
             Debug.LogError($"[BOSS DISCONNECT] Failed during cleanup: {e.Message}");
             if (runner != null)
             {
-                await runner.Shutdown();
+                runner.Shutdown();
             }
         }
     }
