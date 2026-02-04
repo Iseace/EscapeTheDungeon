@@ -87,26 +87,27 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 
     // Input handling
     // Primero, necesitas las referencias a tus acciones (se asignan en el Inspector)
-    public InputAction moveAction;
-    public InputAction attackAction;
-    public InputAction interactAction;
-    public InputAction specialAction;
+    [Header("Input Action References")]
+    public InputActionReference moveAction;
+    public InputActionReference attackAction;
+    public InputActionReference interactAction;
+    public InputActionReference specialAction;
     // Debajo de tus variables, añade esto:
     private void OnEnable()
     {
-        moveAction.Enable();
-        attackAction.Enable();
-        interactAction.Enable();
-        specialAction.Enable();
+        moveAction.action.Enable();
+        attackAction.action.Enable();
+        interactAction.action.Enable();
+        specialAction.action.Enable();
     }
 
     private void OnDisable()
     {
         // Es buena práctica apagarlas cuando el objeto se destruye
-        moveAction.Disable();
-        attackAction.Disable();
-        interactAction.Disable();
-        specialAction.Disable();
+        moveAction.action.Disable();
+        attackAction.action.Disable();
+        interactAction.action.Disable();
+        specialAction.action.Disable();
     }
 
     public void OnInput(NetworkRunner runner, NetworkInput input)
@@ -114,13 +115,13 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         var myInput = new PlayerInputData();
 
         // El "Move" ahora lee el Vector2 del joystick o WASD automáticamente
-        Vector2 moveVal = moveAction.ReadValue<Vector2>();
+        Vector2 moveVal = moveAction.action.ReadValue<Vector2>();
         myInput.MoveDirection = new Vector3(moveVal.x, 0, moveVal.y);
 
         // Las acciones detectan si se presionó el botón en pantalla O la tecla
-        myInput.AttackPressed = attackAction.IsPressed();
-        myInput.InteractPressed = interactAction.IsPressed();
-        myInput.SpecialPressed = specialAction.IsPressed();
+        myInput.AttackPressed = attackAction.action.IsPressed();
+        myInput.InteractPressed = interactAction.action.IsPressed();
+        myInput.SpecialPressed = specialAction.action.IsPressed();
 
         if (Camera.main != null)
             myInput.CameraRotation = Camera.main.transform.rotation;
