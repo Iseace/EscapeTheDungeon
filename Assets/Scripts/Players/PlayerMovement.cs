@@ -34,41 +34,47 @@ public class PlayerMovement : NetworkBehaviour
         RefreshAnimatorReference();
     }
 
-    public void RefreshAnimatorReference()
+    // Mantenemos tu lógica de desbloqueo de cursor para el Lobby
+    private void Update()
     {
-        if (GraphicsRoot != null)
+        if (HasInputAuthority && SceneManager.GetActiveScene().name == "LobbyRoom")
         {
-            _animator = GraphicsRoot.GetComponent<Animator>();
-
-            // Si por alguna razón no está en la raíz, buscamos en hijos
-            if (_animator == null)
-                _animator = GraphicsRoot.GetComponentInChildren<Animator>(false);
-        }
-        else
-        {
-            _animator = GetComponentInChildren<Animator>(false);
+            if (Cursor.lockState != CursorLockMode.None || !Cursor.visible)
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
         }
     }
 
     public override void FixedUpdateNetwork()
     {
+        if (SceneManager.GetActiveScene().name == "LobbyRoom")
+        {
+            StopAnimations();
+            return;
+        }
+
         if (GetInput(out PlayerInputData data))
         {
             _isGrounded = _controller.isGrounded;
-            // Local variable to modify velocity
+
+            // 1. Rotación del Jugador (Sincronizada con la cámara)
+            Vector3 camEuler = data.CameraRotation.eulerAngles;
+            transform.rotation = Quaternion.Euler(0, camEuler.y, 0);
+
+            // 2. Cálculo de Movimiento Horizontal
+            // data.MoveDirection ya viene como (x, 0, y) desde tu Handler
+            Vector3 move = transform.rotation * data.MoveDirection * PlayerSpeed;
+
+            // 3. Cálculo de Salto y Gravedad
             Vector3 currentVelocity = _velocity;
+
             if (_isGrounded && currentVelocity.y < 0)
             {
             {
                 currentVelocity.y = -2f;
-            }
-            //Handle Rotation
-            Vector3 camEuler = data.CameraRotation.eulerAngles;
-            transform.rotation = Quaternion.Euler(0, camEuler.y, 0);
-            //Handle Movement
-            Vector3 move = transform.rotation * new Vector3(data.MoveDirection.x, 0, data.MoveDirection.z) * PlayerSpeed;
-            _controller.Move(move * Runner.DeltaTime);
-            //Handle Jump
+
             if (data.JumpPressed && _isGrounded)
             {
                 currentVelocity.y = JumpForce;
@@ -80,8 +86,11 @@ public class PlayerMovement : NetworkBehaviour
             //RE-ASSIGN the modified velocity back to the Networked property
             //RE-ASSIGN the modified velocity back to the Networked property
             _velocity = currentVelocity;
-            //Move the controller using the updated velocity
-            _controller.Move(_velocity * Runner.DeltaTime);
+
+            // 4. APLICAR MOVIMIENTO (Combinado en un solo vector)
+            Vector3 finalMotion = (move + _velocity) * Runner.DeltaTime;
+            _controller.Move(finalMotion);
+
             UpdateAnimations(move);
         }
     }
@@ -93,7 +102,8 @@ public class PlayerMovement : NetworkBehaviour
             RefreshAnimatorReference();
             if (_animator == null) return;
         }
-        // Convert world movement to local for Animator (MoveX, MoveZ)
+
+        // Convertimos el movimiento mundial a local para las animaciones (MoveX, MoveZ)
         Vector3 localMove = transform.InverseTransformDirection(move.normalized);
         _animator.SetFloat("MoveX", localMove.x);
         _animator.SetFloat("MoveZ", localMove.z);
@@ -138,6 +148,7 @@ public class PlayerMovement : NetworkBehaviour
             var fpCam = Camera.GetComponent<FirstPersonCamera>();
             if (fpCam != null)
             {
+                // Pasamos las referencias que configuramos en el Inspector de la cámara
                 fpCam.SetTarget(targetTransform, GraphicsRoot != null ? GraphicsRoot.gameObject : gameObject);
             }
         }
