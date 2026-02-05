@@ -11,6 +11,10 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 {
     public NetworkObject PlayerPrefab;
 
+    [Header("Character Prefabs")]
+    public NetworkObject BossPrefab;      //prefab del Boss
+    public NetworkObject SurvivorPrefab;  // prefab del Superviviente
+
     [Header("Dungeon Runner")]
     public NetworkObject dungeonNetworkRunnerPrefab;
     private bool dungeonRunnerSpawned = false;
@@ -67,6 +71,13 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
         Debug.Log($"[SPAWNER] Player {player.PlayerId} joining");
 
+        // Prevent duplicate spawns - check if player already has an object
+        if (runner.TryGetPlayerObject(player, out NetworkObject existingPlayerObj))
+        {
+            Debug.LogWarning($"[SPAWNER] Player {player.PlayerId} already has an object! Skipping spawn.");
+            return;
+        }
+
         // Handle Dungeon Runner logic only in the Game scene
         if (SceneManager.GetActiveScene().name == "Game")
         {
@@ -101,78 +112,26 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
     public override void FixedUpdateNetwork()
     {
-        // Continuously reposition lobby players to stay centered
-        if (Runner.IsServer && SceneManager.GetActiveScene().name == "LobbyRoom" && !bossSelected)
-        {
-            float spacing = 1.5f;
-            var activePlayers = Runner.ActivePlayers.ToList();
-            int totalPlayers = activePlayers.Count;
-            
-            if (totalPlayers > 0)
-            {
-                float totalWidth = (totalPlayers - 1) * spacing;
-                float startOffset = -totalWidth / 2f;
-                
-                int index = 0;
-                foreach (var p in activePlayers)
-                {
-                    if (Runner.TryGetPlayerObject(p, out NetworkObject playerObj))
-                    {
-                        Vector3 targetPos = new Vector3(startOffset + index * spacing, 0f, 0f);
-                        playerObj.transform.position = targetPos;
-                        index++;
-                    }
-                }
-            }
-        }
-        
         if (!Runner.IsServer || SceneManager.GetActiveScene().name != "Game" || bossSelected || isSwappingBoss) return;
 
+        // Solo procedemos si todos han spawneado su "cuerpo" inicial
         if (Runner.ActivePlayers.Count() == 0) return;
         foreach (var p in Runner.ActivePlayers)
         {
-            if (!Runner.TryGetPlayerObject(player, out NetworkObject _))
-            {
-                allSpawned = false;
-                break;
-            }
+            if (!Runner.TryGetPlayerObject(p, out _)) return;
         }
 
-        if (!allSpawned) return;
-
-        // RANDOM BOSS SELECTION
-        List<PlayerRef> players = Runner.ActivePlayers.ToList();
-
-        Debug.Log($"[BOSS SELECTION] Selecting boss from {players.Count} players");
-        foreach (var p in players)
-        {
-            Debug.Log($"[BOSS SELECTION] - Player {p.PlayerId}");
-        }
-
-        int randomIndex = UnityEngine.Random.Range(0, players.Count);
-        bossPlayer = players[randomIndex];
-
-        Debug.Log($"[BOSS SELECTION] Random Index: {randomIndex}");
-        Debug.Log($"[BOSS SELECTION] BOSS IS: Player {bossPlayer.PlayerId}");
-
-        // Assign boss role
-        if (Runner.TryGetPlayerObject(bossPlayer, out NetworkObject bossObj))
-        {
-            PlayerRole role = bossObj.GetComponent<PlayerRole>();
-            if (role != null)
-            {
-                role.SetBoss();
-            }
-        }
-
+        // Mark as swapping to prevent multiple executions
         isSwappingBoss = true;
         bossSelected = true;
 
+        // SELECCIÓN ALEATORIA
         var players = Runner.ActivePlayers.ToList();
         bossPlayer = players[UnityEngine.Random.Range(0, players.Count)];
 
         Debug.Log($"[SPAWNER] Selected player {bossPlayer.PlayerId} as Boss");
 
+        // INTERCAMBIO SEGURO
         if (Runner.TryGetPlayerObject(bossPlayer, out NetworkObject oldObj))
         {
             Vector3 pos = oldObj.transform.position;
@@ -180,9 +139,13 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
             Debug.Log($"[SPAWNER] Despawning old player object at {pos}");
 
+            // 1. Limpiamos la referencia antes de borrar
             Runner.SetPlayerObject(bossPlayer, null);
+
+            // 2. Despawnear al Mago (Elimina el Player(Clone) de la jerarquía)
             Runner.Despawn(oldObj);
 
+            // 3. Spawnear al Boss (Asegúrate que BossPrefab NO sea null en el Inspector)
             if (BossPrefab != null)
             {
                 Debug.Log($"[SPAWNER] Spawning Boss prefab at {pos}");
