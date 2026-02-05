@@ -124,15 +124,30 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (HasInputAuthority)
         {
+            // 1. Configuramos la cámara
             Camera = Camera.main;
-            Transform targetTransform = CameraPivot != null ? CameraPivot : transform;
-
             var fpCam = Camera.GetComponent<FirstPersonCamera>();
             if (fpCam != null)
             {
-                // Pasamos las referencias que configuramos en el Inspector de la cámara
-                fpCam.SetTarget(targetTransform, GraphicsRoot != null ? GraphicsRoot.gameObject : gameObject);
+                fpCam.SetTarget(CameraPivot != null ? CameraPivot : transform, GraphicsRoot.gameObject);
             }
+
+            // 2. HACERTE INVISIBLE PARA TI MISMO
+            if (GraphicsRoot != null)
+            {
+                // Cambiamos el modelo y todos sus hijos (incluida la espada) a la capa invisible
+                SetLayerRecursively(GraphicsRoot.gameObject, LayerMask.NameToLayer("LocalPlayerHidden"));
+            }
+        }
+    }
+
+    // Función auxiliar para cambiar la capa a todo el modelo
+    private void SetLayerRecursively(GameObject obj, int newLayer)
+    {
+        obj.layer = newLayer;
+        foreach (Transform child in obj.transform)
+        {
+            SetLayerRecursively(child.gameObject, newLayer);
         }
     }
 }

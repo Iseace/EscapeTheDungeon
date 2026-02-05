@@ -1,18 +1,18 @@
 using UnityEngine;
 using Fusion;
-using UnityEngine.SceneManagement; 
+using UnityEngine.SceneManagement;
 using UnityEngine.Animations;
 
 public class PlayerSetup : NetworkBehaviour
 {
     [Header("Camera Setup")]
     [SerializeField] private Transform cameraPivot;
-    [SerializeField] private GameObject graphicsContainer; 
+    [SerializeField] private GameObject graphicsContainer;
     [SerializeField] private float cameraHeight = 1.6f;
 
     [Header("Visual Models")]
-    [SerializeField] private GameObject[] characterModels; 
-    [SerializeField] private Avatar[] characterAvatars; 
+    [SerializeField] private GameObject[] characterModels;
+    [SerializeField] private Avatar[] characterAvatars;
 
     [Networked]
     public int SelectedCharacterIndex { get; set; }
@@ -53,6 +53,17 @@ public class PlayerSetup : NetworkBehaviour
     public override void Render()
     {
         if (graphicsContainer == null) return;
+
+        var role = GetComponent<PlayerRole>();
+        if (role != null && role.IsBoss)
+        {
+            // Si es el Boss, nos aseguramos de que todos sus modelos en el array estén ACTIVOS
+            foreach (var model in characterModels)
+            {
+                if (model != null && !model.activeSelf) model.SetActive(true);
+            }
+            return; // Salimos de la función para que no ejecute la lógica de supervivientes
+        }
 
         Animator anim = graphicsContainer.GetComponent<Animator>();
         int currentID = SelectedCharacterIndex;
