@@ -6025,6 +6025,55 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterSelector
   rotationSpeed: 5
   serverSceneName: LobbyList
+  navigateAction:
+    m_Name: Navigate
+    m_Type: 0
+    m_ExpectedControlType: 
+    m_Id: 4ab74c7e-dfb3-46fd-bfbf-84de5c8e94be
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings:
+    - m_Name: Keyboard
+      m_Id: 45f9c411-383d-4acc-b329-ae3e94df8ed8
+      m_Path: 2DVector
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Navigate
+      m_Flags: 4
+    - m_Name: up
+      m_Id: d5d35106-7027-4063-82d0-d88e032fd692
+      m_Path: 
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Navigate
+      m_Flags: 8
+    - m_Name: down
+      m_Id: d1263c6c-571e-42dc-9844-1982cc226be8
+      m_Path: 
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Navigate
+      m_Flags: 8
+    - m_Name: left
+      m_Id: adcc4796-c45d-4f2e-bdce-58c4b609a8ef
+      m_Path: <Keyboard>/a
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Navigate
+      m_Flags: 8
+    - m_Name: right
+      m_Id: 993ed17c-12ac-4e6b-bc8e-1358e600cc7e
+      m_Path: <Keyboard>/d
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Navigate
+      m_Flags: 8
+    m_Flags: 0
 --- !u!4 &1257256193 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 4f077ee5fddc0de45839c42ea9830408, type: 3}
