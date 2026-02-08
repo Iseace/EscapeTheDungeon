@@ -294,7 +294,7 @@ public static class GridPrefabPlacer
             var cell = kvp.Value;
             if (includeCorridors)
             {
-                if (cell.Type == CellType.Corridor)
+                if (cell.Type == CellType.Corridor || cell.Type == CellType.Door)
                     targets.Add(kvp.Key);
             }
             else
@@ -310,26 +310,63 @@ public static class GridPrefabPlacer
         List<Vector2> uvs = new List<Vector2>();
         List<int> triangles = new List<int>();
 
-        foreach (var p in targets)
-        {
-            int idx = vertices.Count;
-            vertices.Add(new Vector3(p.x, 0, p.y) + offset);
-            vertices.Add(new Vector3(p.x + 1, 0, p.y) + offset);
-            vertices.Add(new Vector3(p.x, 0, p.y + 1) + offset);
-            vertices.Add(new Vector3(p.x + 1, 0, p.y + 1) + offset);
+        // Merge celdas contiguas en rectangulos maximos para minimizar vertices
+        HashSet<Vector2Int> targetSet = new HashSet<Vector2Int>(targets);
+        HashSet<Vector2Int> visited = new HashSet<Vector2Int>();
 
-            uvs.Add(new Vector2(p.x, p.y));
-            uvs.Add(new Vector2(p.x + 1, p.y));
-            uvs.Add(new Vector2(p.x, p.y + 1));
-            uvs.Add(new Vector2(p.x + 1, p.y + 1));
+        foreach (var start in targets)
+        {
+            if (visited.Contains(start)) continue;
+
+            int maxW = 1;
+            while (targetSet.Contains(new Vector2Int(start.x + maxW, start.y)) && !visited.Contains(new Vector2Int(start.x + maxW, start.y)))
+            {
+                maxW++;
+            }
+
+            int maxH = 1;
+            bool canGrow = true;
+            while (canGrow)
+            {
+                int nextY = start.y + maxH;
+                for (int x = start.x; x < start.x + maxW; x++)
+                {
+                    Vector2Int np = new Vector2Int(x, nextY);
+                    if (!targetSet.Contains(np) || visited.Contains(np))
+                    {
+                        canGrow = false;
+                        break;
+                    }
+                }
+                if (canGrow) maxH++;
+            }
+
+            // Crear quad para el rectangulo [start, start + (maxW, maxH)]
+            int idx = vertices.Count;
+            vertices.Add(new Vector3(start.x, 0, start.y) + offset);
+            vertices.Add(new Vector3(start.x + maxW, 0, start.y) + offset);
+            vertices.Add(new Vector3(start.x, 0, start.y + maxH) + offset);
+            vertices.Add(new Vector3(start.x + maxW, 0, start.y + maxH) + offset);
+
+            uvs.Add(new Vector2(start.x, start.y));
+            uvs.Add(new Vector2(start.x + maxW, start.y));
+            uvs.Add(new Vector2(start.x, start.y + maxH));
+            uvs.Add(new Vector2(start.x + maxW, start.y + maxH));
 
             triangles.Add(idx + 2);
             triangles.Add(idx + 3);
             triangles.Add(idx + 0);
-
             triangles.Add(idx + 0);
             triangles.Add(idx + 3);
             triangles.Add(idx + 1);
+
+            for (int y = start.y; y < start.y + maxH; y++)
+            {
+                for (int x = start.x; x < start.x + maxW; x++)
+                {
+                    visited.Add(new Vector2Int(x, y));
+                }
+            }
         }
 
         Mesh mesh = new Mesh();

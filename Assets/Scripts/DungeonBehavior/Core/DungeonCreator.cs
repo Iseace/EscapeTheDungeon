@@ -48,14 +48,24 @@ public class DungeonCreator : MonoBehaviour
     [Range(0, 20)]
     public int maxObjectsPerRoom = 5;
 
+    [Header("Wall Decorations")]
+    public bool spawnWallDecorations = true;
+    public List<WallDecoration> wallDecorations = new List<WallDecoration>();
+    [Range(1, 16)] public int wallDecorSpacing = 3;
+    [Range(0.1f, 5f)] public float wallDecorHeight = 1.6f;
+    [Range(0f, 0.5f)] public float wallDecorInwardOffset = 0.05f;
+
     [Header("Debug")]
     public bool showGrid = false;
 
     private AnchorDungeonGenerator anchorGenerator;
     private ProceduralObjectSpawner objectSpawner;
+    private WallDecorationSpawner wallDecorationSpawner;
     private DungeonGrid currentGrid;
     private List<RoomNode> currentRooms;
     private Vector3 currentCenterOffset;
+    private DungeonPostProcessResult postProcessResult;
+    private DungeonShapePostProcessor shapePostProcessor;
 
     void Start()
     {
@@ -79,6 +89,9 @@ public class DungeonCreator : MonoBehaviour
         currentGrid = null;
         currentRooms = null;
         currentCenterOffset = Vector3.zero;
+        postProcessResult = null;
+        shapePostProcessor = new DungeonShapePostProcessor();
+        wallDecorationSpawner = new WallDecorationSpawner();
 
         // Siempre usamos el generador ancla + placer de prefabs
         anchorGenerator = new AnchorDungeonGenerator(dungeonWidth, dungeonLength);
@@ -106,6 +119,11 @@ public class DungeonCreator : MonoBehaviour
         currentGrid = anchorGenerator.Grid;
         currentCenterOffset = anchorGenerator.GetCenterOffset();
 
+        shapePostProcessor.Process(currentGrid, currentRooms, corridorWidth);
+
+        var postProcessor = new DungeonPostProcessor();
+        postProcessResult = postProcessor.Process(currentGrid, currentRooms);
+
         if (currentGrid != null && currentRooms != null)
         {
             GridPrefabPlacer.Place(
@@ -121,6 +139,21 @@ public class DungeonCreator : MonoBehaviour
                 pillarPrefab,
                 wallHeight
             );
+
+            if (spawnWallDecorations && wallDecorations != null && wallDecorations.Count > 0)
+            {
+                var doorSet = new HashSet<Vector2Int>(postProcessResult?.DoorCells ?? new List<Vector2Int>());
+                wallDecorationSpawner.Spawn(
+                    currentGrid,
+                    transform,
+                    currentCenterOffset,
+                    wallDecorations,
+                    Mathf.Max(1, wallDecorSpacing),
+                    wallDecorHeight,
+                    wallDecorInwardOffset,
+                    doorSet
+                );
+            }
         }
 
         if (spawnObjects && currentGrid != null && currentRooms != null)
@@ -183,6 +216,11 @@ public class DungeonCreator : MonoBehaviour
     public List<RoomNode> GetAllRooms()
     {
         return currentRooms;
+    }
+
+    public DungeonPostProcessResult GetPostProcessResult()
+    {
+        return postProcessResult;
     }
 
     private void OnDrawGizmos()
