@@ -136,9 +136,9 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         myInput.MoveDirection = new Vector3(moveVal.x, 0, moveVal.y);
 
         // Las acciones detectan si se presionó el botón en pantalla O la tecla
-        myInput.AttackPressed = attackAction.action.IsPressed();
-        myInput.InteractPressed = interactAction.action.IsPressed();
-        myInput.SpecialPressed = specialAction.action.IsPressed();
+        myInput.AttackPressed = attackAction.action.WasPressedThisFrame();
+        myInput.InteractPressed = interactAction.action.WasPressedThisFrame();
+        myInput.SpecialPressed = specialAction.action.WasPressedThisFrame();
 
         if (Camera.main != null)
             myInput.CameraRotation = Camera.main.transform.rotation;
