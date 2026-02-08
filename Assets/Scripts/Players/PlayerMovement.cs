@@ -32,9 +32,14 @@ public class PlayerMovement : NetworkBehaviour
     {
         _controller = GetComponent<CharacterController>();
         RefreshAnimatorReference();
+
+        // Get boss hitbox if this is a boss
+        if (isBoss)
+        {
+            _bossHitbox = GetComponentInChildren<BossHitbox>();
+        }
     }
 
-    // Mantenemos tu lógica de desbloqueo de cursor para el Lobby
     private void Update()
     {
         if (HasInputAuthority && SceneManager.GetActiveScene().name == "LobbyRoom")
@@ -63,9 +68,16 @@ public class PlayerMovement : NetworkBehaviour
             Vector3 camEuler = data.CameraRotation.eulerAngles;
             transform.rotation = Quaternion.Euler(0, camEuler.y, 0);
 
-            // 2. Cálculo de Movimiento Horizontal
-            // data.MoveDirection ya viene como (x, 0, y) desde tu Handler
-            Vector3 move = transform.rotation * data.MoveDirection * PlayerSpeed;
+            // 2. Cálculo de Movimiento Horizontal con modificador de velocidad
+            float currentSpeed = PlayerSpeed;
+
+            // Apply speed reduction if boss is attacking
+            if (isBoss && _bossHitbox != null)
+            {
+                currentSpeed *= _bossHitbox.GetMoveSpeedMultiplier();
+            }
+
+            Vector3 move = transform.rotation * data.MoveDirection * currentSpeed;
 
             // 3. Cálculo de Salto y Gravedad
             Vector3 currentVelocity = _velocity;
@@ -103,7 +115,6 @@ public class PlayerMovement : NetworkBehaviour
             if (_animator == null) return;
         }
 
-        // Convertimos el movimiento mundial a local para las animaciones (MoveX, MoveZ)
         Vector3 localMove = transform.InverseTransformDirection(move.normalized);
         _animator.SetFloat("MoveX", localMove.x);
         _animator.SetFloat("MoveZ", localMove.z);
@@ -152,13 +163,11 @@ public class PlayerMovement : NetworkBehaviour
             // 2. HACERTE INVISIBLE PARA TI MISMO
             if (GraphicsRoot != null)
             {
-                // Cambiamos el modelo y todos sus hijos (incluida la espada) a la capa invisible
                 SetLayerRecursively(GraphicsRoot.gameObject, LayerMask.NameToLayer("LocalPlayerHidden"));
             }
         }
     }
 
-    // Función auxiliar para cambiar la capa a todo el modelo
     private void SetLayerRecursively(GameObject obj, int newLayer)
     {
         obj.layer = newLayer;
