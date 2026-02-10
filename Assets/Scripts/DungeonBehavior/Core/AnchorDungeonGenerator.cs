@@ -223,16 +223,29 @@ public class AnchorDungeonGenerator
         Vector2Int start = a.GetCenterPosition();
         Vector2Int end = b.GetCenterPosition();
         bool horizontalFirst = Random.value > 0.5f;
+        int half = widthCells / 2;
+        int halfUp = (widthCells + 1) / 2;
+        // Añadimos un parche cuadrado en el codo para evitar esquinas "huecas".
 
         if (horizontalFirst)
         {
             PaintCorridorRect(new Vector2Int(Mathf.Min(start.x, end.x), start.y - widthCells / 2), new Vector2Int(Mathf.Max(start.x, end.x) + 1, start.y + (widthCells + 1) / 2));
             PaintCorridorRect(new Vector2Int(end.x - widthCells / 2, Mathf.Min(start.y, end.y)), new Vector2Int(end.x + (widthCells + 1) / 2, Mathf.Max(start.y, end.y) + 1));
+
+            Vector2Int elbowCenter = new Vector2Int(end.x, start.y);
+            PaintCorridorRect(
+                new Vector2Int(elbowCenter.x - half, elbowCenter.y - half),
+                new Vector2Int(elbowCenter.x + halfUp, elbowCenter.y + halfUp));
         }
         else
         {
             PaintCorridorRect(new Vector2Int(start.x - widthCells / 2, Mathf.Min(start.y, end.y)), new Vector2Int(start.x + (widthCells + 1) / 2, Mathf.Max(start.y, end.y) + 1));
             PaintCorridorRect(new Vector2Int(Mathf.Min(start.x, end.x), end.y - widthCells / 2), new Vector2Int(Mathf.Max(start.x, end.x) + 1, end.y + (widthCells + 1) / 2));
+
+            Vector2Int elbowCenter = new Vector2Int(start.x, end.y);
+            PaintCorridorRect(
+                new Vector2Int(elbowCenter.x - half, elbowCenter.y - half),
+                new Vector2Int(elbowCenter.x + halfUp, elbowCenter.y + halfUp));
         }
     }
 

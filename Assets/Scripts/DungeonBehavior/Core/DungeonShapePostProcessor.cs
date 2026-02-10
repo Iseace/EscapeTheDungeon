@@ -10,6 +10,9 @@ public class DungeonShapePostProcessConfig
     public int RectCuts = 3; // Cantidad de cortes rectangulares al azar
     public Vector2Int RectSizeMin = new Vector2Int(2, 2);
     public Vector2Int RectSizeMax = new Vector2Int(5, 6);
+    public int MinGapBetweenCuts = 1; // Separación mínima entre cortes para evitar bolsillos
+    public int MinWallThickness = 1; // Espesor mínimo que debe quedar tras un corte
+    public int MinEdgeBuffer = 0; // Distancia mínima desde el borde para iniciar cortes
 }
 
 /// <summary>
@@ -54,6 +57,10 @@ public class DungeonShapePostProcessor
             HashSet<Vector2Int> protectedCells = FindProtectedCells(grid, room, corridorWidth);
 
             ApplyRectCuts(grid, room, protectedCells);
+
+            RemoveThinStrips(grid, room, protectedCells);
+
+            FillInternalVoids(grid, room);
 
             if (ValidateConnectivity(grid, room, protectedCells))
             {
@@ -220,12 +227,62 @@ public class DungeonShapePostProcessor
         grid.SetCellType(pos, CellType.Empty, null);
     }
 
+    private void RemoveThinStrips(DungeonGrid grid, RoomNode room, HashSet<Vector2Int> protectedCells)
+    {
+        // Elimina tiras de 1 tile de grosor (picos) tras los cortes, respetando celdas protegidas.
+        List<Vector2Int> toClear = new List<Vector2Int>();
+
+        for (int x = room.BottomLeftAreaCorner.x; x < room.TopRightAreaCorner.x; x++)
+        {
+            for (int y = room.BottomLeftAreaCorner.y; y < room.TopRightAreaCorner.y; y++)
+            {
+                var pos = new Vector2Int(x, y);
+                if (protectedCells.Contains(pos)) continue;
+                var cell = grid.GetCell(pos);
+                if (cell == null || cell.Type != CellType.Floor) continue;
+
+                int neighbors = 0;
+                foreach (var d in Neigh)
+                {
+                    var n = grid.GetCell(pos + d);
+                    if (n != null && n.Type == CellType.Floor)
+                        neighbors++;
+                }
+
+                // Celdas con 0-1 vecinos son puntas; con 2 en linea recta tambien son tiras.
+                if (neighbors <= 1)
+                {
+                    toClear.Add(pos);
+                }
+                else if (neighbors == 2)
+                {
+                    bool horiz = IsFloor(grid, pos + Vector2Int.left) && IsFloor(grid, pos + Vector2Int.right);
+                    bool vert = IsFloor(grid, pos + Vector2Int.up) && IsFloor(grid, pos + Vector2Int.down);
+                    if (horiz || vert)
+                    {
+                        toClear.Add(pos);
+                    }
+                }
+            }
+        }
+
+        foreach (var p in toClear)
+        {
+            grid.SetCellType(p, CellType.Empty, null);
+        }
+    }
+
     private void ApplyRectCuts(DungeonGrid grid, RoomNode room, HashSet<Vector2Int> protectedCells)
     {
-        int cuts = Mathf.Max(0, config.RectCuts);
+        int cuts = Mathf.Clamp(config.RectCuts, 0, 3);
         if (cuts == 0) return;
 
-        int attemptsPerCut = 10;
+        int attemptsPerCut = 25;
+        int gap = Mathf.Max(0, config.MinGapBetweenCuts);
+        int minThickness = Mathf.Max(1, config.MinWallThickness);
+        int edgeBuffer = Mathf.Max(0, config.MinEdgeBuffer);
+        List<RectInt> placed = new List<RectInt>();
+
         for (int i = 0; i < cuts; i++)
         {
             bool carved = false;
@@ -242,26 +299,59 @@ public class DungeonShapePostProcessor
                 switch (choice)
                 {
                     case 0: // borde izquierdo
-                        xStart = room.BottomLeftAreaCorner.x;
+                        xStart = room.BottomLeftAreaCorner.x + edgeBuffer;
                         yStart = Random.Range(room.BottomLeftAreaCorner.y, room.TopRightAreaCorner.y - h);
                         break;
                     case 1: // borde derecho
-                        xStart = room.TopRightAreaCorner.x - w;
+                        xStart = room.TopRightAreaCorner.x - w - edgeBuffer;
                         yStart = Random.Range(room.BottomLeftAreaCorner.y, room.TopRightAreaCorner.y - h);
                         break;
                     case 2: // borde inferior
-                        xStart = Random.Range(room.BottomLeftAreaCorner.x, room.TopRightAreaCorner.x - w);
-                        yStart = room.BottomLeftAreaCorner.y;
+                        xStart = Random.Range(room.BottomLeftAreaCorner.x + edgeBuffer, room.TopRightAreaCorner.x - w - edgeBuffer);
+                        yStart = room.BottomLeftAreaCorner.y + edgeBuffer;
                         break;
                     default: // borde superior
-                        xStart = Random.Range(room.BottomLeftAreaCorner.x, room.TopRightAreaCorner.x - w);
-                        yStart = room.TopRightAreaCorner.y - h;
+                        xStart = Random.Range(room.BottomLeftAreaCorner.x + edgeBuffer, room.TopRightAreaCorner.x - w - edgeBuffer);
+                        yStart = room.TopRightAreaCorner.y - h - edgeBuffer;
                         break;
+                }
+
+                // Si los rangos de random son inválidos, descartar
+                if (choice == 2 || choice == 3)
+                {
+                    if (room.BottomLeftAreaCorner.x + edgeBuffer > room.TopRightAreaCorner.x - w - edgeBuffer) continue;
+                }
+                if (choice == 0 || choice == 1)
+                {
+                    if (room.BottomLeftAreaCorner.y > room.TopRightAreaCorner.y - h) continue;
                 }
 
                 // Asegura que cabe
                 if (xStart < room.BottomLeftAreaCorner.x || yStart < room.BottomLeftAreaCorner.y) continue;
                 if (xStart + w > room.TopRightAreaCorner.x || yStart + h > room.TopRightAreaCorner.y) continue;
+
+                // Evita que un corte deje la sala sin espesor mínimo
+                int remainingWLeft = (xStart - room.BottomLeftAreaCorner.x);
+                int remainingWRight = (room.TopRightAreaCorner.x - (xStart + w));
+                int remainingHBottom = (yStart - room.BottomLeftAreaCorner.y);
+                int remainingHTop = (room.TopRightAreaCorner.y - (yStart + h));
+                if (remainingWLeft < minThickness && remainingWRight < minThickness) continue;
+                if (remainingHBottom < minThickness && remainingHTop < minThickness) continue;
+
+                // Evita cortes demasiado cercanos entre sí (gap)
+                RectInt candidate = new RectInt(xStart, yStart, w, h);
+                bool tooClose = false;
+                foreach (var r in placed)
+                {
+                    // Expande el existente por gap y verifica intersección
+                    RectInt expanded = new RectInt(r.xMin - gap, r.yMin - gap, r.width + gap * 2, r.height + gap * 2);
+                    if (expanded.Overlaps(candidate))
+                    {
+                        tooClose = true;
+                        break;
+                    }
+                }
+                if (tooClose) continue;
 
                 bool touchesProtected = false;
                 for (int x = xStart; x < xStart + w && !touchesProtected; x++)
@@ -286,6 +376,7 @@ public class DungeonShapePostProcessor
                     }
                 }
 
+                placed.Add(candidate);
                 carved = true;
             }
         }
@@ -348,6 +439,83 @@ public class DungeonShapePostProcessor
         }
 
         return true;
+    }
+
+    private bool IsFloor(DungeonGrid grid, Vector2Int pos)
+    {
+        var c = grid.GetCell(pos);
+        return c != null && c.Type == CellType.Floor;
+    }
+
+    private void FillInternalVoids(DungeonGrid grid, RoomNode room)
+    {
+        // Marca espacios vacíos conectados al exterior de la sala y rellena huecos encerrados.
+        int minX = room.BottomLeftAreaCorner.x - 1;
+        int maxX = room.TopRightAreaCorner.x;
+        int minY = room.BottomLeftAreaCorner.y - 1;
+        int maxY = room.TopRightAreaCorner.y;
+
+        HashSet<Vector2Int> visited = new HashSet<Vector2Int>();
+        Queue<Vector2Int> q = new Queue<Vector2Int>();
+
+        bool InBounds(Vector2Int p) => p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY;
+
+        void EnqueueIfOutside(Vector2Int p)
+        {
+            if (!InBounds(p)) return;
+            if (visited.Contains(p)) return;
+            var cell = grid.GetCell(p);
+            // Consideramos "aire" todo lo que no sea Floor; atravesamos corredores y vacío exterior.
+            if (cell == null || cell.Type != CellType.Floor)
+            {
+                visited.Add(p);
+                q.Enqueue(p);
+            }
+        }
+
+        // Semillas: perímetro del bounding box ampliado
+        for (int x = minX; x <= maxX; x++)
+        {
+            EnqueueIfOutside(new Vector2Int(x, minY));
+            EnqueueIfOutside(new Vector2Int(x, maxY));
+        }
+        for (int y = minY; y <= maxY; y++)
+        {
+            EnqueueIfOutside(new Vector2Int(minX, y));
+            EnqueueIfOutside(new Vector2Int(maxX, y));
+        }
+
+        while (q.Count > 0)
+        {
+            var p = q.Dequeue();
+            foreach (var d in Neigh)
+            {
+                var np = p + d;
+                if (!InBounds(np)) continue;
+                if (visited.Contains(np)) continue;
+                var cell = grid.GetCell(np);
+                if (cell == null || cell.Type != CellType.Floor)
+                {
+                    visited.Add(np);
+                    q.Enqueue(np);
+                }
+            }
+        }
+
+        // Rellena huecos internos: celdas no Floor dentro de la sala que no fueron alcanzadas.
+        for (int x = room.BottomLeftAreaCorner.x; x < room.TopRightAreaCorner.x; x++)
+        {
+            for (int y = room.BottomLeftAreaCorner.y; y < room.TopRightAreaCorner.y; y++)
+            {
+                var pos = new Vector2Int(x, y);
+                if (visited.Contains(pos)) continue;
+                var cell = grid.GetCell(pos);
+                if (cell == null || cell.Type != CellType.Floor)
+                {
+                    grid.SetCellType(pos, CellType.Floor, room);
+                }
+            }
+        }
     }
 
     private bool IsInsideRoom(Vector2Int pos, RoomNode room)
