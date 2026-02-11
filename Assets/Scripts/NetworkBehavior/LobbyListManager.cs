@@ -55,7 +55,7 @@ public class LobbyListManager : MonoBehaviour
     {
         Debug.Log($"[SESSION LIST] Attempting to join session: {sessionInfo.Name}");
         if (networkRunnerHandler != null)
-        {
+        {3
             networkRunnerHandler.JoinGame(sessionInfo);
         }
         else
