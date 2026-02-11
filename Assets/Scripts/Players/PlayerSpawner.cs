@@ -95,26 +95,47 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
     public override void FixedUpdateNetwork()
     {
+        // Continuously reposition lobby players to stay centered
+        if (Runner.IsServer && SceneManager.GetActiveScene().name == "LobbyRoom" && !bossSelected)
+        {
+            float spacing = 1.5f;
+            var activePlayers = Runner.ActivePlayers.ToList();
+            int totalPlayers = activePlayers.Count;
+            
+            if (totalPlayers > 0)
+            {
+                float totalWidth = (totalPlayers - 1) * spacing;
+                float startOffset = -totalWidth / 2f;
+                
+                int index = 0;
+                foreach (var p in activePlayers)
+                {
+                    if (Runner.TryGetPlayerObject(p, out NetworkObject playerObj))
+                    {
+                        Vector3 targetPos = new Vector3(startOffset + index * spacing, 0f, 0f);
+                        playerObj.transform.position = targetPos;
+                        index++;
+                    }
+                }
+            }
+        }
+        
         if (!Runner.IsServer || SceneManager.GetActiveScene().name != "Game" || bossSelected || isSwappingBoss) return;
 
-        // Solo procedemos si todos han spawneado su "cuerpo" inicial
         if (Runner.ActivePlayers.Count() == 0) return;
         foreach (var p in Runner.ActivePlayers)
         {
             if (!Runner.TryGetPlayerObject(p, out _)) return;
         }
 
-        // Mark as swapping to prevent multiple executions
         isSwappingBoss = true;
         bossSelected = true;
 
-        // SELECCIÓN ALEATORIA
         var players = Runner.ActivePlayers.ToList();
         bossPlayer = players[UnityEngine.Random.Range(0, players.Count)];
 
         Debug.Log($"[SPAWNER] Selected player {bossPlayer.PlayerId} as Boss");
 
-        // INTERCAMBIO SEGURO
         if (Runner.TryGetPlayerObject(bossPlayer, out NetworkObject oldObj))
         {
             Vector3 pos = oldObj.transform.position;
@@ -122,13 +143,9 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
             Debug.Log($"[SPAWNER] Despawning old player object at {pos}");
 
-            // 1. Limpiamos la referencia antes de borrar
             Runner.SetPlayerObject(bossPlayer, null);
-
-            // 2. Despawnear al Mago (Elimina el Player(Clone) de la jerarquía)
             Runner.Despawn(oldObj);
 
-            // 3. Spawnear al Boss (Asegúrate que BossPrefab NO sea null en el Inspector)
             if (BossPrefab != null)
             {
                 Debug.Log($"[SPAWNER] Spawning Boss prefab at {pos}");
