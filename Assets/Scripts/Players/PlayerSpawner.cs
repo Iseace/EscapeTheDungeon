@@ -62,11 +62,15 @@ private void Start()
         Vector3 spawnPos = new Vector3(3f, 1f, 3f);
         Quaternion spawnRot = Quaternion.identity;
 
-        // LOBBY LINE-UP: Positioning players side-by-side
-        if (SceneManager.GetActiveScene().name == "Lobby")
+        // LOBBY LINE-UP: Initial spawn position (will be repositioned by FixedUpdateNetwork)
+        if (SceneManager.GetActiveScene().name == "LobbyRoom")
         {
             float spacing = 1.5f;
-            spawnPos = new Vector3(player.PlayerId * spacing, 0f, 0f);
+            int totalPlayers = runner.ActivePlayers.Count();
+            float totalWidth = (totalPlayers - 1) * spacing;
+            float startOffset = -totalWidth / 2f;
+            
+            spawnPos = new Vector3(startOffset + (totalPlayers - 1) * spacing, 0f, 0f);
             spawnRot = Quaternion.identity;
         }
 
@@ -78,26 +82,47 @@ private void Start()
 
     public override void FixedUpdateNetwork()
     {
+        // Continuously reposition lobby players to stay centered
+        if (Runner.IsServer && SceneManager.GetActiveScene().name == "LobbyRoom" && !bossSelected)
+        {
+            float spacing = 1.5f;
+            var activePlayers = Runner.ActivePlayers.ToList();
+            int totalPlayers = activePlayers.Count;
+            
+            if (totalPlayers > 0)
+            {
+                float totalWidth = (totalPlayers - 1) * spacing;
+                float startOffset = -totalWidth / 2f;
+                
+                int index = 0;
+                foreach (var p in activePlayers)
+                {
+                    if (Runner.TryGetPlayerObject(p, out NetworkObject playerObj))
+                    {
+                        Vector3 targetPos = new Vector3(startOffset + index * spacing, 0f, 0f);
+                        playerObj.transform.position = targetPos;
+                        index++;
+                    }
+                }
+            }
+        }
+        
         if (!Runner.IsServer || SceneManager.GetActiveScene().name != "Game" || bossSelected || isSwappingBoss) return;
 
-        // Solo procedemos si todos han spawneado su "cuerpo" inicial
         if (Runner.ActivePlayers.Count() == 0) return;
         foreach (var p in Runner.ActivePlayers)
         {
             if (!Runner.TryGetPlayerObject(p, out _)) return;
         }
 
-        // Mark as swapping to prevent multiple executions
         isSwappingBoss = true;
         bossSelected = true;
 
-        // SELECCIÓN ALEATORIA
         var players = Runner.ActivePlayers.ToList();
         bossPlayer = players[UnityEngine.Random.Range(0, players.Count)];
 
         Debug.Log($"[SPAWNER] Selected player {bossPlayer.PlayerId} as Boss");
 
-        // INTERCAMBIO SEGURO
         if (Runner.TryGetPlayerObject(bossPlayer, out NetworkObject oldObj))
         {
             Vector3 pos = oldObj.transform.position;
@@ -105,13 +130,9 @@ private void Start()
 
             Debug.Log($"[SPAWNER] Despawning old player object at {pos}");
 
-            // 1. Limpiamos la referencia antes de borrar
             Runner.SetPlayerObject(bossPlayer, null);
-
-            // 2. Despawnear al Mago (Elimina el Player(Clone) de la jerarquía)
             Runner.Despawn(oldObj);
 
-            // 3. Spawnear al Boss (Asegúrate que BossPrefab NO sea null en el Inspector)
             if (BossPrefab != null)
             {
                 Debug.Log($"[SPAWNER] Spawning Boss prefab at {pos}");
@@ -162,7 +183,6 @@ private void Start()
         }
     }
 
-    // --- INTERFACE IMPLEMENTATIONS ---
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
         PlayerJoinedLogic(runner, player);
@@ -190,31 +210,36 @@ private void Start()
         }
     }
 
-    private void ReturnToMenu(NetworkRunner runner)
+    private async void ReturnToMenu(NetworkRunner runner)
     {
         if (runner == null) return;
 
         try
         {
+            Debug.Log("[BOSS DISCONNECT] Loading menu scene...");
+            
             int sceneIndex = SceneUtility.GetBuildIndexByScenePath("Scenes/" + menuSceneName);
             if (sceneIndex >= 0)
             {
-                runner.LoadScene(SceneRef.FromIndex(sceneIndex));
+                await runner.LoadScene(SceneRef.FromIndex(sceneIndex));
             }
             else
             {
-                runner.LoadScene(SceneRef.FromIndex(menuSceneIndex));
+                await runner.LoadScene(SceneRef.FromIndex(menuSceneIndex));
             }
 
+            // Wait a moment for scene to load
+            await System.Threading.Tasks.Task.Delay(500);
+
             Debug.Log("[BOSS DISCONNECT] Shutting down runner...");
-            runner.Shutdown();
+            await runner.Shutdown();
         }
         catch (Exception e)
         {
             Debug.LogError($"[BOSS DISCONNECT] Failed during cleanup: {e.Message}");
             if (runner != null)
             {
-                runner.Shutdown();
+                await runner.Shutdown();
             }
         }
     }
