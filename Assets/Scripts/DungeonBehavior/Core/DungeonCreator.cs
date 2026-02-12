@@ -48,6 +48,10 @@ public class DungeonCreator : MonoBehaviour
     [Range(0, 20)]
     public int maxObjectsPerRoom = 5;
 
+    [Header("Mission Objectives")]
+    public bool spawnMissionObjectives = true;
+    public List<MissionObjectiveConfig> missionObjectives = new List<MissionObjectiveConfig>();
+
     [Header("Wall Decorations")]
     public bool spawnWallDecorations = true;
     public List<WallDecoration> wallDecorations = new List<WallDecoration>();
@@ -61,6 +65,7 @@ public class DungeonCreator : MonoBehaviour
     private AnchorDungeonGenerator anchorGenerator;
     private ProceduralObjectSpawner objectSpawner;
     private WallDecorationSpawner wallDecorationSpawner;
+    private MissionObjectiveSpawner missionObjectiveSpawner;
     private DungeonGrid currentGrid;
     private List<RoomNode> currentRooms;
     private Vector3 currentCenterOffset;
@@ -92,6 +97,7 @@ public class DungeonCreator : MonoBehaviour
         postProcessResult = null;
         shapePostProcessor = new DungeonShapePostProcessor();
         wallDecorationSpawner = new WallDecorationSpawner();
+        missionObjectiveSpawner = new MissionObjectiveSpawner();
 
         // Siempre usamos el generador ancla + placer de prefabs
         anchorGenerator = new AnchorDungeonGenerator(dungeonWidth, dungeonLength);
@@ -152,6 +158,20 @@ public class DungeonCreator : MonoBehaviour
                     wallDecorHeight,
                     wallDecorInwardOffset,
                     doorSet
+                );
+            }
+
+            if (spawnMissionObjectives && missionObjectives != null && missionObjectives.Count > 0)
+            {
+                GameObject missionParent = new GameObject("MissionObjectives");
+                missionParent.transform.SetParent(transform, false);
+                missionParent.transform.localPosition = Vector3.zero;
+                missionObjectiveSpawner.SpawnObjectives(
+                    currentGrid,
+                    currentRooms,
+                    missionParent.transform,
+                    currentCenterOffset,
+                    missionObjectives
                 );
             }
         }
