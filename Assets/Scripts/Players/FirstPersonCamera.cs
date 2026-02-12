@@ -1,24 +1,27 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class FirstPersonCamera : MonoBehaviour
 {
-    public Transform Target; // Will be set at runtime
-    public GameObject PlayerGraphics; // Will be set at runtime
+    public Transform Target;
+    public GameObject PlayerGraphics;
     public float MouseSensitivity = 10f;
+
+    public InputActionReference lookAction;
+
+    // Usamos tu capa existente
+    public string InvisibleLayerName = "LocalPlayerHidden";
 
     private float verticalRotation;
     private float horizontalRotation;
-    private bool bodyHidden = false;
     private bool isInitialized = false;
+    private void OnEnable() => lookAction.action.Enable();
+    private void OnDisable() => lookAction.action.Disable();
 
-    /// <summary>
-    /// Call this to assign the local player to this camera
-    /// </summary>
     public void SetTarget(Transform newTarget, GameObject graphics)
     {
         Target = newTarget;
         PlayerGraphics = graphics;
-        bodyHidden = false;
         isInitialized = false;
 
         if (newTarget != null)
@@ -26,50 +29,54 @@ public class FirstPersonCamera : MonoBehaviour
             horizontalRotation = newTarget.eulerAngles.y;
             verticalRotation = 0f;
             isInitialized = true;
+
+            ApplyInvisibleLayer();
         }
     }
 
     void LateUpdate()
     {
-        if (Target == null) return;
+        if (Target == null || !isInitialized) return;
 
-        // Initialize on first frame if not done yet
-        if (!isInitialized)
-        {
-            horizontalRotation = Target.eulerAngles.y;
-            verticalRotation = 0f;
-            isInitialized = true;
-        }
-
-        // Hide the player body for this camera only
-        if (!bodyHidden && PlayerGraphics != null)
-        {
-            HidePlayerGraphics();
-            bodyHidden = true;
-        }
-
-        // Follow the target position (CameraPivot)
+        ApplyInvisibleLayer();
         transform.position = Target.position;
 
-        // Get mouse input
-        float mouseX = Input.GetAxis("Mouse X");
-        float mouseY = Input.GetAxis("Mouse Y");
+        // 3. Leemos el Vector2 del "Look" (Mouse o Touch)
+        Vector2 lookInput = lookAction.action.ReadValue<Vector2>();
 
-        verticalRotation -= mouseY * MouseSensitivity;
+        // Multiplicamos por un factor pequeño (0.1f) porque el New Input System
+        // da valores más altos que el viejo GetAxis
+        float mouseX = lookInput.x * MouseSensitivity * 0.1f;
+        float mouseY = lookInput.y * MouseSensitivity * 0.1f;
+
+        verticalRotation -= mouseY;
         verticalRotation = Mathf.Clamp(verticalRotation, -70f, 70f);
+        horizontalRotation += mouseX;
 
-        horizontalRotation += mouseX * MouseSensitivity;
-
-        // Apply rotation to camera
         transform.rotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0);
     }
 
-    void HidePlayerGraphics()
+    void ApplyInvisibleLayer()
     {
-        Renderer[] renderers = PlayerGraphics.GetComponentsInChildren<Renderer>();
-        foreach (Renderer r in renderers)
+        if (PlayerGraphics == null) return;
+
+        int layerIndex = LayerMask.NameToLayer(InvisibleLayerName);
+
+        if (layerIndex != -1)
         {
-            r.enabled = false;
+            SetLayerRecursive(PlayerGraphics, layerIndex);
+        }
+    }
+
+    private void SetLayerRecursive(GameObject obj, int newLayer)
+    {
+        // Si ya está en la capa, no hacemos nada (optimización)
+        if (obj.layer == newLayer) return;
+
+        obj.layer = newLayer;
+        foreach (Transform child in obj.transform)
+        {
+            SetLayerRecursive(child.gameObject, newLayer);
         }
     }
 }
