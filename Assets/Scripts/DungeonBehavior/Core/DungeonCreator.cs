@@ -18,37 +18,25 @@ public class DungeonCreator : MonoBehaviour
     public int roomLengthMin = 10;
     public int wallHeight = 3;
     public int corridorWidth = 5;
-    public int maxIterations = 10;
 
-    [Range(0.0f, 0.3f)]
-    public float roomBottomCornerModifier = 0.1f;
-    [Range(0.7f, 1.0f)]
-    public float roomTopCornerMidifier = 0.9f;
-    [Range(0, 2)]
-    public int roomOffset = 1;
+    [Header("Anchor Generator Settings")]
+    [Tooltip("Numero maximo de salas (incluye el ancla)")] public int anchorMaxRooms = 18;
+    [Tooltip("Intentos por sala antes de descartar")] public int anchorAttemptsPerRoom = 40;
+    [Tooltip("Separacion minima (padding) entre salas")] public int anchorRoomPadding = 1;
+    [Tooltip("Rango de distancia radial desde el centro")] public Vector2Int anchorDistanceRange = new Vector2Int(8, 30);
+    [Tooltip("Conexiones extra sobre el MST base")] public int anchorExtraConnections = 1;
+    [Tooltip("Tamaño minimo salas secundarias")] public Vector2Int anchorRoomSizeMin = new Vector2Int(8, 8);
+    [Tooltip("Tamaño maximo salas secundarias")] public Vector2Int anchorRoomSizeMax = new Vector2Int(16, 16);
 
-    [Header("Floor Textures")]
-    public Material material;
-    
-    [Header("Wall Generation")]
-    public GameObject wallPrefab;
-    [HideInInspector]
-    public bool useProceduralWalls = true;
-    public Material wallMaterial;
-    
-    [HideInInspector]
-    public bool useCornerPillars = true;
-    
-    [Header("Corner Pillars")]
-    public Material pillarMaterial;
-
-    [Tooltip("Recommended values between 0.3 and 1.0")]
-    [Range(0.3f, 2.0f)]
-    public float cornerPillarSize = 0.6f;
-
-    [Header("Room Shapes")]
-    public bool enableVariedShapes = false;
-    public RoomShapeConfig roomShapeConfig = new RoomShapeConfig();
+    [Header("Prefabs (Placement)")]
+    [Tooltip("Prefab principal de habitación (se escala al tamaño de la sala)")] public GameObject roomPrefab;
+    [Tooltip("Prefab de corredor (tramos rectos escalados); si es null usa tiles")]
+    public GameObject corridorPrefab;
+    [Tooltip("Tile de piso para salas (fallback 1x1)")] public GameObject roomFloorTilePrefab;
+    [Tooltip("Tile de piso para corredor (fallback 1x1)")] public GameObject corridorFloorTilePrefab;
+    [Tooltip("Segmento de pared escalable (pivot centrado)")] public GameObject wallPiecePrefab;
+    [Tooltip("Pilar para esquinas de pared")]
+    public GameObject pillarPrefab;
 
     [Header("Procedural Objects")]
     public bool spawnObjects = true;
@@ -60,15 +48,29 @@ public class DungeonCreator : MonoBehaviour
     [Range(0, 20)]
     public int maxObjectsPerRoom = 5;
 
+    [Header("Mission Objectives")]
+    public bool spawnMissionObjectives = true;
+    public List<MissionObjectiveConfig> missionObjectives = new List<MissionObjectiveConfig>();
+
+    [Header("Wall Decorations")]
+    public bool spawnWallDecorations = true;
+    public List<WallDecoration> wallDecorations = new List<WallDecoration>();
+    [Range(1, 16)] public int wallDecorSpacing = 3;
+    [Range(0.1f, 5f)] public float wallDecorHeight = 1.6f;
+    [Range(0f, 0.5f)] public float wallDecorInwardOffset = 0.05f;
+
     [Header("Debug")]
     public bool showGrid = false;
 
-    private DugeonGenerator generator;
+    private AnchorDungeonGenerator anchorGenerator;
     private ProceduralObjectSpawner objectSpawner;
-    private List<Vector3Int> possibleDoorVerticalPosition;
-    private List<Vector3Int> possibleDoorHorizontalPosition;
-    private List<Vector3Int> possibleWallHorizontalPosition;
-    private List<Vector3Int> possibleWallVerticalPosition;
+    private WallDecorationSpawner wallDecorationSpawner;
+    private MissionObjectiveSpawner missionObjectiveSpawner;
+    private DungeonGrid currentGrid;
+    private List<RoomNode> currentRooms;
+    private Vector3 currentCenterOffset;
+    private DungeonPostProcessResult postProcessResult;
+    private DungeonShapePostProcessor shapePostProcessor;
 
     void Start()
     {
@@ -88,55 +90,104 @@ public class DungeonCreator : MonoBehaviour
 
         DestroyAllChildren();
 
-        generator = new DugeonGenerator(dungeonWidth, dungeonLength);
+        anchorGenerator = null;
+        currentGrid = null;
+        currentRooms = null;
+        currentCenterOffset = Vector3.zero;
+        postProcessResult = null;
+        shapePostProcessor = new DungeonShapePostProcessor();
+        wallDecorationSpawner = new WallDecorationSpawner();
+        missionObjectiveSpawner = new MissionObjectiveSpawner();
 
-        var listOfRooms = generator.CalculateDungeon(
-            maxIterations,
-            roomWidthMin,
-            roomLengthMin,
-            roomBottomCornerModifier,
-            roomTopCornerMidifier,
-            roomOffset,
-            corridorWidth,
-            enableVariedShapes ? roomShapeConfig : null
-        );
-
-        GameObject wallParent = new GameObject("WallParent");
-        wallParent.transform.parent = transform;
-
-        GameObject objectParent = new GameObject("ObjectParent");
-        objectParent.transform.parent = transform;
-
-        possibleDoorVerticalPosition = new List<Vector3Int>();
-        possibleDoorHorizontalPosition = new List<Vector3Int>();
-        possibleWallHorizontalPosition = new List<Vector3Int>();
-        possibleWallVerticalPosition = new List<Vector3Int>();
-
-        for (int i = 0; i < listOfRooms.Count; i++)
+        // Siempre usamos el generador ancla + placer de prefabs
+        anchorGenerator = new AnchorDungeonGenerator(dungeonWidth, dungeonLength);
+        AnchorGenerationConfig cfg = new AnchorGenerationConfig
         {
-            if (listOfRooms[i] is RoomNode roomNode)
+            AnchorSize = new Vector2Int(Mathf.Max(2, roomWidthMin), Mathf.Max(2, roomLengthMin)),
+            MaxRooms = Mathf.Max(1, anchorMaxRooms),
+            MaxAttemptsPerRoom = Mathf.Max(1, anchorAttemptsPerRoom),
+            Padding = Mathf.Max(0, anchorRoomPadding),
+            CorridorWidth = corridorWidth,
+            MinDistanceFromCenter = Mathf.Max(0, anchorDistanceRange.x),
+            MaxDistanceFromCenter = Mathf.Max(anchorDistanceRange.x, anchorDistanceRange.y),
+            ExtraConnections = Mathf.Max(0, anchorExtraConnections),
+            RoomSizeMin = new Vector2Int(
+                Mathf.Max(2, Mathf.Min(anchorRoomSizeMin.x, anchorRoomSizeMax.x)),
+                Mathf.Max(2, Mathf.Min(anchorRoomSizeMin.y, anchorRoomSizeMax.y))
+            ),
+            RoomSizeMax = new Vector2Int(
+                Mathf.Max(anchorRoomSizeMin.x, anchorRoomSizeMax.x),
+                Mathf.Max(anchorRoomSizeMin.y, anchorRoomSizeMax.y)
+            )
+        };
+
+        currentRooms = anchorGenerator.Generate(cfg);
+        currentGrid = anchorGenerator.Grid;
+        currentCenterOffset = anchorGenerator.GetCenterOffset();
+
+        shapePostProcessor.Process(currentGrid, currentRooms, corridorWidth);
+
+        var postProcessor = new DungeonPostProcessor();
+        postProcessResult = postProcessor.Process(currentGrid, currentRooms);
+
+        if (currentGrid != null && currentRooms != null)
+        {
+            GridPrefabPlacer.Place(
+                currentGrid,
+                currentRooms,
+                transform,
+                currentCenterOffset,
+                roomPrefab,
+                corridorPrefab,
+                roomFloorTilePrefab,
+                corridorFloorTilePrefab,
+                wallPiecePrefab,
+                pillarPrefab,
+                wallHeight
+            );
+
+            if (spawnWallDecorations && wallDecorations != null && wallDecorations.Count > 0)
             {
-                CreateFloorMeshFromGrid(roomNode);
+                var doorSet = new HashSet<Vector2Int>(postProcessResult?.DoorCells ?? new List<Vector2Int>());
+                wallDecorationSpawner.Spawn(
+                    currentGrid,
+                    transform,
+                    currentCenterOffset,
+                    wallDecorations,
+                    Mathf.Max(1, wallDecorSpacing),
+                    wallDecorHeight,
+                    wallDecorInwardOffset,
+                    doorSet
+                );
             }
-            else
+
+            if (spawnMissionObjectives && missionObjectives != null && missionObjectives.Count > 0)
             {
-                CreateMesh(listOfRooms[i].BottomLeftAreaCorner, listOfRooms[i].TopRightAreaCorner);
+                GameObject missionParent = new GameObject("MissionObjectives");
+                missionParent.transform.SetParent(transform, false);
+                missionParent.transform.localPosition = Vector3.zero;
+                missionObjectiveSpawner.SpawnObjectives(
+                    currentGrid,
+                    currentRooms,
+                    missionParent.transform,
+                    currentCenterOffset,
+                    missionObjectives
+                );
             }
         }
 
-        CreateCorridorFloorMesh();
-        CreateWalls(wallParent);
-
-        if (spawnObjects && generator.RoomList != null)
+        if (spawnObjects && currentGrid != null && currentRooms != null)
         {
-            objectSpawner = new ProceduralObjectSpawner(generator.Grid, objectParent.transform);
+            GameObject objectParent = new GameObject("ObjectParent");
+            objectParent.transform.parent = transform;
+            objectSpawner = new ProceduralObjectSpawner(currentGrid, objectParent.transform, currentCenterOffset);
             SpawnAllObjects();
         }
     }
 
     private void SpawnAllObjects()
     {
-        foreach (var room in generator.RoomList)
+        foreach (var room in currentRooms)
         {
             if (genericObjects.Count > 0)
             {
@@ -166,329 +217,6 @@ public class DungeonCreator : MonoBehaviour
         return lastUsedSeed;
     }
 
-    private void CreateWalls(GameObject wallParent)
-    {
-        if (generator?.Grid == null)
-            return;
-
-        var grid = generator.Grid;
-        var cells = grid.GetAllCells();
-
-        List<Vector3Int> horizontalWalls = new List<Vector3Int>();
-        List<Vector3Int> verticalWalls = new List<Vector3Int>();
-        HashSet<Vector3Int> doors = new HashSet<Vector3Int>();
-
-        // Iterate through all floor/corridor cells to find their edges
-        foreach (var kvp in cells)
-        {
-            if (!WallCellAnalyzer.IsWalkable(kvp.Value))
-                continue;
-
-            Vector2Int pos = kvp.Key;
-
-            // Check all 4 neighbors and add walls where there's a transition to non-walkable
-            // Bottom edge (horizontal wall)
-            GridCell bottom = grid.GetCell(pos + Vector2Int.down);
-            if (!WallCellAnalyzer.IsWalkable(bottom))
-            {
-                // Wall is at the bottom edge of this cell
-                Vector3Int wallPos = new Vector3Int(pos.x, 0, pos.y);
-                if (!horizontalWalls.Contains(wallPos))
-                {
-                    horizontalWalls.Add(wallPos);
-                }
-            }
-
-            // Top edge (horizontal wall)
-            GridCell top = grid.GetCell(pos + Vector2Int.up);
-            if (!WallCellAnalyzer.IsWalkable(top))
-            {
-                // Wall is at the top edge of this cell
-                Vector3Int wallPos = new Vector3Int(pos.x, 0, pos.y + 1);
-                if (!horizontalWalls.Contains(wallPos))
-                {
-                    horizontalWalls.Add(wallPos);
-                }
-            }
-
-            // Left edge (vertical wall)
-            GridCell left = grid.GetCell(pos + Vector2Int.left);
-            if (!WallCellAnalyzer.IsWalkable(left))
-            {
-                // Wall is at the left edge of this cell
-                Vector3Int wallPos = new Vector3Int(pos.x, 0, pos.y);
-                if (!verticalWalls.Contains(wallPos))
-                {
-                    verticalWalls.Add(wallPos);
-                }
-            }
-
-            // Right edge (vertical wall)
-            GridCell right = grid.GetCell(pos + Vector2Int.right);
-            if (!WallCellAnalyzer.IsWalkable(right))
-            {
-                // Wall is at the right edge of this cell
-                Vector3Int wallPos = new Vector3Int(pos.x + 1, 0, pos.y);
-                if (!verticalWalls.Contains(wallPos))
-                {
-                    verticalWalls.Add(wallPos);
-                }
-            }
-        }
-
-        ProceduralWallGenerator wallGenerator =
-            new ProceduralWallGenerator(wallHeight, wallMaterial);
-
-        wallGenerator.GenerateWalls(
-            horizontalWalls,
-            verticalWalls,
-            doors,
-            wallParent.transform
-        );
-
-        if (useCornerPillars)
-        {
-            HashSet<Vector3Int> allCorners =
-                WallCellAnalyzer.DetectCorners(grid, cells);
-
-            CornerPillarGenerator pillarGenerator =
-                new CornerPillarGenerator(
-                    wallHeight,
-                    cornerPillarSize,
-                    pillarMaterial  
-                );
-
-            pillarGenerator.GeneratePillars(
-                allCorners,
-                wallParent.transform
-            );
-        }
-    }
-
-    private void CreateWall(GameObject wallParent, Vector3Int wallPosition, float yRotation)
-    {
-        Quaternion rotation = Quaternion.Euler(0, yRotation, 0);
-        GameObject wall = Instantiate(wallPrefab, wallPosition, rotation, wallParent.transform);
-
-        Vector3 scale = wall.transform.localScale;
-        scale.y = wallHeight;
-        wall.transform.localScale = scale;
-    }
-
-    private void CreateFloorMeshFromGrid(RoomNode room)
-    {
-        if (generator?.Grid == null)
-        {
-            CreateMesh(room.BottomLeftAreaCorner, room.TopRightAreaCorner);
-            return;
-        }
-
-        List<Vector3> vertices = new List<Vector3>();
-        List<Vector2> uvs = new List<Vector2>();
-        List<int> triangles = new List<int>();
-
-        for (int x = room.BottomLeftAreaCorner.x; x < room.TopRightAreaCorner.x; x++)
-        {
-            for (int y = room.BottomLeftAreaCorner.y; y < room.TopRightAreaCorner.y; y++)
-            {
-                Vector2Int pos = new Vector2Int(x, y);
-                GridCell cell = generator.Grid.GetCell(pos);
-
-                if (cell != null && (cell.Type == CellType.Floor || cell.Type == CellType.Corridor))
-                {
-                    int vertexIndex = vertices.Count;
-
-                    // Add vertices for quad
-                    vertices.Add(new Vector3(x, 0, y));
-                    vertices.Add(new Vector3(x + 1, 0, y));
-                    vertices.Add(new Vector3(x, 0, y + 1));  
-                    vertices.Add(new Vector3(x + 1, 0, y + 1)); 
-
-                    // Add UVs
-                    uvs.Add(new Vector2(x, y));
-                    uvs.Add(new Vector2(x + 1, y));
-                    uvs.Add(new Vector2(x, y + 1));
-                    uvs.Add(new Vector2(x + 1, y + 1));
-
-                    // Add triangles
-                    triangles.Add(vertexIndex + 2); // Top-left
-                    triangles.Add(vertexIndex + 3); // Top-right
-                    triangles.Add(vertexIndex + 0); // Bottom-left
-
-                    triangles.Add(vertexIndex + 0); // Bottom-left
-                    triangles.Add(vertexIndex + 3); // Top-right
-                    triangles.Add(vertexIndex + 1); // Bottom-right
-                }
-            }
-        }
-
-        if (vertices.Count == 0)
-            return;
-
-        Mesh mesh = new Mesh();
-        mesh.name = $"RoomFloor_{room.RoomID}";
-        mesh.vertices = vertices.ToArray();
-        mesh.uv = uvs.ToArray();
-        mesh.triangles = triangles.ToArray();
-        mesh.RecalculateNormals();
-
-        GameObject floorObject = new GameObject(
-            $"Floor_{room.RoomID}",
-            typeof(MeshFilter),
-            typeof(MeshRenderer),
-            typeof(MeshCollider)
-        );
-
-        floorObject.transform.position = Vector3.zero;
-        floorObject.transform.localScale = Vector3.one;
-        floorObject.GetComponent<MeshFilter>().mesh = mesh;
-        floorObject.GetComponent<MeshRenderer>().material = material;
-        floorObject.GetComponent<MeshCollider>().sharedMesh = mesh;
-        floorObject.transform.parent = transform;
-    }
-
-    private void CreateCorridorFloorMesh()
-    {
-        if (generator?.Grid == null)
-            return;
-
-        List<Vector3> vertices = new List<Vector3>();
-        List<Vector2> uvs = new List<Vector2>();
-        List<int> triangles = new List<int>();
-
-        // Iterate through entire grid to find corridor cells
-        foreach (var kvp in generator.Grid.GetAllCells())
-        {
-            if (kvp.Value.Type == CellType.Corridor)
-            {
-                int x = kvp.Key.x;
-                int y = kvp.Key.y;
-                int vertexIndex = vertices.Count;
-
-                // Add vertices for quad
-                vertices.Add(new Vector3(x, 0, y));
-                vertices.Add(new Vector3(x + 1, 0, y));
-                vertices.Add(new Vector3(x, 0, y + 1));
-                vertices.Add(new Vector3(x + 1, 0, y + 1));
-
-                // Add UVs
-                uvs.Add(new Vector2(x, y));
-                uvs.Add(new Vector2(x + 1, y));
-                uvs.Add(new Vector2(x, y + 1));
-                uvs.Add(new Vector2(x + 1, y + 1));
-
-                // Add triangles
-                triangles.Add(vertexIndex + 2); // Top-left
-                triangles.Add(vertexIndex + 3); // Top-right
-                triangles.Add(vertexIndex + 0); // Bottom-left
-
-                triangles.Add(vertexIndex + 0); // Bottom-left
-                triangles.Add(vertexIndex + 3); // Top-right
-                triangles.Add(vertexIndex + 1); // Bottom-right
-            }
-        }
-
-        if (vertices.Count == 0)
-            return;
-
-        Mesh mesh = new Mesh();
-        mesh.name = "CorridorFloor";
-        mesh.vertices = vertices.ToArray();
-        mesh.uv = uvs.ToArray();
-        mesh.triangles = triangles.ToArray();
-        mesh.RecalculateNormals();
-
-        GameObject floorObject = new GameObject(
-            "CorridorFloor",
-            typeof(MeshFilter),
-            typeof(MeshRenderer),
-            typeof(MeshCollider)
-        );
-
-        floorObject.transform.position = Vector3.zero;
-        floorObject.transform.localScale = Vector3.one;
-        floorObject.GetComponent<MeshFilter>().mesh = mesh;
-        floorObject.GetComponent<MeshRenderer>().material = material;
-        floorObject.GetComponent<MeshCollider>().sharedMesh = mesh;
-        floorObject.transform.parent = transform;
-    }
-
-    private void CreateMesh(Vector2 bottomLeftCorner, Vector2 topRightCorner)
-    {
-        Vector3 bottomLeftV = new Vector3(bottomLeftCorner.x, 0, bottomLeftCorner.y);
-        Vector3 bottomRightV = new Vector3(topRightCorner.x, 0, bottomLeftCorner.y);
-        Vector3 topLeftV = new Vector3(bottomLeftCorner.x, 0, topRightCorner.y);
-        Vector3 topRightV = new Vector3(topRightCorner.x, 0, topRightCorner.y);
-
-        Vector3[] vertices = new Vector3[]
-        {
-            topLeftV, topRightV, bottomLeftV, bottomRightV
-        };
-
-        Vector2[] uvs = new Vector2[vertices.Length];
-        for (int i = 0; i < uvs.Length; i++)
-        {
-            uvs[i] = new Vector2(vertices[i].x, vertices[i].z);
-        }
-
-        int[] triangles = new int[] { 0, 1, 2, 2, 1, 3 };
-
-        Mesh mesh = new Mesh();
-        mesh.vertices = vertices;
-        mesh.uv = uvs;
-        mesh.triangles = triangles;
-
-        GameObject dungeonFloor = new GameObject(
-            "Mesh" + bottomLeftCorner,
-            typeof(MeshFilter),
-            typeof(MeshRenderer),
-            typeof(MeshCollider)
-        );
-
-        dungeonFloor.transform.position = Vector3.zero;
-        dungeonFloor.transform.localScale = Vector3.one;
-        dungeonFloor.GetComponent<MeshFilter>().mesh = mesh;
-        dungeonFloor.GetComponent<MeshRenderer>().material = material;
-        dungeonFloor.GetComponent<MeshCollider>().sharedMesh = mesh;
-        dungeonFloor.transform.parent = transform;
-
-        // Add wall positions
-        for (int row = (int)bottomLeftV.x; row <= (int)bottomRightV.x; row++)
-        {
-            var wallPosition = new Vector3(row, 0, bottomLeftV.z);
-            AddWallPositionToList(wallPosition, possibleWallHorizontalPosition, possibleDoorHorizontalPosition);
-        }
-        for (int row = (int)topLeftV.x; row <= (int)topRightCorner.x; row++)
-        {
-            var wallPosition = new Vector3(row, 0, topRightV.z);
-            AddWallPositionToList(wallPosition, possibleWallHorizontalPosition, possibleDoorHorizontalPosition);
-        }
-        for (int col = (int)bottomLeftV.z; col <= (int)topLeftV.z; col++)
-        {
-            var wallPosition = new Vector3(bottomLeftV.x, 0, col);
-            AddWallPositionToList(wallPosition, possibleWallVerticalPosition, possibleDoorVerticalPosition);
-        }
-        for (int col = (int)bottomRightV.z; col <= (int)topRightV.z; col++)
-        {
-            var wallPosition = new Vector3(bottomRightV.x, 0, col);
-            AddWallPositionToList(wallPosition, possibleWallVerticalPosition, possibleDoorVerticalPosition);
-        }
-    }
-
-    private void AddWallPositionToList(Vector3 wallPosition, List<Vector3Int> wallList, List<Vector3Int> doorList)
-    {
-        Vector3Int point = Vector3Int.CeilToInt(wallPosition);
-        if (wallList.Contains(point))
-        {
-            doorList.Add(point);
-            wallList.Remove(point);
-        }
-        else
-        {
-            wallList.Add(point);
-        }
-    }
-
     public void DestroyAllChildren()
     {
         while (transform.childCount != 0)
@@ -502,22 +230,28 @@ public class DungeonCreator : MonoBehaviour
 
     public DungeonGrid GetGrid()
     {
-        return generator?.Grid;
+        return currentGrid;
     }
 
     public List<RoomNode> GetAllRooms()
     {
-        return generator?.RoomList;
+        return currentRooms;
+    }
+
+    public DungeonPostProcessResult GetPostProcessResult()
+    {
+        return postProcessResult;
     }
 
     private void OnDrawGizmos()
     {
-        if (!showGrid || generator?.Grid == null) return;
+        if (!showGrid || currentGrid == null) return;
 
-        var allCells = generator.Grid.GetAllCells();
+        Vector3 centerOffset = currentCenterOffset;
+        var allCells = currentGrid.GetAllCells();
         foreach (var kvp in allCells)
         {
-            Vector3 pos = new Vector3(kvp.Key.x + 0.5f, 0.1f, kvp.Key.y + 0.5f);
+            Vector3 pos = new Vector3(kvp.Key.x + 0.5f, 0.1f, kvp.Key.y + 0.5f) + centerOffset;
 
             switch (kvp.Value.Type)
             {
