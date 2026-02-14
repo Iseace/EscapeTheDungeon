@@ -237,6 +237,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AnimatorBasic
   projectilePrefabs:
   - RawGuidValue: 4df696dcb7b165149871bfac9388eb94
+  - RawGuidValue: fd501f3a739ab3548956a43b649183bb
+  - RawGuidValue: 76cba172ca9d3834ba2f95d09bd0eef9
   spellSocket: {fileID: 5715548566014488333}
   spawnDelay: 0.17
 --- !u!1 &1095891864883707470
