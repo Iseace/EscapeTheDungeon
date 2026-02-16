@@ -12,13 +12,13 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
     [Header("Buttons")]
     [SerializeField] private GameObject attackParent;
     [SerializeField] private GameObject jumpParent;
+    [SerializeField] private GameObject pickupParent;
     
     [Header("Camera Settings")]
     [SerializeField] private float cameraSensitivity = 0.5f;
     [SerializeField] private float joystickRadius = 350f;
 
     public Vector2 CameraLookDelta { get; private set; }
-    
     private Vector2 lastPointerPos;
     private bool isDragging = false;
     private Vector2 joystickCenter;
@@ -40,7 +40,7 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
             rect.sizeDelta = Vector2.zero;
             rect.anchoredPosition = Vector2.zero;
         }
-        
+
         if (joystickPad != null)
         {
             OnScreenStick stick = joystickPad.gameObject.GetComponent<OnScreenStick>();
@@ -49,18 +49,18 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
             
             stick.controlPath = "<Gamepad>/leftStick";
             stick.movementRange = movementRange;
-            
             joystickCenter = RectTransformUtility.WorldToScreenPoint(null, joystickPad.position);
         }
 
         SetupButton(attackParent, "<Gamepad>/buttonWest");
         SetupButton(jumpParent, "<Gamepad>/buttonSouth");
+        SetupButton(pickupParent, "<Gamepad>/buttonNorth");
     }
 
     private void SetupButton(GameObject parent, string path)
     {
         if (parent == null) return;
-
+        
         Image img = parent.GetComponent<Image>();
         if (img == null)
         {
@@ -68,7 +68,7 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
             img.color = new Color(0, 0, 0, 0);
         }
         img.raycastTarget = true;
-
+        
         OnScreenButton osb = parent.GetComponent<OnScreenButton>();
         if (osb == null)
             osb = parent.AddComponent<OnScreenButton>();

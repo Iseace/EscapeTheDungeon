@@ -234,17 +234,17 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         if (attackAction != null) attackAction.action.Enable();
         if (interactAction != null) interactAction.action.Enable();
         if (specialAction != null) specialAction.action.Enable();
+        if (jumpAction != null) jumpAction.action.Enable();
     }
 
     private void OnDisable()
     {
-        // Es buena práctica apagarlas cuando el objeto se destruye
         if (moveAction != null) moveAction.action.Disable();
         if (attackAction != null) attackAction.action.Disable();
         if (interactAction != null) interactAction.action.Disable();
         if (specialAction != null) specialAction.action.Disable();
+        if (jumpAction != null) jumpAction.action.Disable();
     }
-
    public void OnInput(NetworkRunner runner, NetworkInput input)
 {
     var myInput = new PlayerInputData();
