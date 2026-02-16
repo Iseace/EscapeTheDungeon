@@ -5,18 +5,38 @@ public class FirstPersonCamera : MonoBehaviour
 {
     public Transform Target;
     public GameObject PlayerGraphics;
+    
+    [Header("Sensitivity")]
     public float MouseSensitivity = 10f;
-
+    public float MobileSensitivity = 1.0f; // Now works like your original
+    
+    [Header("Input")]
     public InputActionReference lookAction;
-
-    // Usamos tu capa existente
+    public MobileControlsBridge mobileBridge;
+    
+    [Header("Settings")]
     public string InvisibleLayerName = "LocalPlayerHidden";
-
+    
     private float verticalRotation;
     private float horizontalRotation;
     private bool isInitialized = false;
-    private void OnEnable() => lookAction.action.Enable();
-    private void OnDisable() => lookAction.action.Disable();
+
+
+    private void OnEnable()
+    {
+        if (lookAction != null)
+        {
+            lookAction.action.Enable();
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (lookAction != null)
+        {
+            lookAction.action.Disable();
+        }
+    }
 
     public void SetTarget(Transform newTarget, GameObject graphics)
     {
@@ -29,7 +49,6 @@ public class FirstPersonCamera : MonoBehaviour
             horizontalRotation = newTarget.eulerAngles.y;
             verticalRotation = 0f;
             isInitialized = true;
-
             ApplyInvisibleLayer();
         }
     }
@@ -41,13 +60,12 @@ public class FirstPersonCamera : MonoBehaviour
         ApplyInvisibleLayer();
         transform.position = Target.position;
 
-        // 3. Leemos el Vector2 del "Look" (Mouse o Touch)
-        Vector2 lookInput = lookAction.action.ReadValue<Vector2>();
+        // Get look input from appropriate source
+        Vector2 lookInput = GetLookInput();
 
-        // Multiplicamos por un factor pequeño (0.1f) porque el New Input System
-        // da valores más altos que el viejo GetAxis
-        float mouseX = lookInput.x * MouseSensitivity * 0.1f;
-        float mouseY = lookInput.y * MouseSensitivity * 0.1f;
+        // Apply rotation - RESTORED ORIGINAL MULTIPLIER
+        float mouseX = lookInput.x * MouseSensitivity * 0.1f;  // ← RESTORED * 0.1f
+        float mouseY = lookInput.y * MouseSensitivity * 0.1f;  // ← RESTORED * 0.1f
 
         verticalRotation -= mouseY;
         verticalRotation = Mathf.Clamp(verticalRotation, -70f, 70f);
@@ -56,12 +74,34 @@ public class FirstPersonCamera : MonoBehaviour
         transform.rotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0);
     }
 
+    private Vector2 GetLookInput()
+    {
+        // Check if on mobile
+        if (Application.isMobilePlatform || Input.touchSupported)
+        {
+            // Mobile: Use touch delta from MobileControlsBridge
+            if (mobileBridge != null)
+            {
+                return mobileBridge.CameraLookDelta * MobileSensitivity;
+            }
+        }
+        else
+        {
+            // PC: Use mouse/look action
+            if (lookAction != null && lookAction.action != null)
+            {
+                return lookAction.action.ReadValue<Vector2>();
+            }
+        }
+
+        return Vector2.zero;
+    }
+
     void ApplyInvisibleLayer()
     {
         if (PlayerGraphics == null) return;
 
         int layerIndex = LayerMask.NameToLayer(InvisibleLayerName);
-
         if (layerIndex != -1)
         {
             SetLayerRecursive(PlayerGraphics, layerIndex);
@@ -70,7 +110,6 @@ public class FirstPersonCamera : MonoBehaviour
 
     private void SetLayerRecursive(GameObject obj, int newLayer)
     {
-        // Si ya está en la capa, no hacemos nada (optimización)
         if (obj.layer == newLayer) return;
 
         obj.layer = newLayer;

@@ -1,0 +1,10 @@
+# ninja log v5
+2	1633	1771041386322478618	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	437fb7f75787672b
+1	1648	1771041386332492449	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	48f0c124ed3ab79
+1	1676	1771041386365871891	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	1c8f5eaa95f96613
+1	1691	1771041386379223668	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	2fa66b4f7cb42f40
+1	1725	1771041386412603110	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	bc4e5e3fc26fbb46
+3	1839	1771041386522755266	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	90096fe3f118f903
+1	2042	1771041386726369859	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	39d39106d7b831d
+0	2130	1771041386813156407	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	eb1d25dd7671cf3a
+2130	2177	1771041386869901458	/home/ise/Desktop/EscapeTheDungeon/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/Debug/1t4q3u13/obj/arm64-v8a/libgame.so	74de2ed93f1df119

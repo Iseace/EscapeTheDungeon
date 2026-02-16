@@ -225,6 +225,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     public InputActionReference attackAction;
     public InputActionReference interactAction;
     public InputActionReference specialAction;
+    public InputActionReference jumpAction; 
 
     // Debajo de tus variables, añade esto:
     private void OnEnable()
@@ -244,32 +245,35 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         if (specialAction != null) specialAction.action.Disable();
     }
 
-    public void OnInput(NetworkRunner runner, NetworkInput input)
+   public void OnInput(NetworkRunner runner, NetworkInput input)
+{
+    var myInput = new PlayerInputData();
+
+    // Movement: Reads from Joystick (Mobile) or WASD (Keyboard)
+    if (moveAction != null)
     {
-        var myInput = new PlayerInputData();
-
-        // El "Move" ahora lee el Vector2 del joystick o WASD automáticamente
-        if (moveAction != null)
-        {
-            Vector2 moveVal = moveAction.action.ReadValue<Vector2>();
-            myInput.MoveDirection = new Vector3(moveVal.x, 0, moveVal.y);
-        }
-
-        // Las acciones detectan si se presionó el botón en pantalla O la tecla
-        if (attackAction != null)
-            myInput.AttackPressed = attackAction.action.WasPressedThisFrame();
-        
-        if (interactAction != null)
-            myInput.InteractPressed = interactAction.action.WasPressedThisFrame();
-        
-        if (specialAction != null)
-            myInput.SpecialPressed = specialAction.action.WasPressedThisFrame();
-
-        if (Camera.main != null)
-            myInput.CameraRotation = Camera.main.transform.rotation;
-
-        input.Set(myInput);
+        Vector2 moveVal = moveAction.action.ReadValue<Vector2>();
+        myInput.MoveDirection = new Vector3(moveVal.x, 0, moveVal.y);
     }
+
+    // Actions: WasPressedThisFrame handles both UI Button taps and Keys
+    if (attackAction != null)
+        myInput.AttackPressed = attackAction.action.WasPressedThisFrame();
+    
+    if (jumpAction != null) // Ensure you have a jumpAction Reference defined
+        myInput.JumpPressed = jumpAction.action.WasPressedThisFrame();
+    
+    if (interactAction != null)
+        myInput.InteractPressed = interactAction.action.WasPressedThisFrame();
+    
+    if (specialAction != null)
+        myInput.SpecialPressed = specialAction.action.WasPressedThisFrame();
+
+    if (Camera.main != null)
+        myInput.CameraRotation = Camera.main.transform.rotation;
+
+    input.Set(myInput);
+}
     // Required by interface (unused)
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
