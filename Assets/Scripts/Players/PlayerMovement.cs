@@ -83,8 +83,6 @@ public class PlayerMovement : NetworkBehaviour
             Vector3 currentVelocity = _velocity;
 
             if (_isGrounded && currentVelocity.y < 0)
-            {
-            {
                 currentVelocity.y = -2f;
 
             if (data.JumpPressed && _isGrounded)
@@ -92,11 +90,8 @@ public class PlayerMovement : NetworkBehaviour
                 currentVelocity.y = JumpForce;
                 if (HasStateAuthority) RPC_TriggerJump();
             }
-            //Apply Gravity to the local variable
-            //Apply Gravity to the local variable
+
             currentVelocity.y += Gravity * Runner.DeltaTime;
-            //RE-ASSIGN the modified velocity back to the Networked property
-            //RE-ASSIGN the modified velocity back to the Networked property
             _velocity = currentVelocity;
 
             // 4. APLICAR MOVIMIENTO (Combinado en un solo vector)
@@ -148,8 +143,6 @@ public class PlayerMovement : NetworkBehaviour
 
     public override void Spawned()
     {
-        // HasInputAuthority is true for the player who controls this specific prefab
-        // HasInputAuthority is true for the player who controls this specific prefab
         if (HasInputAuthority)
         {
             // 1. Configuramos la cámara
