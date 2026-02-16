@@ -5,38 +5,24 @@ public class FirstPersonCamera : MonoBehaviour
 {
     public Transform Target;
     public GameObject PlayerGraphics;
-    
-    [Header("Sensitivity")]
     public float MouseSensitivity = 10f;
-    public float MobileSensitivity = 1.0f; // Now works like your original
-    
-    [Header("Input")]
+    public float MobileSensitivity = 1.0f;
     public InputActionReference lookAction;
     public MobileControlsBridge mobileBridge;
-    
-    [Header("Settings")]
     public string InvisibleLayerName = "LocalPlayerHidden";
-    
+
     private float verticalRotation;
     private float horizontalRotation;
     private bool isInitialized = false;
 
-
-    private void OnEnable()
+    private void Awake()
     {
-        if (lookAction != null)
-        {
-            lookAction.action.Enable();
-        }
+        if (mobileBridge == null)
+            mobileBridge = FindFirstObjectByType<MobileControlsBridge>();
     }
 
-    private void OnDisable()
-    {
-        if (lookAction != null)
-        {
-            lookAction.action.Disable();
-        }
-    }
+    private void OnEnable() => lookAction?.action.Enable();
+    private void OnDisable() => lookAction?.action.Disable();
 
     public void SetTarget(Transform newTarget, GameObject graphics)
     {
@@ -60,12 +46,10 @@ public class FirstPersonCamera : MonoBehaviour
         ApplyInvisibleLayer();
         transform.position = Target.position;
 
-        // Get look input from appropriate source
         Vector2 lookInput = GetLookInput();
 
-        // Apply rotation - RESTORED ORIGINAL MULTIPLIER
-        float mouseX = lookInput.x * MouseSensitivity * 0.1f;  // ← RESTORED * 0.1f
-        float mouseY = lookInput.y * MouseSensitivity * 0.1f;  // ← RESTORED * 0.1f
+        float mouseX = lookInput.x * MouseSensitivity * 0.1f;
+        float mouseY = lookInput.y * MouseSensitivity * 0.1f;
 
         verticalRotation -= mouseY;
         verticalRotation = Mathf.Clamp(verticalRotation, -70f, 70f);
@@ -76,24 +60,16 @@ public class FirstPersonCamera : MonoBehaviour
 
     private Vector2 GetLookInput()
     {
-        // Check if on mobile
         if (Application.isMobilePlatform || Input.touchSupported)
         {
-            // Mobile: Use touch delta from MobileControlsBridge
             if (mobileBridge != null)
-            {
                 return mobileBridge.CameraLookDelta * MobileSensitivity;
-            }
         }
         else
         {
-            // PC: Use mouse/look action
             if (lookAction != null && lookAction.action != null)
-            {
                 return lookAction.action.ReadValue<Vector2>();
-            }
         }
-
         return Vector2.zero;
     }
 
@@ -103,9 +79,7 @@ public class FirstPersonCamera : MonoBehaviour
 
         int layerIndex = LayerMask.NameToLayer(InvisibleLayerName);
         if (layerIndex != -1)
-        {
             SetLayerRecursive(PlayerGraphics, layerIndex);
-        }
     }
 
     private void SetLayerRecursive(GameObject obj, int newLayer)
@@ -114,8 +88,6 @@ public class FirstPersonCamera : MonoBehaviour
 
         obj.layer = newLayer;
         foreach (Transform child in obj.transform)
-        {
             SetLayerRecursive(child.gameObject, newLayer);
-        }
     }
 }
