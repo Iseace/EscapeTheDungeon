@@ -86,7 +86,8 @@ public class PlayerSpawner : SimulationBehaviour, IPlayerJoined, IPlayerLeft
             if (!dungeonRunnerSpawned)
             {
                 var existing = FindFirstObjectByType<DungeonNetworkRunner>();
-                if (existing == null){
+                if (existing == null)
+                {
                     runner.Spawn(dungeonNetworkRunnerPrefab, Vector3.zero, Quaternion.identity);
                     dungeonRunnerSpawned = true;
                 }
@@ -196,7 +197,7 @@ public class PlayerSpawner : SimulationBehaviour, IPlayerJoined, IPlayerLeft
         string currentScene = SceneManager.GetActiveScene().name;
 
         // Re-spawning logic for transitions into Lobby or Game
-        if (currentScene == "Game" || currentScene == "Lobby")
+        if (currentScene == "Game" || currentScene == "LobbyRoom")
         {
             Debug.Log($"[SPAWNER] Scene {currentScene} loaded, spawning players");
             dungeonRunnerSpawned = false;
@@ -277,6 +278,11 @@ public class PlayerSpawner : SimulationBehaviour, IPlayerJoined, IPlayerLeft
                 await runner.Shutdown();
             }
         }
+    }
+
+    private void OnDestroy()
+    {
+        dungeonRunnerSpawned = false;
     }
 
     // Boilerplate Fusion callbacks
