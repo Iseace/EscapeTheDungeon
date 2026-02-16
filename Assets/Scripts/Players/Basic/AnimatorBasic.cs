@@ -47,7 +47,7 @@ public class AnimatorBasic : NetworkBehaviour
         }
     }
 
-    [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_PlayAttack()
     {
         if (_animator == null)
