@@ -19,14 +19,14 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
     private bool dungeonRunnerSpawned = false;
 
     [Header("Boss System")]
-    [SerializeField] private string menuSceneName = "LobbyMenu";
+    [SerializeField] private string menuSceneName = "LobbyList";
     [SerializeField] private int menuSceneIndex = 0;
 
     private bool bossSelected = false;
     private PlayerRef bossPlayer;
     private bool isSwappingBoss = false;
 
-private void Start()
+    private void Start()
     {
         var runner = FindFirstObjectByType<NetworkRunner>();
         if (runner != null) runner.AddCallbacks(this);
@@ -51,7 +51,8 @@ private void Start()
             if (!dungeonRunnerSpawned)
             {
                 var existing = FindFirstObjectByType<DungeonNetworkRunner>();
-                if (existing == null){
+                if (existing == null)
+                {
                     runner.Spawn(dungeonNetworkRunnerPrefab, Vector3.zero, Quaternion.identity);
                     dungeonRunnerSpawned = true;
                 }
@@ -161,7 +162,7 @@ private void Start()
         string currentScene = SceneManager.GetActiveScene().name;
 
         // Re-spawning logic for transitions into Lobby or Game
-        if (currentScene == "Game" || currentScene == "Lobby")
+        if (currentScene == "Game" || currentScene == "LobbyRoom")
         {
             Debug.Log($"[SPAWNER] Scene {currentScene} loaded, spawning players");
             dungeonRunnerSpawned = false;
@@ -242,6 +243,11 @@ private void Start()
                 await runner.Shutdown();
             }
         }
+    }
+
+    private void OnDestroy()
+    {
+        dungeonRunnerSpawned = false;
     }
 
     // Boilerplate Fusion callbacks
