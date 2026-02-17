@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
-using UnityEngine.SceneManagement;
 
 public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 {
@@ -17,11 +16,6 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 
     [Header("Network Settings")]
     [SerializeField] private string lobbySceneName = "LobbyRoom";
-    [SerializeField] private string gameSceneName = "Game";
-    [SerializeField] private int maxPlayers = 5;
-
-    [Header("Session List")]
-    [SerializeField] private LobbyListManager LobbyListManager;
     [SerializeField] private string gameSceneName = "Game";
     [SerializeField] private int maxPlayers = 5;
 
@@ -127,17 +121,13 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
             SessionName = roomName,
             Scene = SceneRef.FromIndex(
                 SceneUtility.GetBuildIndexByScenePath("Scenes/" + lobbySceneName)
-                SceneUtility.GetBuildIndexByScenePath("Scenes/" + lobbySceneName)
             ),
-            SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>(),
-            PlayerCount = maxPlayers
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>(),
             PlayerCount = maxPlayers
         });
 
         if (result.Ok)
         {
-            Debug.Log($"[NETWORK] Connected to room: {roomName} as {mode}. Max players set to {maxPlayers}");
             Debug.Log($"[NETWORK] Connected to room: {roomName} as {mode}. Max players set to {maxPlayers}");
         }
         else
@@ -302,5 +292,7 @@ public struct PlayerInputData : INetworkInput
     public Vector3 MoveDirection;
     public NetworkBool JumpPressed;
     public Quaternion CameraRotation;
-    public NetworkBool InteractPressed;
+    public NetworkBool InteractPressed; //  (Tecla E / Especial 1)
+    public NetworkBool AttackPressed;   //  (Click / Ataque Básico)
+    public NetworkBool SpecialPressed;  //  (Tecla Q / Especial 2)
 }

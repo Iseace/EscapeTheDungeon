@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System;
 using System.Linq;
 
-public class PlayerSpawner : SimulationBehaviour, IPlayerJoined, IPlayerLeft
+public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 {
     public NetworkObject PlayerPrefab;
 
@@ -22,11 +22,8 @@ public class PlayerSpawner : SimulationBehaviour, IPlayerJoined, IPlayerLeft
     [SerializeField] private string menuSceneName = "LobbyList";
     [SerializeField] private int menuSceneIndex = 0;
 
-
     private bool bossSelected = false;
     private PlayerRef bossPlayer;
-    private bool isSwappingBoss = false;
-    private bool isSwappingBoss = false;
     private bool isSwappingBoss = false;
 
     private void Start()
@@ -256,7 +253,6 @@ public class PlayerSpawner : SimulationBehaviour, IPlayerJoined, IPlayerLeft
     // Boilerplate Fusion callbacks
     public void OnInput(NetworkRunner runner, NetworkInput input) { }
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
-    public void OnShutdown(NetworkRunner runner, ShutdownReason reason)
     public void OnShutdown(NetworkRunner runner, ShutdownReason reason)
     {
         Debug.Log($"[SPAWNER] Runner shutdown: {reason}");

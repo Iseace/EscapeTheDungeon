@@ -23,11 +23,8 @@ public class PlayerMovement : NetworkBehaviour
     [Networked] private Vector3 _velocity { get; set; }
     [Networked] private NetworkBool _isGrounded { get; set; }
 
-
     public Camera Camera;
 
-    private void Awake()
-    {
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
@@ -133,9 +130,6 @@ public class PlayerMovement : NetworkBehaviour
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_TriggerJump()
-    {
-        if (_animator != null) _animator.SetTrigger("Jump");
     private void RPC_TriggerJump()
     {
         if (_animator != null) _animator.SetTrigger("Jump");
