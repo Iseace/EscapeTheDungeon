@@ -6,32 +6,43 @@ using UnityEngine.EventSystems;
 public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
 {
     [Header("Joystick")]
-    [SerializeField] private RectTransform joystickPad; 
+    [SerializeField] private RectTransform joystickPad;
     [SerializeField] private float movementRange = 50f;
-    
+
     [Header("Buttons")]
     [SerializeField] private GameObject attackParent;
     [SerializeField] private GameObject jumpParent;
     [SerializeField] private GameObject pickupParent;
-    
+
     [Header("Camera Settings")]
     [SerializeField] private float cameraSensitivity = 0.5f;
     [SerializeField] private float joystickRadius = 350f;
 
     public Vector2 CameraLookDelta { get; private set; }
+
     private Vector2 lastPointerPos;
     private bool isDragging = false;
     private Vector2 joystickCenter;
 
     private void Awake()
     {
+        bool isMobile = Application.platform == RuntimePlatform.Android || 
+                        Application.platform == RuntimePlatform.IPhonePlayer ;
+                        //3|| Application.isEditor;
+
+
+        if (!isMobile)
+        {
+            gameObject.SetActive(false);
+            return;
+        }
+
         Image backgroundImage = gameObject.GetComponent<Image>();
         if (backgroundImage == null)
             backgroundImage = gameObject.AddComponent<Image>();
-        
         backgroundImage.color = new Color(0, 0, 0, 0);
         backgroundImage.raycastTarget = true;
-        
+
         RectTransform rect = GetComponent<RectTransform>();
         if (rect != null)
         {
@@ -46,7 +57,6 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
             OnScreenStick stick = joystickPad.gameObject.GetComponent<OnScreenStick>();
             if (stick == null)
                 stick = joystickPad.gameObject.AddComponent<OnScreenStick>();
-            
             stick.controlPath = "<Gamepad>/leftStick";
             stick.movementRange = movementRange;
             joystickCenter = RectTransformUtility.WorldToScreenPoint(null, joystickPad.position);
@@ -60,7 +70,7 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
     private void SetupButton(GameObject parent, string path)
     {
         if (parent == null) return;
-        
+
         Image img = parent.GetComponent<Image>();
         if (img == null)
         {
@@ -68,11 +78,10 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
             img.color = new Color(0, 0, 0, 0);
         }
         img.raycastTarget = true;
-        
+
         OnScreenButton osb = parent.GetComponent<OnScreenButton>();
         if (osb == null)
             osb = parent.AddComponent<OnScreenButton>();
-        
         osb.controlPath = path;
     }
 
@@ -96,7 +105,6 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
     public void OnDrag(PointerEventData eventData)
     {
         if (!isDragging) return;
-        
         Vector2 delta = (eventData.position - lastPointerPos) * cameraSensitivity;
         CameraLookDelta = delta;
         lastPointerPos = eventData.position;

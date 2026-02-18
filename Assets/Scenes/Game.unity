@@ -678,6 +678,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bfde7a82ffae893419d4394de3c554d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  mobileCanvas: {fileID: 413681466}
   joystickPad: {fileID: 848489290}
   movementRange: 50
   attackParent: {fileID: 1182869405}
