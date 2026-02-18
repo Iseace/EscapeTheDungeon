@@ -82,7 +82,7 @@ public class PlayerMovement : NetworkBehaviour
             if (_isGrounded && currentVelocity.y < 0)
                 currentVelocity.y = -2f;
 
-            if (data.JumpPressed && _isGrounded)
+            if (data.JumpPressed && _isGrounded && !isBoss)
             {
                 currentVelocity.y = JumpForce;
                 if (HasStateAuthority) RPC_TriggerJump();
