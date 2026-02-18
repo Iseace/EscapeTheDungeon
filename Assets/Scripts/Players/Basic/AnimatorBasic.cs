@@ -42,7 +42,9 @@ public class AnimatorBasic : NetworkBehaviour
             {
                 _savedWeaponID = _inventory.CurrentWeaponID;
                 _attackTimer = TickTimer.CreateFromSeconds(Runner, spawnDelay);
-                Rpc_PlayAttack();
+                
+                if (HasStateAuthority) 
+                  Rpc_PlayAttack();
             }
         }
     }

@@ -8,7 +8,8 @@ public class BossCombat : NetworkBehaviour
         // Usamos tu estructura PlayerInputData
         if (GetInput(out PlayerInputData data) && data.AttackPressed)
         {
-            Rpc_PlayMeleeAttack();
+            if (HasStateAuthority)
+              Rpc_PlayMeleeAttack();
         }
     }
 
