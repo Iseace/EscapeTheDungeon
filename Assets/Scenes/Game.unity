@@ -176,7 +176,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: 5efbbd3a68fbd8cc1a3b4d81efd2c4f7, type: 3}
+  m_Texture: {fileID: 2800000, guid: 2e6f1d0f0cc98c3af922b0b7eccf53aa, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -678,14 +678,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bfde7a82ffae893419d4394de3c554d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  mobileCanvas: {fileID: 413681466}
   joystickPad: {fileID: 848489290}
+  knobTransform: {fileID: 2034939798}
   movementRange: 50
   attackParent: {fileID: 1182869405}
   jumpParent: {fileID: 861511537}
   pickupParent: {fileID: 1925924586}
   cameraSensitivity: 0.5
   joystickRadius: 300
+  bossJoystickBackgroundTexture: {fileID: 2800000, guid: f82da2ce220854a5e9f3dfbf34f683c5, type: 3}
+  bossJoystickKnobTexture: {fileID: 2800000, guid: 2918e781110515dfbb0330491d631db8, type: 3}
+  bossAttackButtonTexture: {fileID: 2800000, guid: 40b3b9275f8aac24fa08dc6fa345f36e, type: 3}
 --- !u!1 &463455395
 GameObject:
   m_ObjectHideFlags: 0
@@ -971,7 +974,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: 23c3ee165a89451a0995a8505c3ffbf1, type: 3}
+  m_Texture: {fileID: 2800000, guid: 1d23ed3a6b1ac2fbb99273f597417a80, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -1043,7 +1046,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: 7b1769b77ed82a6c28565e4aac25b37e, type: 3}
+  m_Texture: {fileID: 2800000, guid: 1b1a9ea0a5abaab50bb280a319d42af6, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -1115,7 +1118,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: 9132036f59925b278b155fd52d577c32, type: 3}
+  m_Texture: {fileID: 2800000, guid: 9f88a9deeb66ce5d995633a3f855ec5d, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -1201,7 +1204,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -30, y: 30}
+  m_AnchoredPosition: {x: -20, y: 30}
   m_SizeDelta: {x: 60, y: 60}
   m_Pivot: {x: 1, y: 0}
 --- !u!1001 &1049264200
@@ -1442,7 +1445,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: 33c04162535801beea8eac387ea58252, type: 3}
+  m_Texture: {fileID: 2800000, guid: 44050c87e5c030820931d2cd42803a80, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -1636,7 +1639,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: 873aaca287219e880bf230db1ed804e1, type: 3}
+  m_Texture: {fileID: 2800000, guid: c896c25d571c5e23ca40ed015f958051, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -1770,7 +1773,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -30, y: 140}
+  m_AnchoredPosition: {x: -20, y: 140}
   m_SizeDelta: {x: 60, y: 60}
   m_Pivot: {x: 1, y: 0}
 --- !u!1 &1951278262
@@ -1974,7 +1977,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: 9132036f59925b278b155fd52d577c32, type: 3}
+  m_Texture: {fileID: 2800000, guid: 1e07c36e498be0094846d1283b140cd1, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -2046,7 +2049,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: 7b1769b77ed82a6c28565e4aac25b37e, type: 3}
+  m_Texture: {fileID: 2800000, guid: 1b1a9ea0a5abaab50bb280a319d42af6, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0

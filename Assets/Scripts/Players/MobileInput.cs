@@ -2,11 +2,13 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem.OnScreen;
 using UnityEngine.EventSystems;
+using Fusion;
 
 public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
 {
     [Header("Joystick")]
     [SerializeField] private RectTransform joystickPad;
+    [SerializeField] private RectTransform knobTransform;
     [SerializeField] private float movementRange = 50f;
 
     [Header("Buttons")]
@@ -18,30 +20,32 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
     [SerializeField] private float cameraSensitivity = 0.5f;
     [SerializeField] private float joystickRadius = 350f;
 
+    [Header("Boss UI Textures")]
+    [SerializeField] private Texture2D bossJoystickBackgroundTexture;
+    [SerializeField] private Texture2D bossJoystickKnobTexture;
+    [SerializeField] private Texture2D bossAttackButtonTexture;
+
     public Vector2 CameraLookDelta { get; private set; }
 
     private Vector2 lastPointerPos;
-    private bool isDragging = false;
+    private bool isDragging;
     private Vector2 joystickCenter;
+    private PlayerRole localPlayerRole;
+    private bool hasCheckedRole;
+    private bool hasAppliedBossUI;
 
     private void Awake()
     {
-        bool isMobile = Application.platform == RuntimePlatform.Android || 
-                        Application.platform == RuntimePlatform.IPhonePlayer ;
-                        //3|| Application.isEditor;
+        bool isMobile = Application.platform == RuntimePlatform.Android
+                     || Application.platform == RuntimePlatform.IPhonePlayer
+                     || Application.isEditor;
 
+        if (!isMobile) { gameObject.SetActive(false); return; }
 
-        if (!isMobile)
-        {
-            gameObject.SetActive(false);
-            return;
-        }
-
-        Image backgroundImage = gameObject.GetComponent<Image>();
-        if (backgroundImage == null)
-            backgroundImage = gameObject.AddComponent<Image>();
-        backgroundImage.color = new Color(0, 0, 0, 0);
-        backgroundImage.raycastTarget = true;
+        // Transparent full-screen image to receive pointer events
+        Image bg = gameObject.GetComponent<Image>() ?? gameObject.AddComponent<Image>();
+        bg.color = new Color(0, 0, 0, 0);
+        bg.raycastTarget = true;
 
         RectTransform rect = GetComponent<RectTransform>();
         if (rect != null)
@@ -54,48 +58,104 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
 
         if (joystickPad != null)
         {
-            OnScreenStick stick = joystickPad.gameObject.GetComponent<OnScreenStick>();
-            if (stick == null)
-                stick = joystickPad.gameObject.AddComponent<OnScreenStick>();
+            OnScreenStick stick = joystickPad.gameObject.GetComponent<OnScreenStick>()
+                               ?? joystickPad.gameObject.AddComponent<OnScreenStick>();
             stick.controlPath = "<Gamepad>/leftStick";
             stick.movementRange = movementRange;
             joystickCenter = RectTransformUtility.WorldToScreenPoint(null, joystickPad.position);
         }
 
         SetupButton(attackParent, "<Gamepad>/buttonWest");
-        SetupButton(jumpParent, "<Gamepad>/buttonSouth");
+        SetupButton(jumpParent,   "<Gamepad>/buttonSouth");
         SetupButton(pickupParent, "<Gamepad>/buttonNorth");
+    }
+
+    private void Update()
+    {
+        if (!hasCheckedRole || localPlayerRole == null)
+            FindLocalPlayerRole();
+
+        if (localPlayerRole == null) return;
+
+        UpdateButtonVisibility();
+
+        if (localPlayerRole.IsBoss && !hasAppliedBossUI)
+        {
+            ApplyBossUI();
+            hasAppliedBossUI = true;
+        }
+    }
+
+    private void FindLocalPlayerRole()
+    {
+        var runner = FindFirstObjectByType<NetworkRunner>();
+        if (runner == null || !runner.IsRunning) return;
+
+        var localPlayer = runner.LocalPlayer;
+        if (localPlayer.IsNone) return;
+
+        if (runner.TryGetPlayerObject(localPlayer, out NetworkObject playerObj) &&
+            playerObj.TryGetComponent<PlayerRole>(out var role))
+        {
+            localPlayerRole = role;
+            hasCheckedRole = true;
+        }
+    }
+
+    private void UpdateButtonVisibility()
+    {
+        bool isBoss = localPlayerRole.IsBoss;
+        if (jumpParent != null)   jumpParent.SetActive(!isBoss);
+        if (pickupParent != null) pickupParent.SetActive(!isBoss);
+    }
+
+    private void ApplyBossUI()
+    {
+        if (joystickPad != null   && bossJoystickBackgroundTexture != null) ApplyTexture(joystickPad.gameObject, bossJoystickBackgroundTexture);
+        if (knobTransform != null && bossJoystickKnobTexture != null)        ApplyTexture(knobTransform.gameObject, bossJoystickKnobTexture);
+        if (attackParent != null  && bossAttackButtonTexture != null)        ApplyTexture(attackParent, bossAttackButtonTexture);
+    }
+
+    // Search order: target → child named "background" → any descendant
+    private void ApplyTexture(GameObject target, Texture2D texture)
+    {
+        RawImage raw = target.GetComponent<RawImage>()
+                    ?? target.transform.Find("background")?.GetComponent<RawImage>()
+                    ?? target.GetComponentInChildren<RawImage>();
+
+        if (raw != null) { raw.texture = texture; return; }
+
+        Image img = target.GetComponent<Image>()
+                 ?? target.transform.Find("background")?.GetComponent<Image>()
+                 ?? target.GetComponentInChildren<Image>();
+
+        if (img != null)
+        {
+            img.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+            return;
+        }
+
+        Debug.LogWarning($"[MobileControlsBridge] No Image or RawImage found on '{target.name}' or its children.");
     }
 
     private void SetupButton(GameObject parent, string path)
     {
         if (parent == null) return;
 
-        Image img = parent.GetComponent<Image>();
-        if (img == null)
-        {
-            img = parent.AddComponent<Image>();
-            img.color = new Color(0, 0, 0, 0);
-        }
+        Image img = parent.GetComponent<Image>() ?? parent.AddComponent<Image>();
+        img.color = new Color(0, 0, 0, 0);
         img.raycastTarget = true;
 
-        OnScreenButton osb = parent.GetComponent<OnScreenButton>();
-        if (osb == null)
-            osb = parent.AddComponent<OnScreenButton>();
+        OnScreenButton osb = parent.GetComponent<OnScreenButton>() ?? parent.AddComponent<OnScreenButton>();
         osb.controlPath = path;
     }
 
-    private bool IsInJoystickArea(Vector2 screenPos)
-    {
-        if (joystickPad == null) return false;
-        return Vector2.Distance(screenPos, joystickCenter) < joystickRadius;
-    }
+    private bool IsInJoistickArea(Vector2 screenPos) =>
+        joystickPad != null && Vector2.Distance(screenPos, joystickCenter) < joystickRadius;
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        if (IsInJoystickArea(eventData.position))
-            isDragging = false;
-        else
+        if (!IsInJoistickArea(eventData.position))
         {
             isDragging = true;
             lastPointerPos = eventData.position;
@@ -105,8 +165,7 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
     public void OnDrag(PointerEventData eventData)
     {
         if (!isDragging) return;
-        Vector2 delta = (eventData.position - lastPointerPos) * cameraSensitivity;
-        CameraLookDelta = delta;
+        CameraLookDelta = (eventData.position - lastPointerPos) * cameraSensitivity;
         lastPointerPos = eventData.position;
     }
 
@@ -118,7 +177,6 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
 
     private void LateUpdate()
     {
-        if (!isDragging)
-            CameraLookDelta = Vector2.zero;
+        if (!isDragging) CameraLookDelta = Vector2.zero;
     }
 }
