@@ -14,36 +14,42 @@ public class PlayerSetup : NetworkBehaviour
     [SerializeField] private GameObject[] characterModels;
     [SerializeField] private Avatar[] characterAvatars;
 
-    // Esta variable sincroniza el personaje para TODOS en la red
     [Networked]
     public int SelectedCharacterIndex { get; set; }
     public ParentConstraint wandConstraint;
 
     public override void Spawned()
     {
-        // 1. Configuración de Cámara (Solo local)
         if (HasInputAuthority)
         {
             SetupCamera();
-            LockCursor();
+            // Initial cursor state
+            HandleCursorState();
 
-            // 2. Leer la selección guardada y avisar al servidor
             int idGuardado = PlayerPrefs.GetInt("SelectedCharacterID", 0);
-
-            // Enviamos un RPC para que el Host asigne nuestro personaje
             Rpc_RequestCharacterSelection(idGuardado);
         }
     }
 
-    // El cliente le pide al servidor: "Ponme el modelo X"
+    // Added Update to force cursor visibility if a camera script tries to lock it in the Lobby
+    private void Update()
+    {
+        if (HasInputAuthority && SceneManager.GetActiveScene().name == "LobbyRoom")
+        {
+            if (Cursor.lockState != CursorLockMode.None || !Cursor.visible)
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
+        }
+    }
+
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     public void Rpc_RequestCharacterSelection(int index)
     {
-        // Solo el StateAuthority (Host) puede cambiar valores [Networked]
         SelectedCharacterIndex = index;
     }
 
-    // Render se encarga de la visual en tiempo real sin afectar la física
     public override void Render()
     {
         if (graphicsContainer == null) return;
@@ -62,7 +68,6 @@ public class PlayerSetup : NetworkBehaviour
         Animator anim = graphicsContainer.GetComponent<Animator>();
         int currentID = SelectedCharacterIndex;
 
-        // 1. CICLO PARA MODELOS Y AVATARS
         for (int i = 0; i < characterModels.Length; i++)
         {
             bool isSelected = (i == currentID);
@@ -84,15 +89,11 @@ public class PlayerSetup : NetworkBehaviour
             }
         }
 
-        // 2. NUEVO: SINCRONIZAR EL PESO DEL CONSTRAINT (MANO IZQ/DER)
         if (wandConstraint != null)
         {
             for (int s = 0; s < wandConstraint.sourceCount; s++)
             {
                 ConstraintSource source = wandConstraint.GetSource(s);
-
-                // Si el índice del 'Source' coincide con el ID del personaje, peso 1 (activo)
-                // Si no, peso 0 (inactivo)
                 float targetWeight = (s == currentID) ? 1f : 0f;
 
                 if (source.weight != targetWeight)
