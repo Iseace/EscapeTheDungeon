@@ -17,6 +17,7 @@ GameObject:
   - component: {fileID: 5510540622882784318}
   - component: {fileID: 4147955335772351945}
   - component: {fileID: -6463542248434748298}
+  - component: {fileID: 2209957841264246312}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -37,7 +38,6 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 720680070357919298}
   - {fileID: 720680070357919298}
   - {fileID: 2514575367837769583}
   - {fileID: 6740702609182527299}
@@ -67,6 +67,7 @@ MonoBehaviour:
   - {fileID: 5510540622882784318}
   - {fileID: 4147955335772351945}
   - {fileID: -6463542248434748298}
+  - {fileID: 2209957841264246312}
   - {fileID: 1054681061754789690}
   ForceRemoteRenderTimeframe: 0
 --- !u!143 &3797531120297623430
@@ -128,10 +129,8 @@ MonoBehaviour:
   GraphicsRoot: {fileID: 2514575367837769583}
   CameraPivot: {fileID: 0}
   PlayerSpeed: 5
-  PlayerSpeed: 5
   JumpForce: 5
   Gravity: -9.81
-  isBoss: 0
   isBoss: 0
   Camera: {fileID: 0}
 --- !u!114 &8479133809032691040
@@ -147,7 +146,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerSetup
   cameraPivot: {fileID: 0}
-  graphicsContainer: {fileID: 5212746028065857913}
   graphicsContainer: {fileID: 5212746028065857913}
   cameraHeight: 1.8
   characterModels:
@@ -236,7 +234,7 @@ MonoBehaviour:
   - RawGuidValue: 4df696dcb7b165149871bfac9388eb94
   - RawGuidValue: fd501f3a739ab3548956a43b649183bb
   - RawGuidValue: 76cba172ca9d3834ba2f95d09bd0eef9
-  spellSocket: {fileID: 5715548566014488333}
+  spellSocket: {fileID: 0}
   spawnDelay: 0.17
 --- !u!1 &1095891864883707470
 GameObject:
@@ -828,7 +826,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.CanvasScaler
   m_UiScaleMode: 0
-  m_UiScaleMode: 0
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
   m_ReferenceResolution: {x: 800, y: 600}
@@ -934,10 +931,8 @@ MonoBehaviour:
   Animator: {fileID: 6129659452941521385}
   ApplyTiming: 2
   SyncSettings: 79
-  StateHashes: 000000008a18fce4b9abd9d3f2164ac8e8877022
-  TriggerHashes: 0000000028a98107
-  StateHashes: 000000008a18fce4b9abd9d3f2164ac8e8877022
-  TriggerHashes: 0000000028a98107
+  StateHashes: 000000008a18fce4b9abd9d3f2164ac8e887702222ff2dfda6dcfb12
+  TriggerHashes: 0000000028a981070d286c40
   TotalWords: 3
 --- !u!1 &7022562849593598383
 GameObject:

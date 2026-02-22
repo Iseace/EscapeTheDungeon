@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using TMPro;
 
 /// <summary>
@@ -34,6 +35,9 @@ public class MenuController : MonoBehaviour
 
     [Tooltip("Text (TMP) that shows the current section name.")]
     public TextMeshProUGUI sectionLabel;
+
+    [Tooltip("Optional button over the section label to enter the selected section.")]
+    public Button sectionLabelButton;
 
     [Header("Section Definitions")]
     [Tooltip("One entry per section, in the same order as MenuCamera.sectionPoints.")]
@@ -87,6 +91,7 @@ public class MenuController : MonoBehaviour
         if (arrowLeft != null) arrowLeft.onClick.AddListener(OnArrowLeft);
         if (arrowRight != null) arrowRight.onClick.AddListener(OnArrowRight);
         if (backButton != null) backButton.onClick.AddListener(OnBack);
+        if (sectionLabelButton != null) sectionLabelButton.onClick.AddListener(OnEnterSection);
 
         // listen for camera arrival
         if (menuCamera != null)
@@ -144,6 +149,52 @@ public class MenuController : MonoBehaviour
         ShowTitleScreen();
     }
 
+    private void OnEnterSection()
+    {
+        if (menuCamera == null || menuCamera.IsMoving) return;
+
+        int idx = menuCamera.CurrentSection;
+        if (sections == null || idx >= sections.Length) return;
+
+        SectionInfo info = sections[idx];
+
+        switch (info.action)
+        {
+            case SectionAction.LoadScene:
+                if (!string.IsNullOrEmpty(info.sceneName))
+                {
+                    Debug.Log($"[MenuController] Loading scene: {info.sceneName}");
+                    SceneManager.LoadScene(info.sceneName);
+                }
+                else
+                {
+                    Debug.LogWarning($"[MenuController] No scene assigned for section '{info.sectionName}'.");
+                }
+                break;
+
+            case SectionAction.OpenURL:
+                if (!string.IsNullOrEmpty(info.url))
+                {
+                    Debug.Log($"[MenuController] Opening URL: {info.url}");
+                    Application.OpenURL(info.url);
+                }
+                else
+                {
+                    Debug.LogWarning($"[MenuController] No URL assigned for section '{info.sectionName}'.");
+                }
+                break;
+
+            case SectionAction.QuitGame:
+                Debug.Log("[MenuController] Quitting game.");
+#if UNITY_EDITOR
+                UnityEditor.EditorApplication.isPlaying = false;
+#else
+                Application.Quit();
+#endif
+                break;
+        }
+    }
+
     // ── camera event ───────────────────────────────────────
 
     private void OnCameraArrived(int sectionIndex)
@@ -180,6 +231,8 @@ public class MenuController : MonoBehaviour
         {
             if (menuCamera != null && menuCamera.IsAtMenu)
                 OnPlay();
+            else if (menuCamera != null && !menuCamera.IsAtMenu)
+                OnEnterSection();
         }
 
         // ── Back (Escape / East button) ──
@@ -233,6 +286,16 @@ public class MenuController : MonoBehaviour
 }
 
 /// <summary>
+/// What happens when a section is selected.
+/// </summary>
+public enum SectionAction
+{
+    LoadScene,
+    OpenURL,
+    QuitGame
+}
+
+/// <summary>
 /// Serialisable data for one menu section.
 /// </summary>
 [System.Serializable]
@@ -241,6 +304,12 @@ public class SectionInfo
     [Tooltip("Display name shown on the section label.")]
     public string sectionName;
 
-    [Tooltip("(Optional) Scene to load when this section is selected. Leave empty if not applicable.")]
+    [Tooltip("What happens when the player enters this section.")]
+    public SectionAction action = SectionAction.LoadScene;
+
+    [Tooltip("Scene to load (used when action = LoadScene).")]
     public string sceneName;
+
+    [Tooltip("URL to open in the browser (used when action = OpenURL).")]
+    public string url;
 }

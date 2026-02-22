@@ -6127,7 +6127,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterSelector
   rotationSpeed: 5
-  serverSceneName: Lobby
+  serverSceneName: LobbyList
+  navigateAction:
+    m_Name: Navigate
+    m_Type: 0
+    m_ExpectedControlType: 
+    m_Id: b0cdb78a-52c3-4756-888e-98c25f56c1dc
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings: []
+    m_Flags: 0
 --- !u!4 &1257256193 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 4f077ee5fddc0de45839c42ea9830408, type: 3}
