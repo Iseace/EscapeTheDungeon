@@ -14,9 +14,13 @@ public class FirstPersonCamera : MonoBehaviour
     private float verticalRotation;
     private float horizontalRotation;
     private bool isInitialized = false;
+    private int invisibleLayer = -1;
+    private GameObject previousGraphics;
 
     private void Awake()
     {
+        invisibleLayer = LayerMask.NameToLayer(InvisibleLayerName);
+        
         if (mobileBridge == null)
             mobileBridge = FindFirstObjectByType<MobileControlsBridge>();
     }
@@ -26,8 +30,13 @@ public class FirstPersonCamera : MonoBehaviour
 
     public void SetTarget(Transform newTarget, GameObject graphics)
     {
+
+      if (previousGraphics != null && previousGraphics != graphics)
+        SetLayerRecursive(previousGraphics, 0);
+            
         Target = newTarget;
         PlayerGraphics = graphics;
+        previousGraphics = graphics;
         isInitialized = false;
 
         if (newTarget != null)
@@ -35,7 +44,8 @@ public class FirstPersonCamera : MonoBehaviour
             horizontalRotation = newTarget.eulerAngles.y;
             verticalRotation = 0f;
             isInitialized = true;
-            ApplyInvisibleLayer();
+            if (PlayerGraphics != null)
+                ApplyInvisibleLayer();
         }
     }
 
@@ -43,7 +53,8 @@ public class FirstPersonCamera : MonoBehaviour
     {
         if (Target == null || !isInitialized) return;
 
-        ApplyInvisibleLayer();
+        if (PlayerGraphics != null)
+            ApplyInvisibleLayer();
         transform.position = Target.position;
 
         Vector2 lookInput = GetLookInput();
@@ -77,9 +88,8 @@ public class FirstPersonCamera : MonoBehaviour
     {
         if (PlayerGraphics == null) return;
 
-        int layerIndex = LayerMask.NameToLayer(InvisibleLayerName);
-        if (layerIndex != -1)
-            SetLayerRecursive(PlayerGraphics, layerIndex);
+        if (invisibleLayer != -1)
+            SetLayerRecursive(PlayerGraphics, invisibleLayer);
     }
 
     private void SetLayerRecursive(GameObject obj, int newLayer)
