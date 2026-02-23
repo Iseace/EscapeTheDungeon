@@ -3,37 +3,85 @@ using UnityEngine.InputSystem;
 
 public class FirstPersonCamera : MonoBehaviour
 {
-    public Transform Target;
-    public GameObject PlayerGraphics;
-    public float MouseSensitivity = 10f;
-    public float MobileSensitivity = 1.0f;
-    public InputActionReference lookAction;
-    public MobileControlsBridge mobileBridge;
-    public string InvisibleLayerName = "LocalPlayerHidden";
+    // ===== PUBLIC CONFIGURATION =====
 
-    private float verticalRotation;
-    private float horizontalRotation;
-    private bool isInitialized = false;
-    private int invisibleLayer = -1;
-    private GameObject previousGraphics;
+    public Transform Target;                     // The player transform the camera follows
+    public GameObject PlayerGraphics;            // The visible player model
+    public float MouseSensitivity = 10f;         // Sensitivity for mouse input
+    public float MobileSensitivity = 1.0f;       // Sensitivity for mobile input
+    public InputActionReference lookAction;      // Input System reference (mouse/gamepad)
+    public MobileControlsBridge mobileBridge;    // Mobile look input provider
+    public string InvisibleLayerName = "LocalPlayerHidden"; // Layer to hide local player mesh
 
+
+    // ===== PRIVATE STATE =====
+
+    private float verticalRotation;              // X-axis rotation (up/down)
+    private float horizontalRotation;            // Y-axis rotation (left/right)
+    private bool isInitialized = false;          // Prevents running before setup
+    private int invisibleLayer = -1;             // Cached layer index
+    private GameObject previousGraphics;         // Used to restore old model layer
+
+
+    // =========================================================
+    // AWAKE → Runs before Start()
+    // =========================================================
     private void Awake()
     {
+        // Cache the layer index for performance (avoids calling NameToLayer every frame)
         invisibleLayer = LayerMask.NameToLayer(InvisibleLayerName);
-        
+
+        // Auto-find mobile bridge if not assigned
         if (mobileBridge == null)
             mobileBridge = FindFirstObjectByType<MobileControlsBridge>();
     }
 
+
+    // =========================================================
+    // START → Lock cursor on PC
+    // =========================================================
+    private void Start()
+    {
+        if (!Application.isMobilePlatform)
+        {
+            Cursor.lockState = CursorLockMode.Locked;  // Locks cursor to center
+            Cursor.visible = false;                    // Hides cursor
+        }
+    }
+
+
+    // =========================================================
+    // UPDATE → Re-lock cursor if clicked
+    // =========================================================
+    private void Update()
+    {
+        if (!Application.isMobilePlatform)
+        {
+            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+            }
+        }
+    }
+
+
+    // =========================================================
+    // INPUT SYSTEM ENABLE / DISABLE
+    // =========================================================
     private void OnEnable() => lookAction?.action.Enable();
     private void OnDisable() => lookAction?.action.Disable();
 
+
+    // =========================================================
+    // SET TARGET (Like Rider switching forms 👀)
+    // =========================================================
     public void SetTarget(Transform newTarget, GameObject graphics)
     {
+        // Restore previous graphics layer if switching characters
+        if (previousGraphics != null && previousGraphics != graphics)
+            SetLayerRecursive(previousGraphics, 0); // Default layer
 
-      if (previousGraphics != null && previousGraphics != graphics)
-        SetLayerRecursive(previousGraphics, 0);
-            
         Target = newTarget;
         PlayerGraphics = graphics;
         previousGraphics = graphics;
@@ -44,34 +92,54 @@ public class FirstPersonCamera : MonoBehaviour
             horizontalRotation = newTarget.eulerAngles.y;
             verticalRotation = 0f;
             isInitialized = true;
+
             if (PlayerGraphics != null)
                 ApplyInvisibleLayer();
         }
     }
 
-    void LateUpdate()
+
+    // =========================================================
+    // LATE UPDATE → Camera rotation & positioning
+    // =========================================================
+    private void LateUpdate()
     {
-        if (Target == null || !isInitialized) return;
+        if (Target == null || !isInitialized)
+            return;
 
         if (PlayerGraphics != null)
             ApplyInvisibleLayer();
+
+        // Follow target position
         transform.position = Target.position;
 
+        // Get input
         Vector2 lookInput = GetLookInput();
 
         float mouseX = lookInput.x * MouseSensitivity * 0.1f;
         float mouseY = lookInput.y * MouseSensitivity * 0.1f;
 
+        // Vertical (X axis)
         verticalRotation -= mouseY;
         verticalRotation = Mathf.Clamp(verticalRotation, -70f, 70f);
+
+        // Horizontal (Y axis)
         horizontalRotation += mouseX;
 
-        transform.rotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0);
+        // Apply final rotation
+        transform.rotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0f);
     }
 
+
+    // =========================================================
+    // INPUT HANDLING
+    // =========================================================
     private Vector2 GetLookInput()
     {
-        if (Application.isMobilePlatform || Input.touchSupported)
+        // IMPORTANT:
+        // We ONLY use Application.isMobilePlatform.
+        // Input.touchSupported can return true on PC builds and break mouse input.
+        if (Application.isMobilePlatform)
         {
             if (mobileBridge != null)
                 return mobileBridge.CameraLookDelta * MobileSensitivity;
@@ -81,22 +149,35 @@ public class FirstPersonCamera : MonoBehaviour
             if (lookAction != null && lookAction.action != null)
                 return lookAction.action.ReadValue<Vector2>();
         }
+
         return Vector2.zero;
     }
 
-    void ApplyInvisibleLayer()
+
+    // =========================================================
+    // APPLY INVISIBLE LAYER TO PLAYER MODEL
+    // =========================================================
+    private void ApplyInvisibleLayer()
     {
-        if (PlayerGraphics == null) return;
+        if (PlayerGraphics == null)
+            return;
 
         if (invisibleLayer != -1)
             SetLayerRecursive(PlayerGraphics, invisibleLayer);
     }
 
+
+    // =========================================================
+    // RECURSIVE LAYER SETTER
+    // =========================================================
     private void SetLayerRecursive(GameObject obj, int newLayer)
     {
-        if (obj.layer == newLayer) return;
+        if (obj.layer == newLayer)
+            return;
 
         obj.layer = newLayer;
+
+        // Loop through all children
         foreach (Transform child in obj.transform)
             SetLayerRecursive(child.gameObject, newLayer);
     }
