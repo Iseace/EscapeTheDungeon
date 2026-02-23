@@ -42,12 +42,14 @@ public class AnimatorBasic : NetworkBehaviour
             {
                 _savedWeaponID = _inventory.CurrentWeaponID;
                 _attackTimer = TickTimer.CreateFromSeconds(Runner, spawnDelay);
-                Rpc_PlayAttack();
+                
+                if (HasStateAuthority) 
+                  Rpc_PlayAttack();
             }
         }
     }
 
-    [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_PlayAttack()
     {
         if (_animator == null)

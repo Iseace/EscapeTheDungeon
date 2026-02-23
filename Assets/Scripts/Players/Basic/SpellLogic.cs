@@ -11,6 +11,9 @@ public class SpellLogic : NetworkBehaviour
     [Tooltip("Auto-destroy after this many seconds if it hits nothing")]
     [SerializeField] private float maxLifetime = 5f;
 
+    [Header("Damage")]
+    [SerializeField] private float damage = 20f;
+
     [Networked] private TickTimer _lifeTimer { get; set; }
 
     public override void Spawned()
@@ -37,9 +40,12 @@ public class SpellLogic : NetworkBehaviour
         // Ignore other projectiles
         if (other.GetComponent<SpellLogic>() != null) return;
 
-        // TODO: Apply damage here if the target has a health component
-        // var health = other.GetComponentInParent<PlayerHealth>();
-        // if (health != null) health.TakeDamage(damageAmount);
+        // Deal damage if the target has a PlayerHealth component
+        var health = other.GetComponentInParent<PlayerHealth>();
+        if (health != null)
+        {
+            health.DealDamage(damage);
+        }
 
         Runner.Despawn(Object);
     }
