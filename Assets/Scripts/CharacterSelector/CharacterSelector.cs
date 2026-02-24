@@ -1,16 +1,23 @@
 using UnityEngine;
 using System.Collections.Generic;
-using UnityEngine.SceneManagement; // Necesario para cambiar de escena
+using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem;
 
 public class CharacterSelector : MonoBehaviour
 {
     public float rotationSpeed = 5f;
-    public string serverSceneName = "Lobby"; // Cambia esto al nombre exacto de tu escena de servidores
+    public string serverSceneName = "LobbyRoom";
+
+    public InputAction navigateAction;
 
     private int currentIndex = 0;
     private Quaternion targetRotation;
     private List<Animator> characterAnimators = new List<Animator>();
     private int totalCharacters;
+    private float previousNavInput = 0f;
+
+    private void OnEnable() => navigateAction.Enable();
+    private void OnDisable() => navigateAction.Disable();
 
     void Start()
     {
@@ -26,25 +33,34 @@ public class CharacterSelector : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
-            RotateCarousel(-1);
+        float navInput = navigateAction.ReadValue<Vector2>().x;
 
-        if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
-            RotateCarousel(1);
+        if (previousNavInput == 0f)
+        {
+            if (navInput > 0.5f)
+                RotateCarousel(-1);
+            else if (navInput < -0.5f)
+                RotateCarousel(1);
+        }
 
+        previousNavInput = navInput;
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
     }
 
-    void RotateCarousel(int direction)
+    // ✅ NOW PUBLIC — called by UI buttons
+    public void RotateCarousel(int direction)
     {
         currentIndex += direction;
         // No necesitamos el if de bucle aquí si usamos el operador % en el cálculo del ángulo
 
         float angle = currentIndex * (360f / totalCharacters);
         targetRotation = Quaternion.Euler(0, -angle, 0);
-
         UpdateAnimations();
     }
+
+    // ✅ Touch button helpers — wire these to OnClick()
+    public void OnTouchLeft()  => RotateCarousel(1);
+    public void OnTouchRight() => RotateCarousel(-1);
 
     void UpdateAnimations()
     {
@@ -77,7 +93,6 @@ public class CharacterSelector : MonoBehaviour
         // PlayerPrefs.SetString("PlayerNick", myInputField.text);
 
         PlayerPrefs.Save();
-
         Debug.Log("Personaje " + personajeSeleccionado + " guardado. Volviendo a servidores...");
 
         // 3. Volver a la escena de servidores

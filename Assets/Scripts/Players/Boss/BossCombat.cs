@@ -5,7 +5,8 @@ public class BossCombat : NetworkBehaviour
 {
     public override void FixedUpdateNetwork()
     {
-        // Usamos tu estructura PlayerInputData
+        if (!HasInputAuthority) return;
+
         if (GetInput(out PlayerInputData data) && data.AttackPressed)
         {
             Rpc_PlayMeleeAttack();
@@ -15,7 +16,6 @@ public class BossCombat : NetworkBehaviour
     [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
     private void Rpc_PlayMeleeAttack()
     {
-        // Solo disparamos el trigger. La animación hará el resto.
         GetComponentInChildren<Animator>().SetTrigger("Attack");
     }
 }
