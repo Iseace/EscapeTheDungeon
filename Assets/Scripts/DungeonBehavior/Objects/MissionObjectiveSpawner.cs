@@ -61,6 +61,11 @@ public class MissionObjectiveSpawner
                 go.transform.localRotation = Quaternion.identity;
                 go.name = cfg.prefab.name;
                 grid.OccupyCell(spot.Value, go);
+                var pylon = go.GetComponent<MissionObjectivePylon>();
+                if (pylon != null)
+                {
+                    MissionObjectiveManager.Instance?.RegisterPylon(pylon);
+                }
                 placed++;
             }
         }

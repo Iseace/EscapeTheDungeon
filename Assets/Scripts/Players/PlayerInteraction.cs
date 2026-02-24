@@ -76,6 +76,17 @@ public class PlayerInteraction : NetworkBehaviour
                 // Equipar nueva y borrar del suelo
                 inv.CurrentWeaponID = target.itemID;
                 Runner.Despawn(target.Object);
+                return;
+            }
+
+            IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
+            if (interactable != null)
+            {
+                PlayerSetup player = GetComponent<PlayerSetup>();
+                if (player != null)
+                {
+                    interactable.Interact(player);
+                }
             }
         }
     }

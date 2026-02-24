@@ -13,7 +13,13 @@ public class InteractableItem : NetworkBehaviour, IInteractable
 
     public void Interact(PlayerSetup player)
     {
-        // El servidor suele manejar esto desde el Raycast del jugador
-        // para poder soltar el arma anterior antes de destruir esta.
+        if (player == null || !Object.HasStateAuthority) return;
+
+        PlayerInventory inv = player.GetComponent<PlayerInventory>();
+        if (inv == null) return;
+
+        Vector3 dropPos = player.transform.position + player.transform.forward * 1.2f + Vector3.up;
+        inv.SwapWeapon(itemID, dropPos);
+        Runner.Despawn(Object);
     }
 }
