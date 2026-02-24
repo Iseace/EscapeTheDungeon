@@ -120,6 +120,8 @@ GameObject:
   - component: {fileID: 8465718391709273307}
   - component: {fileID: 7584296887814694886}
   - component: {fileID: 7756113825659338862}
+  - component: {fileID: 8279410038602175480}
+  - component: {fileID: 3180125345330576617}
   m_Layer: 7
   m_Name: Boss
   m_TagString: Untagged
@@ -167,6 +169,7 @@ MonoBehaviour:
   - {fileID: 8465718391709273307}
   - {fileID: 7584296887814694886}
   - {fileID: 7756113825659338862}
+  - {fileID: 8279410038602175480}
   - {fileID: 1054681061754789690}
   - {fileID: 4020915017744210802}
   ForceRemoteRenderTimeframe: 0
@@ -296,6 +299,119 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fd13bde862c18a140b5e70e4512881be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BossCombat
+--- !u!114 &8279410038602175480
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 574449443296909936}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8477f3233f494cece96a3444f017d37c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  walkClip: {fileID: 8300000, guid: e91f344643203524aa3f5dbaf98b318e, type: 3}
+  volume: 0.5
+  attackClip: {fileID: 8300000, guid: be9ee117b1fe82fc889e9015ac867b03, type: 3}
+  attackVolume: 1
+--- !u!82 &3180125345330576617
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 574449443296909936}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1 &1348152760186214227
 GameObject:
   m_ObjectHideFlags: 0
@@ -554,6 +670,7 @@ GameObject:
   - component: {fileID: 6129659452941521385}
   - component: {fileID: 1054681061754789690}
   - component: {fileID: 669985097582423344}
+  - component: {fileID: 35498201453789865}
   m_Layer: 0
   m_Name: Graphics
   m_TagString: Untagged
@@ -631,6 +748,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimationBridge
   hitbox: {fileID: 4020915017744210802}
+--- !u!114 &35498201453789865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5212746028065857913}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 81e7a39a50931b2be9b7c04f05e9450d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BossAnimationEvents
 --- !u!1 &6063581342729041458
 GameObject:
   m_ObjectHideFlags: 0
@@ -894,8 +1023,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 0
   serializedVersion: 3
-  m_Size: {x: 0.057042, y: 1.0191064, z: 0.26217005}
-  m_Center: {x: 0.0011372175, y: 0.72421175, z: 0.0047410685}
+  m_Size: {x: 0.057042, y: 1.4775865, z: 0.26217005}
+  m_Center: {x: 0.0011376423, y: 0.49496967, z: 0.0047416035}
 --- !u!114 &4020915017744210802
 MonoBehaviour:
   m_ObjectHideFlags: 0
