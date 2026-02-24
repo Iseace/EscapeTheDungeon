@@ -33,8 +33,7 @@ public class DugeonGenerator
         float roomBottomCornerModifier,
         float roomTopCornerMidifier,
         int roomOffset,
-        int corridorWidth,
-        RoomShapeConfig roomShapeConfig = null)
+        int corridorWidth)
     {
         // Divide dungeon space using Binary Space Partitioning
         BinarySpacePartitioner bsp = new BinarySpacePartitioner(dungeonWidth, dungeonLength);
@@ -52,16 +51,6 @@ public class DugeonGenerator
             roomOffset
         );
 
-        // Update grid with rooms (basic rectangular shape)
-        UpdateGridWithRooms(RoomList);
-
-        // Apply varied shapes to rooms if config is provided
-        if (roomShapeConfig != null)
-        {
-            ApplyRoomShapes(RoomList, roomShapeConfig);
-            // IMPORTANT: Recalculate room bounds after applying shapes
-            UpdateRoomBounds(RoomList);
-        }
 
         // Create corridors connecting the rooms using smart corridor generator
         SmartCorridorGenerator smartCorridorGen = new SmartCorridorGenerator(Grid, corridorWidth);
@@ -113,32 +102,6 @@ public class DugeonGenerator
         }
     }
 
-    private void ApplyRoomShapes(List<RoomNode> rooms, RoomShapeConfig config)
-    {
-        foreach (var room in rooms)
-        {
-            // Apply varied shape to each room
-            RoomShapeModifier.ApplyShape(room, Grid, config);
-        }
-    }
-
-    private void UpdateGridWithRooms(List<RoomNode> rooms)
-    {
-        foreach (var room in rooms)
-        {
-            for (int x = room.BottomLeftAreaCorner.x; x < room.TopRightAreaCorner.x; x++)
-            {
-                for (int y = room.BottomLeftAreaCorner.y; y < room.TopRightAreaCorner.y; y++)
-                {
-                    Vector2Int pos = new Vector2Int(x, y);
-                    Grid.SetCellType(pos, CellType.Floor, room);
-                }
-            }
-
-            // Mark walls
-            MarkWalls(room);
-        }
-    }
 
     private void MarkWalls(RoomNode room)
     {
