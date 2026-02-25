@@ -1,14 +1,8 @@
 using UnityEngine;
+using UnityEngine.InputSystem; 
 using Fusion;
 using System.Collections.Generic;
 
-/// <summary>
-/// Added to the local player's GameObject when they die.
-/// Switches the main camera to follow living players.
-/// Navigation mirrors the CharacterSelector carousel:
-///   Right Arrow / D / Mouse Left  → next player
-///   Left  Arrow / A / Mouse Right → previous player
-/// </summary>
 public class SpectatorSystem : MonoBehaviour
 {
     [Header("UI (optional)")]
@@ -18,7 +12,6 @@ public class SpectatorSystem : MonoBehaviour
     // ── Internal state ─────────────────────────────────────────────────────────
     private List<PlayerSetup> livingPlayers = new List<PlayerSetup>();
     private int currentIndex = 0;
-    private int lastKnownCount = 0;
 
     private FirstPersonCamera fpCamera;
     private GameObject spectatorHUDInstance;
@@ -55,15 +48,22 @@ public class SpectatorSystem : MonoBehaviour
 
     void Update()
     {
-        // ── Carousel input (mirrors CharacterSelector) ──────────────────────
+        if (fpCamera == null) return;
+
+        // ── Carousel input (new Input System) ───────────────────────────────
+        var kb = Keyboard.current;
+        var mouse = Mouse.current;
+
         float horizontalInput = 0f;
+        if (kb != null)
+        {
+            if (kb.rightArrowKey.isPressed || kb.dKey.isPressed)
+                horizontalInput = 1f;
+            else if (kb.leftArrowKey.isPressed || kb.aKey.isPressed)
+                horizontalInput = -1f;
+        }
 
-        if (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D))
-            horizontalInput = 1f;
-        else if (Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A))
-            horizontalInput = -1f;
-
-        // Detect press edge (same GetKeyDown-equivalent as CharacterSelector)
+        // Detect press edge
         if (previousHorizontalInput == 0f)
         {
             if (horizontalInput > 0.5f)
@@ -74,11 +74,31 @@ public class SpectatorSystem : MonoBehaviour
         previousHorizontalInput = horizontalInput;
 
         // Mouse button single-press
-        if (Input.GetMouseButtonDown(0)) Navigate(1);
-        if (Input.GetMouseButtonDown(1)) Navigate(-1);
+        if (mouse != null)
+        {
+            if (mouse.leftButton.wasPressedThisFrame)  Navigate(1);
+            if (mouse.rightButton.wasPressedThisFrame) Navigate(-1);
+        }
 
-        // Refresh if someone else died while we are spectating
-        if (livingPlayers.Count != lastKnownCount)
+        // ── Keep retrying every frame until we lock onto a living player ─────
+        if (livingPlayers.Count == 0)
+        {
+            RefreshPlayerList();
+            if (livingPlayers.Count > 0)
+                FocusCurrentTarget();
+            return;
+        }
+
+        // ── Detect if any player in our list has since died ──────────────────
+        bool needsRefresh = false;
+        foreach (var p in livingPlayers)
+        {
+            if (p == null) { needsRefresh = true; break; }
+            PlayerHealth health = p.GetComponent<PlayerHealth>();
+            if (health != null && health.IsDead) { needsRefresh = true; break; }
+        }
+
+        if (needsRefresh)
         {
             RefreshPlayerList();
             FocusCurrentTarget();
@@ -113,13 +133,18 @@ public class SpectatorSystem : MonoBehaviour
         int normalised = GetNormalisedIndex();
         PlayerSetup target = livingPlayers[normalised];
 
-        // Prefer the named CameraPivot; fallback to the player root
-        Transform pivot = target.transform.Find("CameraPivot") ?? target.transform;
+        Transform pivot = target.GetCameraPivot();
+
+        if (pivot == null)
+        {
+            Debug.LogWarning($"[SpectatorSystem] GetCameraPivot() returned null for '{target.gameObject.name}'. Using player root as fallback.");
+            pivot = target.transform;
+        }
 
         // Pass null for graphics so the target player's mesh is never hidden
         fpCamera.SetTarget(pivot, null);
 
-        Debug.Log($"[SpectatorSystem] Now spectating player {normalised} ({target.gameObject.name})");
+        Debug.Log($"[SpectatorSystem] Now spectating '{target.gameObject.name}' via pivot '{pivot.name}' world Y={pivot.position.y:F2}");
     }
 
     private void RefreshPlayerList()
@@ -136,8 +161,6 @@ public class SpectatorSystem : MonoBehaviour
             if (health == null || !health.IsDead)
                 livingPlayers.Add(p);
         }
-
-        lastKnownCount = livingPlayers.Count;
     }
 
     /// <summary>
