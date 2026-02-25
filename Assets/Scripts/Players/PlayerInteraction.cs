@@ -43,6 +43,14 @@ public class PlayerInteraction : NetworkBehaviour
 
         if (Physics.Raycast(ray, out RaycastHit hit, range, interactLayer))
         {
+            InteractableItem item = hit.collider.GetComponentInParent<InteractableItem>();
+            if (item != null)
+            {
+                signUI.SetActive(true);
+                signText.text = item.GetInteractText();
+                return;
+            }
+
             IInteractable target = hit.collider.GetComponentInParent<IInteractable>();
             if (target != null)
             {
@@ -61,32 +69,20 @@ public class PlayerInteraction : NetworkBehaviour
         Ray ray = new Ray(origin, direction);
         if (Physics.Raycast(ray, out RaycastHit hit, range, interactLayer))
         {
-            InteractableItem target = hit.collider.GetComponentInParent<InteractableItem>();
-            if (target != null)
+            PlayerSetup player = GetComponent<PlayerSetup>();
+            if (player == null) return;
+
+            InteractableItem item = hit.collider.GetComponentInParent<InteractableItem>();
+            if (item != null)
             {
-                PlayerInventory inv = GetComponent<PlayerInventory>();
-
-                // Soltar arma actual si existe
-                if (inv.CurrentWeaponID > 0)
-                {
-                    Vector3 dropPos = transform.position + transform.forward * 1.2f + Vector3.up;
-                    Runner.Spawn(inv.staffPrefabs[inv.CurrentWeaponID - 1], dropPos, Quaternion.identity);
-                }
-
-                // Equipar nueva y borrar del suelo
-                inv.CurrentWeaponID = target.itemID;
-                Runner.Despawn(target.Object);
+                item.Interact(player);
                 return;
             }
 
-            IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
-            if (interactable != null)
+            IInteractable target = hit.collider.GetComponentInParent<IInteractable>();
+            if (target != null)
             {
-                PlayerSetup player = GetComponent<PlayerSetup>();
-                if (player != null)
-                {
-                    interactable.Interact(player);
-                }
+                target.Interact(player);
             }
         }
     }
