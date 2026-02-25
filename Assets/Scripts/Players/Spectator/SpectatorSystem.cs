@@ -1,28 +1,26 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 using Fusion;
 using System.Collections.Generic;
 
-/// <summary>
-/// Added to the local player's GameObject when they die.
-/// Switches the main camera to follow living players.
-/// Navigation:  Right Arrow / D / Mouse Left  → next player
-///              Left  Arrow / A / Mouse Right → previous player
-/// Zoom:        Mouse scroll wheel (PC) · Pinch gesture (mobile)
-///              Distance 0 = first-person on pivot, max = pulled back (third-person)
-/// </summary>
 public class SpectatorSystem : MonoBehaviour
 {
     [Header("UI (optional)")]
     [Tooltip("Assign a canvas/panel to show 'SPECTATING' overlay")]
     [SerializeField] private GameObject spectatorHUDPrefab;
 
+    [Header("Navigation Buttons (optional)")]
+    [Tooltip("Assign directly, OR name your HUD children 'PrevButton' / 'NextButton' and they will be found automatically.")]
+    [SerializeField] private Button prevPlayerButton;   // ◄  Navigate(-1)
+    [SerializeField] private Button nextPlayerButton;   // ►  Navigate( 1)
+
     [Header("Zoom Settings")]
     [SerializeField] private float minZoomDistance  = 0f;   // fully first-person
-    [SerializeField] private float maxZoomDistance  = 6f;  // fully third-person
-    [SerializeField] private float scrollSpeed      = 10f;   // PC scroll sensitivity
-    [SerializeField] private float pinchSpeed       = 1f;// Mobile pinch sensitivity
-    [SerializeField] private float zoomSmoothSpeed  = 8f;   // smoothing towards target
+    [SerializeField] private float maxZoomDistance  = 3.5f; // fully third-person
+    [SerializeField] private float scrollSpeed      = 30f;  // PC scroll sensitivity
+    [SerializeField] private float pinchSpeed       = 1f;   // Mobile pinch sensitivity
+    [SerializeField] private float zoomSmoothSpeed  = 10f;  // smoothing towards target
 
     // ── Internal state ─────────────────────────────────────────────────────────
     private List<PlayerSetup> livingPlayers = new List<PlayerSetup>();
@@ -61,8 +59,19 @@ public class SpectatorSystem : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible   = true;
 
+        // Spawn HUD and try to auto-discover nav buttons inside it
         if (spectatorHUDPrefab != null)
+        {
             spectatorHUDInstance = Instantiate(spectatorHUDPrefab);
+            TryAutoFindNavButtons(spectatorHUDInstance);
+        }
+
+        // Wire up nav buttons (whether assigned in Inspector or found above)
+        if (prevPlayerButton != null)
+            prevPlayerButton.onClick.AddListener(() => Navigate(-1));
+
+        if (nextPlayerButton != null)
+            nextPlayerButton.onClick.AddListener(() => Navigate(1));
 
         RefreshPlayerList();
 
@@ -107,12 +116,50 @@ public class SpectatorSystem : MonoBehaviour
 
     void OnDestroy()
     {
+        // Remove button listeners to avoid stale references
+        if (prevPlayerButton != null)
+            prevPlayerButton.onClick.RemoveAllListeners();
+
+        if (nextPlayerButton != null)
+            nextPlayerButton.onClick.RemoveAllListeners();
+
         // Reset zoom so normal gameplay is unaffected after spectator ends
         if (fpCamera != null)
             fpCamera.ZoomDistance = 0f;
 
         if (spectatorHUDInstance != null)
             Destroy(spectatorHUDInstance);
+    }
+
+    // ── Auto-discovery ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// If prevPlayerButton / nextPlayerButton were not assigned in the Inspector,
+    /// this searches the instantiated HUD for children named "PrevButton" and
+    /// "NextButton" (case-insensitive) and wires them up automatically.
+    /// </summary>
+    private void TryAutoFindNavButtons(GameObject hud)
+    {
+        if (hud == null) return;
+
+        Button[] buttons = hud.GetComponentsInChildren<Button>(true);
+        foreach (Button btn in buttons)
+        {
+            string lower = btn.gameObject.name.ToLower();
+
+            if (prevPlayerButton == null &&
+                (lower.Contains("prev") || lower.Contains("left")))
+            {
+                prevPlayerButton = btn;
+                Debug.Log($"[SpectatorSystem] Auto-found Prev button: '{btn.gameObject.name}'");
+            }
+            else if (nextPlayerButton == null &&
+                     (lower.Contains("next") || lower.Contains("right")))
+            {
+                nextPlayerButton = btn;
+                Debug.Log($"[SpectatorSystem] Auto-found Next button: '{btn.gameObject.name}'");
+            }
+        }
     }
 
     // ── Input ──────────────────────────────────────────────────────────────────
@@ -131,6 +178,7 @@ public class SpectatorSystem : MonoBehaviour
                 horizontalInput = -1f;
         }
 
+        // Fire once on the leading edge of the key press (debounce)
         if (previousHorizontalInput == 0f)
         {
             if (horizontalInput > 0.5f)       Navigate(1);
@@ -138,6 +186,7 @@ public class SpectatorSystem : MonoBehaviour
         }
         previousHorizontalInput = horizontalInput;
 
+        // Mouse left/right click also navigates (existing behaviour)
         if (mouse != null)
         {
             if (mouse.leftButton.wasPressedThisFrame)  Navigate(1);

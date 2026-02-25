@@ -114,10 +114,6 @@ public class FirstPersonCamera : MonoBehaviour
         if (PlayerGraphics != null)
             ApplyInvisibleLayer();
 
-        // Follow target position, then pull back for spectator zoom
-        // ZoomDistance is 0 during normal play so this has no effect then
-        transform.position = Target.position - transform.forward * ZoomDistance;
-
         // Get input
         Vector2 lookInput = GetLookInput();
 
@@ -131,8 +127,12 @@ public class FirstPersonCamera : MonoBehaviour
         // Horizontal (Y axis)
         horizontalRotation += mouseX;
 
-        // Apply final rotation
+        // Apply rotation FIRST so transform.forward is up-to-date this frame
         transform.rotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0f);
+
+        // Then set position using the freshly-updated forward vector.
+        // ZoomDistance is 0 during normal play so this has no effect then.
+        transform.position = Target.position - transform.forward * ZoomDistance;
     }
 
 
