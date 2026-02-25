@@ -1,13 +1,28 @@
 using UnityEngine;
-using UnityEngine.InputSystem; 
+using UnityEngine.InputSystem;
 using Fusion;
 using System.Collections.Generic;
 
+/// <summary>
+/// Added to the local player's GameObject when they die.
+/// Switches the main camera to follow living players.
+/// Navigation:  Right Arrow / D / Mouse Left  → next player
+///              Left  Arrow / A / Mouse Right → previous player
+/// Zoom:        Mouse scroll wheel (PC) · Pinch gesture (mobile)
+///              Distance 0 = first-person on pivot, max = pulled back (third-person)
+/// </summary>
 public class SpectatorSystem : MonoBehaviour
 {
     [Header("UI (optional)")]
     [Tooltip("Assign a canvas/panel to show 'SPECTATING' overlay")]
     [SerializeField] private GameObject spectatorHUDPrefab;
+
+    [Header("Zoom Settings")]
+    [SerializeField] private float minZoomDistance  = 0f;   // fully first-person
+    [SerializeField] private float maxZoomDistance  = 6f;  // fully third-person
+    [SerializeField] private float scrollSpeed      = 10f;   // PC scroll sensitivity
+    [SerializeField] private float pinchSpeed       = 1f;// Mobile pinch sensitivity
+    [SerializeField] private float zoomSmoothSpeed  = 8f;   // smoothing towards target
 
     // ── Internal state ─────────────────────────────────────────────────────────
     private List<PlayerSetup> livingPlayers = new List<PlayerSetup>();
@@ -16,8 +31,15 @@ public class SpectatorSystem : MonoBehaviour
     private FirstPersonCamera fpCamera;
     private GameObject spectatorHUDInstance;
 
-    // Input debounce – identical to CharacterSelector's previousNavInput pattern
+    // Input debounce
     private float previousHorizontalInput = 0f;
+
+    // Zoom state
+    private float targetZoomDistance  = 0f; // what we're zooming towards
+    private float currentZoomDistance = 0f; // smoothed value sent to fpCamera
+
+    // Pinch state
+    private float previousPinchDistance = 0f;
 
     // ── Unity lifecycle ────────────────────────────────────────────────────────
 
@@ -31,7 +53,11 @@ public class SpectatorSystem : MonoBehaviour
             return;
         }
 
-        // Unlock cursor so mouse clicks work for switching
+        // Start fully first-person
+        targetZoomDistance  = 0f;
+        currentZoomDistance = 0f;
+        fpCamera.ZoomDistance = 0f;
+
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible   = true;
 
@@ -43,44 +69,18 @@ public class SpectatorSystem : MonoBehaviour
         if (livingPlayers.Count > 0)
             FocusCurrentTarget();
 
-        Debug.Log("[SpectatorSystem] Spectator mode active. Use Arrow Keys / A-D / Mouse Buttons to switch players.");
+        Debug.Log("[SpectatorSystem] Spectator mode active.");
     }
 
     void Update()
     {
         if (fpCamera == null) return;
 
-        // ── Carousel input (new Input System) ───────────────────────────────
-        var kb = Keyboard.current;
-        var mouse = Mouse.current;
+        HandleNavigationInput();
+        HandleZoomInput();
+        ApplySmoothedZoom();
 
-        float horizontalInput = 0f;
-        if (kb != null)
-        {
-            if (kb.rightArrowKey.isPressed || kb.dKey.isPressed)
-                horizontalInput = 1f;
-            else if (kb.leftArrowKey.isPressed || kb.aKey.isPressed)
-                horizontalInput = -1f;
-        }
-
-        // Detect press edge
-        if (previousHorizontalInput == 0f)
-        {
-            if (horizontalInput > 0.5f)
-                Navigate(1);
-            else if (horizontalInput < -0.5f)
-                Navigate(-1);
-        }
-        previousHorizontalInput = horizontalInput;
-
-        // Mouse button single-press
-        if (mouse != null)
-        {
-            if (mouse.leftButton.wasPressedThisFrame)  Navigate(1);
-            if (mouse.rightButton.wasPressedThisFrame) Navigate(-1);
-        }
-
-        // ── Keep retrying every frame until we lock onto a living player ─────
+        // ── Keep retrying until we find a living player ──────────────────────
         if (livingPlayers.Count == 0)
         {
             RefreshPlayerList();
@@ -89,7 +89,7 @@ public class SpectatorSystem : MonoBehaviour
             return;
         }
 
-        // ── Detect if any player in our list has since died ──────────────────
+        // ── Detect if any spectated player has since died ────────────────────
         bool needsRefresh = false;
         foreach (var p in livingPlayers)
         {
@@ -107,8 +107,117 @@ public class SpectatorSystem : MonoBehaviour
 
     void OnDestroy()
     {
+        // Reset zoom so normal gameplay is unaffected after spectator ends
+        if (fpCamera != null)
+            fpCamera.ZoomDistance = 0f;
+
         if (spectatorHUDInstance != null)
             Destroy(spectatorHUDInstance);
+    }
+
+    // ── Input ──────────────────────────────────────────────────────────────────
+
+    private void HandleNavigationInput()
+    {
+        var kb    = Keyboard.current;
+        var mouse = Mouse.current;
+
+        float horizontalInput = 0f;
+        if (kb != null)
+        {
+            if (kb.rightArrowKey.isPressed || kb.dKey.isPressed)
+                horizontalInput = 1f;
+            else if (kb.leftArrowKey.isPressed || kb.aKey.isPressed)
+                horizontalInput = -1f;
+        }
+
+        if (previousHorizontalInput == 0f)
+        {
+            if (horizontalInput > 0.5f)       Navigate(1);
+            else if (horizontalInput < -0.5f) Navigate(-1);
+        }
+        previousHorizontalInput = horizontalInput;
+
+        if (mouse != null)
+        {
+            if (mouse.leftButton.wasPressedThisFrame)  Navigate(1);
+            if (mouse.rightButton.wasPressedThisFrame) Navigate(-1);
+        }
+    }
+
+    private void HandleZoomInput()
+    {
+        if (Application.isMobilePlatform)
+            HandlePinchZoom();
+        else
+            HandleScrollZoom();
+    }
+
+    /// <summary>
+    /// PC: scroll wheel moves the camera closer/further from the pivot.
+    /// Scroll up → zoom in (towards first-person).
+    /// Scroll down → zoom out (towards third-person).
+    /// </summary>
+    private void HandleScrollZoom()
+    {
+        var mouse = Mouse.current;
+        if (mouse == null) return;
+
+        float scroll = mouse.scroll.ReadValue().y;
+        if (Mathf.Approximately(scroll, 0f)) return;
+
+        // scroll > 0  → wheel up  → pull camera IN  → decrease distance
+        targetZoomDistance = Mathf.Clamp(
+            targetZoomDistance - scroll * scrollSpeed * Time.unscaledDeltaTime,
+            minZoomDistance, maxZoomDistance);
+    }
+
+    /// <summary>
+    /// Mobile: two-finger pinch moves the camera closer/further from the pivot.
+    /// Pinch apart → zoom in (closer). Pinch together → zoom out (further).
+    /// </summary>
+    private void HandlePinchZoom()
+    {
+        var touchscreen = Touchscreen.current;
+        if (touchscreen == null) return;
+
+        var t0 = touchscreen.touches[0];
+        var t1 = touchscreen.touches[1];
+
+        if (!t0.press.isPressed || !t1.press.isPressed)
+        {
+            previousPinchDistance = 0f;
+            return;
+        }
+
+        float currentDistance = Vector2.Distance(
+            t0.position.ReadValue(),
+            t1.position.ReadValue());
+
+        if (previousPinchDistance <= 0f)
+        {
+            previousPinchDistance = currentDistance;
+            return;
+        }
+
+        float delta = currentDistance - previousPinchDistance;
+        previousPinchDistance = currentDistance;
+
+        // Pinch apart (positive delta) → fingers spreading → zoom IN → decrease distance
+        targetZoomDistance = Mathf.Clamp(
+            targetZoomDistance - delta * pinchSpeed,
+            minZoomDistance, maxZoomDistance);
+    }
+
+    /// <summary>Smoothly lerps the actual camera distance towards the target.</summary>
+    private void ApplySmoothedZoom()
+    {
+        currentZoomDistance = Mathf.Lerp(
+            currentZoomDistance,
+            targetZoomDistance,
+            Time.unscaledDeltaTime * zoomSmoothSpeed);
+
+        fpCamera.ZoomDistance = currentZoomDistance;
     }
 
     // ── Private helpers ────────────────────────────────────────────────────────
@@ -137,14 +246,14 @@ public class SpectatorSystem : MonoBehaviour
 
         if (pivot == null)
         {
-            Debug.LogWarning($"[SpectatorSystem] GetCameraPivot() returned null for '{target.gameObject.name}'. Using player root as fallback.");
+            Debug.LogWarning($"[SpectatorSystem] GetCameraPivot() null for '{target.gameObject.name}', falling back to root.");
             pivot = target.transform;
         }
 
         // Pass null for graphics so the target player's mesh is never hidden
         fpCamera.SetTarget(pivot, null);
 
-        Debug.Log($"[SpectatorSystem] Now spectating '{target.gameObject.name}' via pivot '{pivot.name}' world Y={pivot.position.y:F2}");
+        Debug.Log($"[SpectatorSystem] Now spectating '{target.gameObject.name}' pivot Y={pivot.position.y:F2}");
     }
 
     private void RefreshPlayerList()
@@ -155,7 +264,7 @@ public class SpectatorSystem : MonoBehaviour
 
         foreach (var p in allPlayers)
         {
-            if (p.gameObject == this.gameObject) continue; // skip ourselves (dead)
+            if (p.gameObject == this.gameObject) continue;
 
             PlayerHealth health = p.GetComponent<PlayerHealth>();
             if (health == null || !health.IsDead)
@@ -163,10 +272,6 @@ public class SpectatorSystem : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Maps any integer currentIndex to a valid [0, count) index.
-    /// Same algorithm as CharacterSelector.GetNormalizedIndex().
-    /// </summary>
     private int GetNormalisedIndex()
     {
         if (livingPlayers.Count == 0) return 0;

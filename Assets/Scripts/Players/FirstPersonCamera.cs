@@ -22,6 +22,10 @@ public class FirstPersonCamera : MonoBehaviour
     private int invisibleLayer = -1;             // Cached layer index
     private GameObject previousGraphics;         // Used to restore old model layer
 
+    // Spectator zoom: 0 = first-person (on pivot), positive = pull back (third-person)
+    // Set by SpectatorSystem; ignored during normal gameplay (stays 0).
+    public float ZoomDistance { get; set; } = 0f;
+
 
     // =========================================================
     // AWAKE → Runs before Start()
@@ -110,8 +114,9 @@ public class FirstPersonCamera : MonoBehaviour
         if (PlayerGraphics != null)
             ApplyInvisibleLayer();
 
-        // Follow target position
-        transform.position = Target.position;
+        // Follow target position, then pull back for spectator zoom
+        // ZoomDistance is 0 during normal play so this has no effect then
+        transform.position = Target.position - transform.forward * ZoomDistance;
 
         // Get input
         Vector2 lookInput = GetLookInput();
