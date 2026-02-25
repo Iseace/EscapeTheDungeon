@@ -12,21 +12,34 @@ public class DungeonCreator : MonoBehaviour
     [SerializeField] private int lastUsedSeed;
 
     [Header("Dungeon Settings")]
-    public int dungeonWidth = 100;
-    public int dungeonLength = 100;
-    public int roomWidthMin = 10;
-    public int roomLengthMin = 10;
-    public int wallHeight = 3;
+    public int dungeonWidth = 300;
+    public int dungeonLength = 300;
+    public int roomWidthMin = 25;
+    public int roomLengthMin = 25;
+    public int wallHeight = 5;
     public int corridorWidth = 5;
+
+    [Header("Wall Settings")]
+    [Tooltip("Tiling por unidad (X = largo, Y = alto)")]
+    public Vector2 wallTextureTilingPerUnit = Vector2.one;
 
     [Header("Anchor Generator Settings")]
     [Tooltip("Numero maximo de salas (incluye el ancla)")] public int anchorMaxRooms = 18;
-    [Tooltip("Intentos por sala antes de descartar")] public int anchorAttemptsPerRoom = 40;
-    [Tooltip("Separacion minima (padding) entre salas")] public int anchorRoomPadding = 1;
-    [Tooltip("Rango de distancia radial desde el centro")] public Vector2Int anchorDistanceRange = new Vector2Int(8, 30);
-    [Tooltip("Conexiones extra sobre el MST base")] public int anchorExtraConnections = 1;
-    [Tooltip("Tamaño minimo salas secundarias")] public Vector2Int anchorRoomSizeMin = new Vector2Int(8, 8);
-    [Tooltip("Tamaño maximo salas secundarias")] public Vector2Int anchorRoomSizeMax = new Vector2Int(16, 16);
+    [Tooltip("Intentos por sala antes de descartar")] public int anchorAttemptsPerRoom = 100;
+    [Tooltip("Separacion minima (padding) entre salas")] public int anchorRoomPadding = 3;
+    [Tooltip("Rango de distancia radial desde el centro")] public Vector2Int anchorDistanceRange = new Vector2Int(45, 45);
+    [Tooltip("Conexiones extra sobre el MST base")] public int anchorExtraConnections = 13;
+    [Tooltip("Tamaño minimo salas secundarias")] public Vector2Int anchorRoomSizeMin = new Vector2Int(25, 20);
+    [Tooltip("Tamaño maximo salas secundarias")] public Vector2Int anchorRoomSizeMax = new Vector2Int(30, 25);
+
+    [Header("Outer Rooms Settings")]
+    [Tooltip("Salas adicionales para poblar más lejos del centro")] public int anchorAdditionalOuterRooms = 8;
+    [Range(0.4f, 0.95f)]
+    [Tooltip("Desde qué porcentaje del radio empieza la banda externa")] public float anchorOuterRoomStartNormalized = 0.45f;
+    [Range(0.2f, 2f)]
+    [Tooltip("Sesgo de distancia externa (<1 más lejos, >1 menos lejos)")] public float anchorOuterRoomBias = 0.55f;
+    [Range(1f, 3f)]
+    [Tooltip("Multiplicador del radio maximo para salas externas")] public float anchorOuterDistanceMultiplier = 1.6f;
 
     [Header("Prefabs (Placement)")]
     [Tooltip("Prefab principal de habitación (se escala al tamaño de la sala)")] public GameObject roomPrefab;
@@ -46,7 +59,7 @@ public class DungeonCreator : MonoBehaviour
     [Range(0, 10)]
     public int minObjectsPerRoom = 0;
     [Range(0, 20)]
-    public int maxObjectsPerRoom = 5;
+    public int maxObjectsPerRoom = 17;
 
     [Header("Mission Objectives")]
     public bool spawnMissionObjectives = true;
@@ -118,7 +131,11 @@ public class DungeonCreator : MonoBehaviour
             RoomSizeMax = new Vector2Int(
                 Mathf.Max(anchorRoomSizeMin.x, anchorRoomSizeMax.x),
                 Mathf.Max(anchorRoomSizeMin.y, anchorRoomSizeMax.y)
-            )
+            ),
+            AdditionalOuterRooms = Mathf.Max(0, anchorAdditionalOuterRooms),
+            OuterRoomStartNormalized = Mathf.Clamp01(anchorOuterRoomStartNormalized),
+            OuterRoomBias = Mathf.Max(0.2f, anchorOuterRoomBias),
+            OuterDistanceMultiplier = Mathf.Max(1f, anchorOuterDistanceMultiplier)
         };
 
         currentRooms = anchorGenerator.Generate(cfg);
@@ -143,7 +160,8 @@ public class DungeonCreator : MonoBehaviour
                 corridorFloorTilePrefab,
                 wallPiecePrefab,
                 pillarPrefab,
-                wallHeight
+                wallHeight,
+                wallTextureTilingPerUnit
             );
 
             if (spawnWallDecorations && wallDecorations != null && wallDecorations.Count > 0)
@@ -171,7 +189,8 @@ public class DungeonCreator : MonoBehaviour
                     currentRooms,
                     missionParent.transform,
                     currentCenterOffset,
-                    missionObjectives
+                    missionObjectives,
+                    anchorGenerator != null ? anchorGenerator.CentralRoom : null
                 );
             }
         }

@@ -21,7 +21,8 @@ public class MissionObjectiveSpawner
         List<RoomNode> rooms,
         Transform parent,
         Vector3 offset,
-        List<MissionObjectiveConfig> configs)
+        List<MissionObjectiveConfig> configs,
+        RoomNode excludedRoom = null)
     {
         if (grid == null || rooms == null || parent == null) return;
         if (configs == null || configs.Count == 0) return;
@@ -30,11 +31,11 @@ public class MissionObjectiveSpawner
         {
             if (cfg.prefab == null || cfg.maxCount <= 0) continue;
 
-            List<(RoomNode room, List<Vector2Int> spots)> eligible = BuildEligibleRooms(grid, rooms, cfg);
+            List<(RoomNode room, List<Vector2Int> spots)> eligible = BuildEligibleRooms(grid, rooms, cfg, excludedRoom);
             if (eligible.Count == 0)
             {
                 // Intento relajado: ignora maxRoomArea pero respeta clearance y tamaño mínimo.
-                eligible = BuildEligibleRooms(grid, rooms, cfg, relaxedArea: true);
+                eligible = BuildEligibleRooms(grid, rooms, cfg, excludedRoom, relaxedArea: true);
                 if (eligible.Count == 0) continue;
             }
 
@@ -60,12 +61,17 @@ public class MissionObjectiveSpawner
                 go.transform.localRotation = Quaternion.identity;
                 go.name = cfg.prefab.name;
                 grid.OccupyCell(spot.Value, go);
+                var pylon = go.GetComponent<MissionObjectivePylon>();
+                if (pylon != null)
+                {
+                    MissionObjectiveManager.Instance?.RegisterPylon(pylon);
+                }
                 placed++;
             }
         }
     }
 
-    private List<(RoomNode room, List<Vector2Int> spots)> BuildEligibleRooms(DungeonGrid grid, List<RoomNode> rooms, MissionObjectiveConfig cfg, bool relaxedArea = false)
+    private List<(RoomNode room, List<Vector2Int> spots)> BuildEligibleRooms(DungeonGrid grid, List<RoomNode> rooms, MissionObjectiveConfig cfg, RoomNode excludedRoom, bool relaxedArea = false)
     {
         List<(RoomNode room, List<Vector2Int> spots)> result = new List<(RoomNode, List<Vector2Int>)>();
 
@@ -78,6 +84,8 @@ public class MissionObjectiveSpawner
 
         foreach (var room in sortedRooms)
         {
+            if (excludedRoom != null && ReferenceEquals(room, excludedRoom)) continue;
+
             int area = room.Width * room.Length;
             if (room.Width < minSpan || room.Length < minSpan) continue;
             if (area > effectiveMaxArea) continue;

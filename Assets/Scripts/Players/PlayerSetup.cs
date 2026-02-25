@@ -16,6 +16,9 @@ public class PlayerSetup : NetworkBehaviour
 
     [Networked]
     public int SelectedCharacterIndex { get; set; }
+
+    [Networked]
+    public NetworkBool HasEscaped { get; set; }
     public ParentConstraint wandConstraint;
 
     public override void Spawned()

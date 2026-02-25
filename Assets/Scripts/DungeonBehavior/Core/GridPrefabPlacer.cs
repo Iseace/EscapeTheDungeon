@@ -8,6 +8,9 @@ using UnityEngine.Rendering;
 /// </summary>
 public static class GridPrefabPlacer
 {
+    private static readonly int MainTexStId = Shader.PropertyToID("_MainTex_ST");
+    private static readonly int BaseMapStId = Shader.PropertyToID("_BaseMap_ST");
+
     public static void Place(
         DungeonGrid grid,
         List<RoomNode> rooms,
@@ -19,13 +22,14 @@ public static class GridPrefabPlacer
         GameObject corridorFloorTile,
         GameObject wallPiece,
         GameObject pillarPrefab,
-        int wallHeight)
+        int wallHeight,
+        Vector2 wallTextureTilingPerUnit = default)
     {
         if (grid == null || root == null) return;
 
         PlaceRooms(grid, rooms, root, centerOffset, roomPrefab, roomFloorTile);
         PlaceCorridors(grid, root, centerOffset, corridorPrefab, corridorFloorTile);
-        PlaceWalls(grid, root, centerOffset, wallPiece, wallHeight);
+        PlaceWalls(grid, root, centerOffset, wallPiece, wallHeight, wallTextureTilingPerUnit);
         PlacePillars(grid, root, centerOffset, pillarPrefab, wallHeight);
     }
 
@@ -140,7 +144,8 @@ public static class GridPrefabPlacer
         Transform root,
         Vector3 offset,
         GameObject wallPiece,
-        int wallHeight)
+        int wallHeight,
+        Vector2 wallTextureTilingPerUnit)
     {
         if (wallPiece == null) return;
 
@@ -161,14 +166,14 @@ public static class GridPrefabPlacer
 
         for (int z = zMin; z <= zMax; z++)
         {
-            ScanAndSpawnHorizontalEdge(wallPiece, wallRoot.transform, cells, offset, z, true, xMin, xMax, wallHeight);
-            ScanAndSpawnHorizontalEdge(wallPiece, wallRoot.transform, cells, offset, z, false, xMin, xMax, wallHeight);
+            ScanAndSpawnHorizontalEdge(wallPiece, wallRoot.transform, cells, offset, z, true, xMin, xMax, wallHeight, wallTextureTilingPerUnit);
+            ScanAndSpawnHorizontalEdge(wallPiece, wallRoot.transform, cells, offset, z, false, xMin, xMax, wallHeight, wallTextureTilingPerUnit);
         }
 
         for (int x = xMin; x <= xMax; x++)
         {
-            ScanAndSpawnVerticalEdge(wallPiece, wallRoot.transform, cells, offset, x, true, zMin, zMax, wallHeight);
-            ScanAndSpawnVerticalEdge(wallPiece, wallRoot.transform, cells, offset, x, false, zMin, zMax, wallHeight);
+            ScanAndSpawnVerticalEdge(wallPiece, wallRoot.transform, cells, offset, x, true, zMin, zMax, wallHeight, wallTextureTilingPerUnit);
+            ScanAndSpawnVerticalEdge(wallPiece, wallRoot.transform, cells, offset, x, false, zMin, zMax, wallHeight, wallTextureTilingPerUnit);
         }
     }
 
@@ -181,7 +186,8 @@ public static class GridPrefabPlacer
         bool isBottomEdge,
         int xMin,
         int xMax,
-        int wallHeight)
+        int wallHeight,
+        Vector2 wallTextureTilingPerUnit)
     {
         int runStart = -1;
         for (int x = xMin; x <= xMax; x++)
@@ -205,6 +211,7 @@ public static class GridPrefabPlacer
                 scale.x = length;
                 scale.y = wallHeight;
                 go.transform.localScale = scale;
+                ApplyWallTiling(go, length, wallHeight, wallTextureTilingPerUnit);
                 runStart = -1;
             }
         }
@@ -219,7 +226,8 @@ public static class GridPrefabPlacer
         bool isLeftEdge,
         int zMin,
         int zMax,
-        int wallHeight)
+        int wallHeight,
+        Vector2 wallTextureTilingPerUnit)
     {
         int runStart = -1;
         for (int z = zMin; z <= zMax; z++)
@@ -244,9 +252,43 @@ public static class GridPrefabPlacer
                 scale.x = length;
                 scale.y = wallHeight;
                 go.transform.localScale = scale;
+                ApplyWallTiling(go, length, wallHeight, wallTextureTilingPerUnit);
                 runStart = -1;
             }
         }
+    }
+
+    private static void ApplyWallTiling(GameObject wall, float length, float height, Vector2 tilingPerUnit)
+    {
+        if (tilingPerUnit == default)
+        {
+            tilingPerUnit = Vector2.one;
+        }
+
+        var renderer = wall.GetComponentInChildren<Renderer>();
+        if (renderer == null) return;
+
+        var sharedMat = renderer.sharedMaterial;
+        if (sharedMat == null) return;
+
+        Vector2 baseScale = sharedMat.mainTextureScale;
+        Vector2 baseOffset = sharedMat.mainTextureOffset;
+        Vector2 scale = new Vector2(
+            baseScale.x * length * tilingPerUnit.x,
+            baseScale.y * height * tilingPerUnit.y);
+
+        var block = new MaterialPropertyBlock();
+        renderer.GetPropertyBlock(block);
+        Vector4 st = new Vector4(scale.x, scale.y, baseOffset.x, baseOffset.y);
+        if (sharedMat.HasProperty("_MainTex"))
+        {
+            block.SetVector(MainTexStId, st);
+        }
+        if (sharedMat.HasProperty("_BaseMap"))
+        {
+            block.SetVector(BaseMapStId, st);
+        }
+        renderer.SetPropertyBlock(block);
     }
 
     private static bool IsWalkable(Dictionary<Vector2Int, GridCell> cells, int x, int z)

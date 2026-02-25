@@ -13,6 +13,10 @@ public class AnchorGenerationConfig
     public int ExtraConnections = 1;
     public Vector2Int RoomSizeMin = new Vector2Int(8, 8);
     public Vector2Int RoomSizeMax = new Vector2Int(16, 16);
+    public int AdditionalOuterRooms = 0;
+    public float OuterRoomStartNormalized = 0.65f;
+    public float OuterRoomBias = 0.75f;
+    public float OuterDistanceMultiplier = 1.35f;
 }
 
 /// <summary>
@@ -80,34 +84,81 @@ public class AnchorDungeonGenerator
 
     private void PlaceSecondaryRooms(AnchorGenerationConfig config)
     {
-        int target = Mathf.Max(0, config.MaxRooms - 1);
+        int baseTarget = Mathf.Max(0, config.MaxRooms - 1);
+        int outerTarget = Mathf.Max(0, config.AdditionalOuterRooms);
+
+        TryPlaceRooms(config, baseTarget, forceOuterBand: false);
+        TryPlaceRooms(config, outerTarget, forceOuterBand: true);
+    }
+
+    private void TryPlaceRooms(AnchorGenerationConfig config, int target, bool forceOuterBand)
+    {
         Vector2 center = new Vector2(width / 2f, height / 2f);
 
-        for (int i = 0; i < target; i++)
+        int placedCount = 0;
+        int totalAttemptsBudget = Mathf.Max(1, target) * Mathf.Max(1, config.MaxAttemptsPerRoom) * (forceOuterBand ? 4 : 2);
+
+        for (int attempts = 0; attempts < totalAttemptsBudget && placedCount < target; attempts++)
         {
-            bool placed = false;
-            for (int attempt = 0; attempt < config.MaxAttemptsPerRoom && !placed; attempt++)
+            int w = Random.Range(config.RoomSizeMin.x, config.RoomSizeMax.x + 1);
+            int h = Random.Range(config.RoomSizeMin.y, config.RoomSizeMax.y + 1);
+
+            // Fallback progresivo: en intentos tardíos reducimos tamaño para poder encajar más salas.
+            float latePhase = target > 0 ? (float)placedCount / target : 1f;
+            bool tightenRooms = forceOuterBand && (attempts > totalAttemptsBudget * 0.5f || latePhase < 0.8f);
+            if (tightenRooms)
             {
-                int w = Random.Range(config.RoomSizeMin.x, config.RoomSizeMax.x + 1);
-                int h = Random.Range(config.RoomSizeMin.y, config.RoomSizeMax.y + 1);
-
-                float angle = Random.Range(0f, Mathf.PI * 2f);
-                float dist = Random.Range(config.MinDistanceFromCenter, config.MaxDistanceFromCenter);
-                Vector2 pos = center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * dist;
-                Vector2Int c = new Vector2Int(Mathf.RoundToInt(pos.x), Mathf.RoundToInt(pos.y));
-
-                Vector2Int bl = new Vector2Int(c.x - w / 2, c.y - h / 2);
-                Vector2Int tr = new Vector2Int(bl.x + w, bl.y + h);
-
-                if (!Fits(bl, tr)) continue;
-                if (Overlaps(bl, tr, config.Padding)) continue;
-
-                RoomNode room = new RoomNode(bl, tr, null, RoomList.Count);
-                RoomList.Add(room);
-                PaintRoom(room);
-                placed = true;
+                w = Mathf.Max(4, Mathf.RoundToInt(w * 0.8f));
+                h = Mathf.Max(4, Mathf.RoundToInt(h * 0.8f));
             }
+
+            float angle = Random.Range(0f, Mathf.PI * 2f);
+            float dist = SampleDistance(config, forceOuterBand);
+            Vector2 pos = center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * dist;
+            Vector2Int c = new Vector2Int(Mathf.RoundToInt(pos.x), Mathf.RoundToInt(pos.y));
+
+            Vector2Int bl = new Vector2Int(c.x - w / 2, c.y - h / 2);
+            Vector2Int tr = new Vector2Int(bl.x + w, bl.y + h);
+
+            int effectivePadding = forceOuterBand ? Mathf.Max(0, config.Padding - 1) : config.Padding;
+            if (!Fits(bl, tr)) continue;
+            if (Overlaps(bl, tr, effectivePadding)) continue;
+
+            RoomNode room = new RoomNode(bl, tr, null, RoomList.Count);
+            RoomList.Add(room);
+            PaintRoom(room);
+            placedCount++;
         }
+    }
+
+    private float SampleDistance(AnchorGenerationConfig config, bool forceOuterBand)
+    {
+        float minDist = Mathf.Max(0f, config.MinDistanceFromCenter);
+        float maxDist = Mathf.Max(minDist, config.MaxDistanceFromCenter);
+
+        if (forceOuterBand)
+        {
+            float maxByMap = Mathf.Min(width, height) * 0.48f;
+            maxDist = Mathf.Min(maxByMap, maxDist * Mathf.Max(1f, config.OuterDistanceMultiplier));
+            minDist = Mathf.Min(minDist, maxDist);
+        }
+
+        if (Mathf.Approximately(minDist, maxDist))
+            return minDist;
+
+        float t;
+        if (forceOuterBand)
+        {
+            float outerStart = Mathf.Clamp01(config.OuterRoomStartNormalized);
+            float outerT = Mathf.Pow(Random.value, Mathf.Max(0.01f, config.OuterRoomBias));
+            t = Mathf.Lerp(outerStart, 1f, outerT);
+        }
+        else
+        {
+            t = Random.value;
+        }
+
+        return Mathf.Lerp(minDist, maxDist, t);
     }
 
     private void PaintRoom(RoomNode room)
