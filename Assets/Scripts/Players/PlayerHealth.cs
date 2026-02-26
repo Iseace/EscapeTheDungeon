@@ -11,6 +11,13 @@ public class PlayerHealth : NetworkBehaviour
   [Header("Health Bar Reference")]
   [SerializeField] private GameObject healthBarObject; // Assign HUD_Canvas or HealthBar_HUD from the prefab
 
+  [Header("UI Panels")]
+  [Tooltip("The normal player HUD panel (named 'ControlsUI' on your Canvas)")]
+  [SerializeField] private GameObject controlsUI;
+
+  [Tooltip("The spectator overlay panel (named 'Spectator Controller' on your Canvas)")]
+  [SerializeField] private GameObject spectatorUI;
+
   [Networked, OnChangedRender(nameof(HealthChanged))]
   public float CurrentHealth { get; set; }
 
@@ -21,6 +28,7 @@ public class PlayerHealth : NetworkBehaviour
   private string currentSceneName;
   private bool isHealthInitialized = false;
   private bool deathHandled = false;
+
   void OnIsDeadChanged()
   {
     HandleDeath();
@@ -29,6 +37,7 @@ public class PlayerHealth : NetworkBehaviour
   public override void Spawned()
   {
     deathHandled = false;
+
     // Only the Server/Host sets the initial value once
     if (Object.HasStateAuthority && !isHealthInitialized)
     {
@@ -47,14 +56,15 @@ public class PlayerHealth : NetworkBehaviour
     {
       SetupHealthBar();
       ConfigureHUDForScene();
+
+      // Start alive: show player controls, hide spectator overlay
+      SetAliveUI();
     }
     else
     {
       // For other players, make sure their health bar is always hidden
       if (healthBarObject != null)
-      {
         healthBarObject.SetActive(false);
-      }
     }
   }
 
@@ -62,6 +72,31 @@ public class PlayerHealth : NetworkBehaviour
   {
     SceneManager.activeSceneChanged -= OnSceneChanged;
   }
+
+  // ── UI State Helpers ────────────────────────────────────────────────────────
+
+  /// <summary>Shows normal player HUD, hides spectator overlay.</summary>
+  private void SetAliveUI()
+  {
+    // Try to find panels by name if not assigned in the Inspector
+    if (controlsUI == null)
+      controlsUI = GameObject.Find("ControlsUI");
+
+    if (spectatorUI == null)
+      spectatorUI = GameObject.Find("Spectator Controller");
+
+    if (controlsUI != null)  controlsUI.SetActive(true);
+    if (spectatorUI != null) spectatorUI.SetActive(false);
+  }
+
+  /// <summary>Hides normal player HUD, shows spectator overlay.</summary>
+  private void SetDeadUI()
+  {
+    if (controlsUI != null)  controlsUI.SetActive(false);
+    if (spectatorUI != null) spectatorUI.SetActive(true);
+  }
+
+  // ── Health Bar ──────────────────────────────────────────────────────────────
 
   private void SetupHealthBar()
   {
@@ -71,7 +106,6 @@ public class PlayerHealth : NetworkBehaviour
       return;
     }
 
-    // Find the slider component
     localHealthSlider = healthBarObject.GetComponentInChildren<Slider>();
 
     if (localHealthSlider != null)
@@ -91,9 +125,7 @@ public class PlayerHealth : NetworkBehaviour
     currentSceneName = newScene.name;
 
     if (HasInputAuthority)
-    {
       ConfigureHUDForScene();
-    }
   }
 
   private void ConfigureHUDForScene()
@@ -107,7 +139,6 @@ public class PlayerHealth : NetworkBehaviour
     }
     else
     {
-      // In game scene - show the health bar
       healthBarObject.SetActive(true);
       UpdateHUD();
     }
@@ -121,10 +152,10 @@ public class PlayerHealth : NetworkBehaviour
   private void UpdateHUD()
   {
     if (HasInputAuthority && localHealthSlider != null && healthBarObject != null && healthBarObject.activeSelf)
-    {
       localHealthSlider.value = CurrentHealth;
-    }
   }
+
+  // ── Damage / Death ──────────────────────────────────────────────────────────
 
   public void DealDamage(float damage)
   {
@@ -132,39 +163,40 @@ public class PlayerHealth : NetworkBehaviour
     CurrentHealth = Mathf.Max(0, CurrentHealth - damage);
 
     if (CurrentHealth <= 0)
-    {
       IsDead = true; // Triggers OnIsDeadChanged on all clients
-    }
   }
 
   public void HandleDeath()
+  {
+    if (!IsDead || deathHandled) return;
+    deathHandled = true;
+
+    Debug.Log($"[PlayerHealth] HandleDeath called for player {Object.InputAuthority.PlayerId}");
+
+    // 1. Play death animation
+    Animator anim = GetComponentInChildren<Animator>();
+    if (anim != null)
+      anim.SetTrigger("Die");
+
+    // 2. Disable physics / movement so the corpse freezes on all clients
+    if (TryGetComponent<CharacterController>(out var cc))
+      cc.enabled = false;
+
+    if (TryGetComponent<PlayerMovement>(out var pm))
+      pm.enabled = false;
+
+    // 3. Local-only: switch UI and enable spectator camera
+    if (HasInputAuthority)
     {
-        if (!IsDead || deathHandled) return;
-        deathHandled = true;
+      if (TryGetComponent<PlayerInteraction>(out var pi)) pi.enabled = false;
+      if (TryGetComponent<AnimatorBasic>(out var ab))     ab.enabled = false;
 
-        Debug.Log($"[PlayerHealth] HandleDeath called for player {Object.InputAuthority.PlayerId}");
+      // Switch canvas panels: hide controls, show spectator overlay
+      SetDeadUI();
 
-        // 1. Play death animation
-        Animator anim = GetComponentInChildren<Animator>();
-        if (anim != null)
-            anim.SetTrigger("Die");
-
-        // 2. Disable physics / movement so the corpse freezes on all clients
-        if (TryGetComponent<CharacterController>(out var cc))
-            cc.enabled = false;
-
-        if (TryGetComponent<PlayerMovement>(out var pm))
-            pm.enabled = false;
-
-        // 3. Local-only: enable spectator camera for the player who just died
-        if (HasInputAuthority)
-        {
-            if (TryGetComponent<PlayerInteraction>(out var pi)) pi.enabled = false;
-            if (TryGetComponent<AnimatorBasic>(out var ab)) ab.enabled = false;
-
-            // Only add SpectatorSystem once
-            if (GetComponent<SpectatorSystem>() == null)
-                gameObject.AddComponent<SpectatorSystem>();
-        }
+      // Only add SpectatorSystem once
+      if (GetComponent<SpectatorSystem>() == null)
+        gameObject.AddComponent<SpectatorSystem>();
     }
+  }
 }
