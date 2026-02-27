@@ -7,7 +7,12 @@ using Fusion;
 public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
 {
     [Header("Joystick")]
-    [SerializeField] private RectTransform joystickPad;
+    [Tooltip("Drag the ROOT 'Joystick' GameObject here — it contains 'background' and 'pad' as children. " +
+             "Hiding this one object hides the whole joystick (background + pad) at once in spectator mode.")]
+    [SerializeField] private GameObject joystickParent;   // ROOT 'Joystick' — parent of 'background' AND 'pad'
+
+    [Tooltip("Drag the 'pad' child of Joystick here — used for OnScreenStick setup and joystick radius check only.")]
+    [SerializeField] private RectTransform joystickPad;   // 'pad' child — NOT hidden separately; joystickParent covers it
     [SerializeField] private RectTransform knobTransform;
     [SerializeField] private float movementRange = 50f;
 
@@ -29,6 +34,8 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
 
     private Vector2 lastPointerPos;
     private bool isDragging;
+    private bool isSpectating;  // set by PlayerHealth — hides all widgets but keeps drag alive
+    private bool isPinching;    // set by SpectatorSystem — suppresses single-finger drag during pinch
     private Vector2 joystickCenter;
     private PlayerRole localPlayerRole;
     private bool hasCheckedRole;
@@ -42,7 +49,38 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
 
         if (!isMobile) { gameObject.SetActive(false); return; }
 
-        // Transparent full-screen image to receive pointer events
+        // ── Auto-find scene widgets that can't be assigned on a network prefab ──
+        // joystickParent lives in the scene's ControlsUI canvas, not on the player
+        // prefab, so Inspector assignment is impossible on spawned instances.
+        // We search by name as a reliable fallback.
+        if (joystickParent == null)
+        {
+            // Walk up to find the root ControlsUI canvas, then find 'Joystick' inside it
+            // Prefer the transform parent hierarchy first (works if this script IS inside ControlsUI)
+            joystickParent = GameObject.Find("Joystick");
+            if (joystickParent != null)
+                Debug.Log("[MobileControlsBridge] joystickParent auto-found: 'Joystick'");
+        }
+
+        // joystickPad is 'pad' child of Joystick — auto-find if not assigned
+        if (joystickPad == null && joystickParent != null)
+        {
+            Transform padTransform = joystickParent.transform.Find("pad");
+            if (padTransform != null)
+            {
+                joystickPad = padTransform as RectTransform;
+                Debug.Log("[MobileControlsBridge] joystickPad auto-found: 'pad' child of Joystick");
+            }
+        }
+
+        // Auto-find attack / jump / pickup parents by name if not assigned
+        if (attackParent == null) attackParent = GameObject.Find("Atack");   // note: matches your scene spelling
+        if (jumpParent   == null) jumpParent   = GameObject.Find("Jump");
+        if (pickupParent == null) pickupParent = GameObject.Find("pickUp");
+
+        // ── Transparent full-screen image to receive pointer events ──────────
+        // This GameObject must NEVER be deactivated — only its child widgets are hidden
+        // in spectator mode so drag events keep arriving for camera look and pinch zoom.
         Image bg = gameObject.GetComponent<Image>() ?? gameObject.AddComponent<Image>();
         bg.color = new Color(0, 0, 0, 0);
         bg.raycastTarget = true;
@@ -72,6 +110,9 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
 
     private void Update()
     {
+        // While spectating we skip all role/button logic — only drag events matter
+        if (isSpectating) return;
+
         if (!hasCheckedRole || localPlayerRole == null)
             FindLocalPlayerRole();
 
@@ -85,6 +126,75 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
             hasAppliedBossUI = true;
         }
     }
+
+    // ── Public API ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called by PlayerHealth when the local player dies (spectating=true) or respawns (false).
+    ///
+    /// Expected hierarchy (matches your scene):
+    ///   ControlsUI
+    ///     └── Joystick           ← joystickParent  ← assign this in Inspector
+    ///           ├── background                        this disappears automatically as a child
+    ///           └── pad          ← joystickPad     ← assign this for OnScreenStick only
+    ///     ├── Atack              ← attackParent
+    ///     ├── Jump               ← jumpParent
+    ///     └── pickUp             ← pickupParent
+    ///
+    /// This MobileControlsBridge GameObject stays ACTIVE so its transparent full-screen
+    /// Image keeps receiving drag events for camera look and pinch-to-zoom in spectator mode.
+    /// </summary>
+    public void SetSpectatorMode(bool spectating)
+    {
+        isSpectating = spectating;
+
+        // Hiding joystickParent ('Joystick' root) hides BOTH its children:
+        //   'background' → the visible circle image
+        //   'pad'        → the draggable stick area
+        // This is why joystickParent must be assigned — hiding only joystickPad
+        // leaves the 'background' image still visible on screen.
+        if (joystickParent != null)
+        {
+            joystickParent.SetActive(!spectating);
+        }
+        else
+        {
+            // joystickParent not wired up → 'background' will stay visible!
+            if (joystickPad != null) joystickPad.gameObject.SetActive(!spectating);
+            Debug.LogWarning("[MobileControlsBridge] joystickParent is NOT assigned in the Inspector. " +
+                             "Drag the 'Joystick' root GameObject into the joystickParent slot so that " +
+                             "the 'background' child also hides correctly in spectator mode.");
+        }
+
+        if (attackParent != null)  attackParent.SetActive(!spectating);
+        if (jumpParent != null)    jumpParent.SetActive(!spectating);
+        if (pickupParent != null)  pickupParent.SetActive(!spectating);
+
+        // Cancel any in-progress drag so there is no sticky delta when switching modes
+        if (spectating)
+        {
+            isDragging = false;
+            CameraLookDelta = Vector2.zero;
+        }
+    }
+
+    /// <summary>
+    /// Called by SpectatorSystem when a two-finger pinch starts (true) or ends (false).
+    /// While pinching, single-finger camera drag is suppressed so the two gestures
+    /// don't fight each other and cause camera jitter.
+    /// </summary>
+    public void SetPinching(bool pinching)
+    {
+        isPinching = pinching;
+
+        if (pinching)
+        {
+            isDragging = false;
+            CameraLookDelta = Vector2.zero;
+        }
+    }
+
+    // ── Private helpers ────────────────────────────────────────────────────────
 
     private void FindLocalPlayerRole()
     {
@@ -150,11 +260,17 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
         osb.controlPath = path;
     }
 
+    // Returns true only when the joystick is visible and the tap lands inside its radius
     private bool IsInJoistickArea(Vector2 screenPos) =>
-        joystickPad != null && Vector2.Distance(screenPos, joystickCenter) < joystickRadius;
+        joystickPad != null
+        && joystickPad.gameObject.activeSelf
+        && Vector2.Distance(screenPos, joystickCenter) < joystickRadius;
+
+    // ── Pointer events (camera drag) ───────────────────────────────────────────
 
     public void OnPointerDown(PointerEventData eventData)
     {
+        if (isPinching) return;   // two-finger pinch is handled by SpectatorSystem
         if (!IsInJoistickArea(eventData.position))
         {
             isDragging = true;
@@ -164,7 +280,7 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (!isDragging) return;
+        if (!isDragging || isPinching) return;
         CameraLookDelta = (eventData.position - lastPointerPos) * cameraSensitivity;
         lastPointerPos = eventData.position;
     }

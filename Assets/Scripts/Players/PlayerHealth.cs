@@ -18,6 +18,9 @@ public class PlayerHealth : NetworkBehaviour
   [Tooltip("The spectator overlay panel (named 'Spectator Controller' on your Canvas)")]
   [SerializeField] private GameObject spectatorUI;
 
+  [Tooltip("Reference to MobileControlsBridge — hides gameplay widgets but keeps camera drag alive on mobile")]
+  [SerializeField] private MobileControlsBridge mobileControls;
+
   [Networked, OnChangedRender(nameof(HealthChanged))]
   public float CurrentHealth { get; set; }
 
@@ -54,6 +57,10 @@ public class PlayerHealth : NetworkBehaviour
     // Only configure for the local player (the one we control)
     if (HasInputAuthority)
     {
+      // Auto-find MobileControlsBridge if not assigned in the Inspector
+      if (mobileControls == null)
+        mobileControls = FindFirstObjectByType<MobileControlsBridge>();
+
       SetupHealthBar();
       ConfigureHUDForScene();
 
@@ -75,24 +82,52 @@ public class PlayerHealth : NetworkBehaviour
 
   // ── UI State Helpers ────────────────────────────────────────────────────────
 
-  /// <summary>Shows normal player HUD, hides spectator overlay.</summary>
+  /// <summary>
+  /// Shows normal gameplay HUD.
+  /// ControlsUI stays ACTIVE at all times so MobileControlsBridge (and its transparent
+  /// drag-receiver Image) is never destroyed and camera look always works on mobile.
+  /// </summary>
   private void SetAliveUI()
   {
-    // Try to find panels by name if not assigned in the Inspector
     if (controlsUI == null)
       controlsUI = GameObject.Find("ControlsUI");
 
     if (spectatorUI == null)
       spectatorUI = GameObject.Find("Spectator Controller");
 
-    if (controlsUI != null)  controlsUI.SetActive(true);
+    // Keep ControlsUI active — never SetActive(false) it
+    if (controlsUI != null) controlsUI.SetActive(true);
+
+    // Tell MobileControlsBridge to show all gameplay widgets
+    if (mobileControls != null) mobileControls.SetSpectatorMode(false);
+
+    // Hide spectator overlay
     if (spectatorUI != null) spectatorUI.SetActive(false);
   }
 
-  /// <summary>Hides normal player HUD, shows spectator overlay.</summary>
+  /// <summary>
+  /// Switches to spectator state.
+  /// ControlsUI stays ACTIVE so MobileControlsBridge keeps receiving drag events
+  /// for camera look and pinch-to-zoom. Only the gameplay widgets inside it are
+  /// hidden via SetSpectatorMode (joystick, attack, jump, pickup buttons).
+  /// "Spectator Controller" canvas is shown so the player can navigate targets.
+  /// </summary>
   private void SetDeadUI()
   {
-    if (controlsUI != null)  controlsUI.SetActive(false);
+    if (controlsUI == null)
+      controlsUI = GameObject.Find("ControlsUI");
+
+    if (spectatorUI == null)
+      spectatorUI = GameObject.Find("Spectator Controller");
+
+    // DO NOT call controlsUI.SetActive(false) — that kills MobileControlsBridge
+    // and breaks camera drag / pinch zoom in spectator mode on mobile.
+    if (controlsUI != null) controlsUI.SetActive(true);
+
+    // Hide all gameplay widgets (joystick, attack, jump, pickup) via the bridge
+    if (mobileControls != null) mobileControls.SetSpectatorMode(true);
+
+    // Show the "Spectator Controller" canvas
     if (spectatorUI != null) spectatorUI.SetActive(true);
   }
 
@@ -166,6 +201,37 @@ public class PlayerHealth : NetworkBehaviour
       IsDead = true; // Triggers OnIsDeadChanged on all clients
   }
 
+  // ── Animation helpers ───────────────────────────────────────────────────────
+
+  /// <summary>
+  /// Safely fires an Animator trigger only if the parameter actually exists.
+  /// If the trigger is missing, logs a warning with the list of all available
+  /// trigger parameters so you can find the correct name in your Animator.
+  /// </summary>
+  private void TrySetTrigger(Animator anim, string triggerName)
+  {
+    foreach (AnimatorControllerParameter p in anim.parameters)
+    {
+      if (p.type == AnimatorControllerParameterType.Trigger && p.name == triggerName)
+      {
+        anim.SetTrigger(triggerName);
+        return;
+      }
+    }
+
+    // Parameter not found — collect all trigger names to help identify the right one
+    var available = new System.Text.StringBuilder();
+    foreach (AnimatorControllerParameter p in anim.parameters)
+    {
+      if (p.type == AnimatorControllerParameterType.Trigger)
+        available.Append($"'{p.name}' ");
+    }
+
+    Debug.LogWarning($"[PlayerHealth] Animator trigger '{triggerName}' not found on '{anim.gameObject.name}'. " +
+                     $"Available triggers: {(available.Length > 0 ? available.ToString() : "(none)")} " +
+                     $"— Update the trigger name in HandleDeath() to match your Animator Controller.");
+  }
+
   public void HandleDeath()
   {
     if (!IsDead || deathHandled) return;
@@ -173,10 +239,11 @@ public class PlayerHealth : NetworkBehaviour
 
     Debug.Log($"[PlayerHealth] HandleDeath called for player {Object.InputAuthority.PlayerId}");
 
-    // 1. Play death animation
+    // 1. Play death animation — use safe setter so a missing trigger name
+    //    doesn't throw an exception and halt the rest of HandleDeath.
     Animator anim = GetComponentInChildren<Animator>();
     if (anim != null)
-      anim.SetTrigger("Die");
+      TrySetTrigger(anim, "Die");
 
     // 2. Disable physics / movement so the corpse freezes on all clients
     if (TryGetComponent<CharacterController>(out var cc))

@@ -11,9 +11,12 @@ public class SpectatorSystem : MonoBehaviour
     [SerializeField] private GameObject spectatorHUDPrefab;
 
     [Header("Navigation Buttons (optional)")]
-    [Tooltip("Assign directly, OR name your HUD children 'PrevButton' / 'NextButton' and they will be found automatically.")]
-    [SerializeField] private Button prevPlayerButton;   // ◄  Navigate(-1)
-    [SerializeField] private Button nextPlayerButton;   // ►  Navigate( 1)
+    [Tooltip("Assign directly, OR the buttons will be found automatically by name inside the HUD prefab " +
+             "or the scene's 'Spectator Controller' canvas.\n" +
+             "Supported names (case-insensitive): prev, last, left  →  Navigate(-1)\n" +
+             "                                    next, right       →  Navigate( 1)")]
+    [SerializeField] private Button prevPlayerButton;   // ◄  Navigate(-1)  — matches: LastPlayer, PrevButton, LeftArrow …
+    [SerializeField] private Button nextPlayerButton;   // ►  Navigate( 1)  — matches: NextPlayer, NextButton, RightArrow …
 
     [Header("Zoom Settings")]
     [SerializeField] private float minZoomDistance  = 0f;   // fully first-person
@@ -27,7 +30,11 @@ public class SpectatorSystem : MonoBehaviour
     private int currentIndex = 0;
 
     private FirstPersonCamera fpCamera;
+    private MobileControlsBridge mobileBridge;   // suppresses single-finger drag during pinch
     private GameObject spectatorHUDInstance;
+
+    // Reusable list — avoids per-frame allocation when collecting active touches
+    private readonly List<Vector2> _activeTouchPositions = new List<Vector2>(10);
 
     // Input debounce
     private float previousHorizontalInput = 0f;
@@ -51,6 +58,9 @@ public class SpectatorSystem : MonoBehaviour
             return;
         }
 
+        // Auto-find MobileControlsBridge so we can lock it during pinch zoom
+        mobileBridge = FindFirstObjectByType<MobileControlsBridge>();
+
         // Start fully first-person
         targetZoomDistance  = 0f;
         currentZoomDistance = 0f;
@@ -59,14 +69,32 @@ public class SpectatorSystem : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible   = true;
 
-        // Spawn HUD and try to auto-discover nav buttons inside it
+        // ── Step 1: search inside the optional HUD prefab ─────────────────────
         if (spectatorHUDPrefab != null)
         {
             spectatorHUDInstance = Instantiate(spectatorHUDPrefab);
             TryAutoFindNavButtons(spectatorHUDInstance);
         }
 
-        // Wire up nav buttons (whether assigned in Inspector or found above)
+        // ── Step 2: on mobile, also search the scene's "Spectator Controller" canvas.
+        //    PlayerHealth.SetDeadUI activates that canvas before SpectatorSystem.Start
+        //    runs, so it is always findable here.
+        //    This is what wires up 'LastPlayer' → Navigate(-1) and 'NextPlayer' → Navigate(1).
+        if (Application.isMobilePlatform && (prevPlayerButton == null || nextPlayerButton == null))
+        {
+            GameObject sceneCanvas = GameObject.Find("Spectator Controller");
+            if (sceneCanvas != null)
+            {
+                TryAutoFindNavButtons(sceneCanvas);
+            }
+            else
+            {
+                Debug.LogWarning("[SpectatorSystem] Could not find 'Spectator Controller' in scene. " +
+                                 "Make sure the canvas name matches exactly and it is active at this point.");
+            }
+        }
+
+        // Wire up whichever buttons were found (Inspector, HUD prefab, or scene canvas)
         if (prevPlayerButton != null)
             prevPlayerButton.onClick.AddListener(() => Navigate(-1));
 
@@ -116,12 +144,15 @@ public class SpectatorSystem : MonoBehaviour
 
     void OnDestroy()
     {
-        // Remove button listeners to avoid stale references
         if (prevPlayerButton != null)
             prevPlayerButton.onClick.RemoveAllListeners();
 
         if (nextPlayerButton != null)
             nextPlayerButton.onClick.RemoveAllListeners();
+
+        // Release pinch lock so MobileControlsBridge works normally if spectator ends
+        if (mobileBridge != null)
+            mobileBridge.SetPinching(false);
 
         // Reset zoom so normal gameplay is unaffected after spectator ends
         if (fpCamera != null)
@@ -134,30 +165,34 @@ public class SpectatorSystem : MonoBehaviour
     // ── Auto-discovery ─────────────────────────────────────────────────────────
 
     /// <summary>
-    /// If prevPlayerButton / nextPlayerButton were not assigned in the Inspector,
-    /// this searches the instantiated HUD for children named "PrevButton" and
-    /// "NextButton" (case-insensitive) and wires them up automatically.
+    /// Searches <paramref name="root"/> for Button children whose name matches known
+    /// navigation patterns and assigns them to prevPlayerButton / nextPlayerButton.
+    ///
+    /// Prev  patterns (Navigate -1): "prev", "last", "left"
+    /// Next  patterns (Navigate +1): "next", "right"
+    ///
+    /// Your scene uses 'LastPlayer' and 'NextPlayer', both of which match these rules.
     /// </summary>
-    private void TryAutoFindNavButtons(GameObject hud)
+    private void TryAutoFindNavButtons(GameObject root)
     {
-        if (hud == null) return;
+        if (root == null) return;
 
-        Button[] buttons = hud.GetComponentsInChildren<Button>(true);
+        Button[] buttons = root.GetComponentsInChildren<Button>(true);
         foreach (Button btn in buttons)
         {
             string lower = btn.gameObject.name.ToLower();
 
             if (prevPlayerButton == null &&
-                (lower.Contains("prev") || lower.Contains("left")))
+                (lower.Contains("prev") || lower.Contains("last") || lower.Contains("left")))
             {
                 prevPlayerButton = btn;
-                Debug.Log($"[SpectatorSystem] Auto-found Prev button: '{btn.gameObject.name}'");
+                Debug.Log($"[SpectatorSystem] Auto-found Prev button: '{btn.gameObject.name}' on '{root.name}'");
             }
             else if (nextPlayerButton == null &&
                      (lower.Contains("next") || lower.Contains("right")))
             {
                 nextPlayerButton = btn;
-                Debug.Log($"[SpectatorSystem] Auto-found Next button: '{btn.gameObject.name}'");
+                Debug.Log($"[SpectatorSystem] Auto-found Next button: '{btn.gameObject.name}' on '{root.name}'");
             }
         }
     }
@@ -215,7 +250,6 @@ public class SpectatorSystem : MonoBehaviour
         float scroll = mouse.scroll.ReadValue().y;
         if (Mathf.Approximately(scroll, 0f)) return;
 
-        // scroll > 0  → wheel up  → pull camera IN  → decrease distance
         targetZoomDistance = Mathf.Clamp(
             targetZoomDistance - scroll * scrollSpeed * Time.unscaledDeltaTime,
             minZoomDistance, maxZoomDistance);
@@ -223,25 +257,37 @@ public class SpectatorSystem : MonoBehaviour
 
     /// <summary>
     /// Mobile: two-finger pinch moves the camera closer/further from the pivot.
-    /// Pinch apart → zoom in (closer). Pinch together → zoom out (further).
+    /// Pinch apart → zoom in (closer/first-person). Pinch together → zoom out (further/third-person).
+    ///
+    /// IMPORTANT: we iterate ALL touch slots and collect the pressed ones ourselves.
+    /// Unity's Input System does NOT guarantee active touches sit at indices 0 and 1.
     /// </summary>
     private void HandlePinchZoom()
     {
         var touchscreen = Touchscreen.current;
         if (touchscreen == null) return;
 
-        var t0 = touchscreen.touches[0];
-        var t1 = touchscreen.touches[1];
+        _activeTouchPositions.Clear();
+        foreach (var touch in touchscreen.touches)
+        {
+            if (touch.press.isPressed)
+                _activeTouchPositions.Add(touch.position.ReadValue());
+        }
 
-        if (!t0.press.isPressed || !t1.press.isPressed)
+        if (_activeTouchPositions.Count < 2)
         {
             previousPinchDistance = 0f;
+            if (mobileBridge != null)
+                mobileBridge.SetPinching(false);
             return;
         }
 
+        if (mobileBridge != null)
+            mobileBridge.SetPinching(true);
+
         float currentDistance = Vector2.Distance(
-            t0.position.ReadValue(),
-            t1.position.ReadValue());
+            _activeTouchPositions[0],
+            _activeTouchPositions[1]);
 
         if (previousPinchDistance <= 0f)
         {
@@ -252,9 +298,11 @@ public class SpectatorSystem : MonoBehaviour
         float delta = currentDistance - previousPinchDistance;
         previousPinchDistance = currentDistance;
 
-        // Pinch apart (positive delta) → fingers spreading → zoom IN → decrease distance
+        float screenDiagonal = Mathf.Sqrt(Screen.width * Screen.width + Screen.height * Screen.height);
+        float normalisedDelta = (screenDiagonal > 0f) ? delta / screenDiagonal : delta;
+
         targetZoomDistance = Mathf.Clamp(
-            targetZoomDistance - delta * pinchSpeed,
+            targetZoomDistance - normalisedDelta * pinchSpeed * maxZoomDistance,
             minZoomDistance, maxZoomDistance);
     }
 
