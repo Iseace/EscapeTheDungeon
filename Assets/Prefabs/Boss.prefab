@@ -211,7 +211,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Fusion.Unity::Fusion.NetworkCharacterController
   _stateAuthorityChangeErrorCorrectionDelta: 0
-  gravity: -20
+  gravity: -27.7
   jumpImpulse: 8
   acceleration: 10
   braking: 10
@@ -312,7 +312,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   walkClip: {fileID: 8300000, guid: e91f344643203524aa3f5dbaf98b318e, type: 3}
-  volume: 0.5
+  volume: 0.4
   attackClip: {fileID: 8300000, guid: be9ee117b1fe82fc889e9015ac867b03, type: 3}
   attackVolume: 1
 --- !u!82 &3180125345330576617

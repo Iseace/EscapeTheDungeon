@@ -14,4 +14,10 @@ public class PlayerAnimationEvents : MonoBehaviour
         if (_playerSounds != null)
             _playerSounds.OnFootstep();
     }
+
+    public void OnWandAttack()
+    {
+        if (_playerSounds != null)
+            _playerSounds.OnWandAttack();
+    }
 }

@@ -243,7 +243,6 @@ MonoBehaviour:
   - RawGuidValue: fd501f3a739ab3548956a43b649183bb
   - RawGuidValue: 76cba172ca9d3834ba2f95d09bd0eef9
   spellSocket: {fileID: 5715548566014488333}
-  spawnDelay: 0.17
 --- !u!114 &1457855953969738388
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -257,7 +256,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   walkClip: {fileID: 8300000, guid: c866924effff18ea081a1706107ec2c9, type: 3}
-  volume: 0.3
+  walkVolume: 0.2
+  fireWandAttackClip: {fileID: 8300000, guid: 3b237c6841887aeabb839d2d7d8b01c3, type: 3}
+  waterWandAttackClip: {fileID: 8300000, guid: 47a0d283deb3da08cae7fb524f691ccb, type: 3}
+  earthWandAttackClip: {fileID: 8300000, guid: 2aeb67569510d9b6a9ee44f302d3de5f, type: 3}
+  attackVolume: 0.4
 --- !u!82 &3180125345330576617
 AudioSource:
   m_ObjectHideFlags: 0
