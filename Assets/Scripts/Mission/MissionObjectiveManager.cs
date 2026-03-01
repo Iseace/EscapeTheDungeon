@@ -8,11 +8,23 @@ public class MissionObjectiveManager : MonoBehaviour
     [Header("Portal")]
     [SerializeField] private GameObject portalPrefab;
     [SerializeField] private Transform portalSpawnPoint;
+    [SerializeField] private bool useRandomSpawnFromDungeon = true;
+
+    [Header("Escape Timer")]
+    [SerializeField] private bool enableEscapeTimeLimit = true;
+    [SerializeField] private float escapeTimeLimitSeconds = 90f;
 
     private readonly HashSet<MissionObjectivePylon> pylons = new HashSet<MissionObjectivePylon>();
     private readonly HashSet<MissionObjectivePylon> activatedPylons = new HashSet<MissionObjectivePylon>();
+    private readonly List<Vector3> portalCandidates = new List<Vector3>();
     private int activatedCount;
     private bool portalSpawned;
+    private bool escapeTimerRunning;
+    private float remainingEscapeTime;
+    private bool escapeWindowClosed;
+
+    public bool IsEscapeWindowOpen => portalSpawned && !escapeWindowClosed;
+    public float RemainingEscapeTime => remainingEscapeTime;
 
     private void Awake()
     {
@@ -22,6 +34,48 @@ public class MissionObjectiveManager : MonoBehaviour
             return;
         }
         Instance = this;
+    }
+
+    private void Update()
+    {
+        if (!escapeTimerRunning || !enableEscapeTimeLimit || escapeWindowClosed) return;
+
+        remainingEscapeTime -= Time.deltaTime;
+        if (remainingEscapeTime <= 0f)
+        {
+            remainingEscapeTime = 0f;
+            escapeWindowClosed = true;
+            escapeTimerRunning = false;
+        }
+    }
+
+    public void Configure(GameObject portalPrefabOverride, float timeLimitSeconds, bool randomSpawn, List<Vector3> randomCandidates)
+    {
+        if (portalPrefabOverride != null)
+            portalPrefab = portalPrefabOverride;
+
+        useRandomSpawnFromDungeon = randomSpawn;
+        escapeTimeLimitSeconds = Mathf.Max(5f, timeLimitSeconds);
+        enableEscapeTimeLimit = true;
+
+        portalCandidates.Clear();
+        if (randomCandidates != null && randomCandidates.Count > 0)
+        {
+            portalCandidates.AddRange(randomCandidates);
+        }
+
+        ResetMissionState();
+    }
+
+    public void ResetMissionState()
+    {
+        pylons.Clear();
+        activatedPylons.Clear();
+        activatedCount = 0;
+        portalSpawned = false;
+        escapeWindowClosed = false;
+        escapeTimerRunning = false;
+        remainingEscapeTime = escapeTimeLimitSeconds;
     }
 
     public void RegisterPylon(MissionObjectivePylon pylon)
@@ -78,7 +132,18 @@ public class MissionObjectiveManager : MonoBehaviour
 
         Vector3 position = portalSpawnPoint != null ? portalSpawnPoint.position : Vector3.zero;
         Quaternion rotation = portalSpawnPoint != null ? portalSpawnPoint.rotation : Quaternion.identity;
+
+        if (useRandomSpawnFromDungeon && portalCandidates.Count > 0)
+        {
+            int index = Random.Range(0, portalCandidates.Count);
+            position = portalCandidates[index];
+        }
+
         Instantiate(portalPrefab, position, rotation);
         portalSpawned = true;
+
+        remainingEscapeTime = escapeTimeLimitSeconds;
+        escapeTimerRunning = enableEscapeTimeLimit;
+        escapeWindowClosed = false;
     }
 }

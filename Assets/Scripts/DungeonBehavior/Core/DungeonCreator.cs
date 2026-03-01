@@ -65,6 +65,14 @@ public class DungeonCreator : MonoBehaviour
     public bool spawnMissionObjectives = true;
     public List<MissionObjectiveConfig> missionObjectives = new List<MissionObjectiveConfig>();
 
+    [Header("Mission Escape")]
+    [Tooltip("Prefab del portal que aparece cuando se activan todos los pylons")]
+    public GameObject missionPortalPrefab;
+    [Tooltip("Tiempo limite para escapar una vez aparece el portal")]
+    public float escapeTimeLimitSeconds = 90f;
+    [Tooltip("Si esta activo, el portal aparece en una posicion aleatoria valida de la dungeon")]
+    public bool randomPortalSpawnInDungeon = true;
+
     [Header("Wall Decorations")]
     public bool spawnWallDecorations = true;
     public List<WallDecoration> wallDecorations = new List<WallDecoration>();
@@ -84,6 +92,7 @@ public class DungeonCreator : MonoBehaviour
     private Vector3 currentCenterOffset;
     private DungeonPostProcessResult postProcessResult;
     private DungeonShapePostProcessor shapePostProcessor;
+    private MissionObjectiveManager missionObjectiveManager;
 
     void Start()
     {
@@ -111,6 +120,12 @@ public class DungeonCreator : MonoBehaviour
         shapePostProcessor = new DungeonShapePostProcessor();
         wallDecorationSpawner = new WallDecorationSpawner();
         missionObjectiveSpawner = new MissionObjectiveSpawner();
+        missionObjectiveManager = GetComponent<MissionObjectiveManager>();
+
+        if (missionObjectiveManager == null)
+        {
+            missionObjectiveManager = gameObject.AddComponent<MissionObjectiveManager>();
+        }
 
         // Siempre usamos el generador ancla + placer de prefabs
         anchorGenerator = new AnchorDungeonGenerator(dungeonWidth, dungeonLength);
@@ -184,6 +199,15 @@ public class DungeonCreator : MonoBehaviour
                 GameObject missionParent = new GameObject("MissionObjectives");
                 missionParent.transform.SetParent(transform, false);
                 missionParent.transform.localPosition = Vector3.zero;
+
+                List<Vector3> portalCandidates = BuildPortalCandidates(currentGrid, currentRooms, currentCenterOffset, anchorGenerator != null ? anchorGenerator.CentralRoom : null);
+                missionObjectiveManager.Configure(
+                    missionPortalPrefab,
+                    escapeTimeLimitSeconds,
+                    randomPortalSpawnInDungeon,
+                    portalCandidates
+                );
+
                 missionObjectiveSpawner.SpawnObjectives(
                     currentGrid,
                     currentRooms,
@@ -260,6 +284,27 @@ public class DungeonCreator : MonoBehaviour
     public DungeonPostProcessResult GetPostProcessResult()
     {
         return postProcessResult;
+    }
+
+    private List<Vector3> BuildPortalCandidates(DungeonGrid grid, List<RoomNode> rooms, Vector3 offset, RoomNode excludedRoom)
+    {
+        List<Vector3> candidates = new List<Vector3>();
+        if (grid == null || rooms == null) return candidates;
+
+        foreach (var room in rooms)
+        {
+            if (excludedRoom != null && ReferenceEquals(room, excludedRoom)) continue;
+
+            var cells = grid.GetAvailableCellsInRoom(room);
+            for (int i = 0; i < cells.Count; i++)
+            {
+                Vector2Int c = cells[i];
+                Vector3 world = new Vector3(c.x + 0.5f, 0f, c.y + 0.5f) + offset;
+                candidates.Add(world);
+            }
+        }
+
+        return candidates;
     }
 
     private void OnDrawGizmos()
