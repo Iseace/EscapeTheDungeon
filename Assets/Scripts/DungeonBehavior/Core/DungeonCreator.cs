@@ -64,6 +64,8 @@ public class DungeonCreator : MonoBehaviour
     [Header("Mission Objectives")]
     public bool spawnMissionObjectives = true;
     public List<MissionObjectiveConfig> missionObjectives = new List<MissionObjectiveConfig>();
+    [SerializeField] private bool debugForcePylonInCentralRoom = false;
+    [SerializeField] private GameObject debugCentralPylonPrefab;
 
     [Header("Mission Escape")]
     [Tooltip("Prefab del portal que aparece cuando se activan todos los pylons")]
@@ -194,7 +196,7 @@ public class DungeonCreator : MonoBehaviour
                 );
             }
 
-            if (spawnMissionObjectives && missionObjectives != null && missionObjectives.Count > 0)
+            if (spawnMissionObjectives && ((missionObjectives != null && missionObjectives.Count > 0) || debugForcePylonInCentralRoom))
             {
                 GameObject missionParent = new GameObject("MissionObjectives");
                 missionParent.transform.SetParent(transform, false);
@@ -208,14 +210,43 @@ public class DungeonCreator : MonoBehaviour
                     portalCandidates
                 );
 
-                missionObjectiveSpawner.SpawnObjectives(
-                    currentGrid,
-                    currentRooms,
-                    missionParent.transform,
-                    currentCenterOffset,
-                    missionObjectives,
-                    anchorGenerator != null ? anchorGenerator.CentralRoom : null
-                );
+                if (missionObjectives != null && missionObjectives.Count > 0)
+                {
+                    missionObjectiveSpawner.SpawnObjectives(
+                        currentGrid,
+                        currentRooms,
+                        missionParent.transform,
+                        currentCenterOffset,
+                        missionObjectives,
+                        anchorGenerator != null ? anchorGenerator.CentralRoom : null
+                    );
+                }
+
+                if (debugForcePylonInCentralRoom && anchorGenerator != null && anchorGenerator.CentralRoom != null)
+                {
+                    GameObject debugPylonPrefab = GetFirstPylonObjectivePrefab();
+                    if (debugPylonPrefab != null)
+                    {
+                        bool spawned = missionObjectiveSpawner.SpawnObjectiveInRoom(
+                            currentGrid,
+                            anchorGenerator.CentralRoom,
+                            missionParent.transform,
+                            currentCenterOffset,
+                            debugPylonPrefab,
+                            ensurePylonComponent: true,
+                            enablePylonDebugLogs: true
+                        );
+
+                        if (!spawned)
+                        {
+                            Debug.LogWarning("[DungeonCreator] Debug pylon enabled, but no se pudo spawnear en la sala central (sin celdas disponibles).");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[DungeonCreator] Debug pylon enabled, pero no se encontró prefab para debug (ni debugCentralPylonPrefab ni entries en missionObjectives).");
+                    }
+                }
             }
         }
 
@@ -305,6 +336,31 @@ public class DungeonCreator : MonoBehaviour
         }
 
         return candidates;
+    }
+
+    private GameObject GetFirstPylonObjectivePrefab()
+    {
+        if (debugCentralPylonPrefab != null) return debugCentralPylonPrefab;
+
+        if (missionObjectives == null || missionObjectives.Count == 0) return null;
+
+        GameObject firstAnyPrefab = null;
+
+        for (int i = 0; i < missionObjectives.Count; i++)
+        {
+            GameObject prefab = missionObjectives[i]?.prefab;
+            if (prefab == null) continue;
+            if (firstAnyPrefab == null) firstAnyPrefab = prefab;
+            if (prefab.GetComponentInChildren<MissionObjectivePylon>(true) == null) continue;
+            return prefab;
+        }
+
+        if (firstAnyPrefab != null)
+        {
+            Debug.LogWarning("[DungeonCreator] Debug pylon: no se encontró MissionObjectivePylon en prefabs de missionObjectives. Se usará el primer prefab y se agregará MissionObjectivePylon en runtime para pruebas.");
+        }
+
+        return firstAnyPrefab;
     }
 
     private void OnDrawGizmos()

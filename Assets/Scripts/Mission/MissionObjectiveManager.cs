@@ -5,6 +5,9 @@ public class MissionObjectiveManager : MonoBehaviour
 {
     public static MissionObjectiveManager Instance { get; private set; }
 
+    public event System.Action<MissionObjectivePylon> PylonActivated;
+    public event System.Action<Vector3, Quaternion> PortalSpawned;
+
     [Header("Portal")]
     [SerializeField] private GameObject portalPrefab;
     [SerializeField] private Transform portalSpawnPoint;
@@ -113,6 +116,7 @@ public class MissionObjectiveManager : MonoBehaviour
         if (activatedPylons.Add(pylon))
         {
             activatedCount = activatedPylons.Count;
+            PylonActivated?.Invoke(pylon);
         }
 
         CheckCompletion();
@@ -139,11 +143,27 @@ public class MissionObjectiveManager : MonoBehaviour
             position = portalCandidates[index];
         }
 
+        SpawnPortalInternal(position, rotation, emitEvent: true);
+    }
+
+    public void SpawnPortalFromNetwork(Vector3 position, Quaternion rotation)
+    {
+        if (portalPrefab == null || portalSpawned) return;
+        SpawnPortalInternal(position, rotation, emitEvent: false);
+    }
+
+    private void SpawnPortalInternal(Vector3 position, Quaternion rotation, bool emitEvent)
+    {
         Instantiate(portalPrefab, position, rotation);
         portalSpawned = true;
 
         remainingEscapeTime = escapeTimeLimitSeconds;
         escapeTimerRunning = enableEscapeTimeLimit;
         escapeWindowClosed = false;
+
+        if (emitEvent)
+        {
+            PortalSpawned?.Invoke(position, rotation);
+        }
     }
 }
