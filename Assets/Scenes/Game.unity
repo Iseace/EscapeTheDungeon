@@ -1725,8 +1725,8 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &1864251476
-PrefabInstance:
+--- !u!114 &1847118601
+MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2076,7 +2076,5 @@ SceneRoots:
   - {fileID: 525154141}
   - {fileID: 1142419275}
   - {fileID: 1631324225}
-  - {fileID: 1864251476}
   - {fileID: 1049264200}
-  - {fileID: 2035272387}
   - {fileID: 463455399}
