@@ -90,6 +90,10 @@ public class FirstPersonCamera : MonoBehaviour
         {
             if (lookAction != null && lookAction.action != null)
                 return lookAction.action.ReadValue<Vector2>();
+
+            // Fallback: read mouse delta directly if lookAction reference is missing
+            if (Mouse.current != null)
+                return Mouse.current.delta.ReadValue();
         }
         return Vector2.zero;
     }

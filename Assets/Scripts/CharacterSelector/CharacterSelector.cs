@@ -51,37 +51,51 @@ public class CharacterSelector : MonoBehaviour
     public void RotateCarousel(int direction)
     {
         currentIndex += direction;
+        // No necesitamos el if de bucle aquí si usamos el operador % en el cálculo del ángulo
+
         float angle = currentIndex * (360f / totalCharacters);
         targetRotation = Quaternion.Euler(0, -angle, 0);
         UpdateAnimations();
     }
 
     // ✅ Touch button helpers — wire these to OnClick()
-    public void OnTouchLeft()  => RotateCarousel(1);
+    public void OnTouchLeft() => RotateCarousel(1);
     public void OnTouchRight() => RotateCarousel(-1);
 
     void UpdateAnimations()
     {
         for (int i = 0; i < characterAnimators.Count; i++)
         {
+            // Calculamos quién está al frente basándonos en el currentIndex
             int correctIndex = GetNormalizedIndex();
             bool isSelectedState = (i == correctIndex);
             characterAnimators[i].SetBool("isSelected", isSelectedState);
         }
     }
 
+    // Función auxiliar para normalizar el índice (evita números negativos y fuera de rango)
     private int GetNormalizedIndex()
     {
         int r = currentIndex % totalCharacters;
         return (r < 0) ? -r : (totalCharacters - r) % totalCharacters;
     }
 
+    // --- FUNCIÓN PARA EL BOTÓN DE CONFIRMAR ---
     public void ConfirmGoBack()
     {
+        // 1. Obtener el índice real del personaje seleccionado
         int personajeSeleccionado = GetNormalizedIndex();
+
+        // 2. Guardar en PlayerPrefs
         PlayerPrefs.SetInt("SelectedCharacterID", personajeSeleccionado);
+
+        // Opcional: Si tienes un InputField para el nombre, guárdalo aquí también
+        // PlayerPrefs.SetString("PlayerNick", myInputField.text);
+
         PlayerPrefs.Save();
         Debug.Log("Personaje " + personajeSeleccionado + " guardado. Volviendo a servidores...");
+
+        // 3. Volver a la escena de servidores
         SceneManager.LoadScene(serverSceneName);
     }
 }
