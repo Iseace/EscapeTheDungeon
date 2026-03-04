@@ -21,6 +21,27 @@ public class FirstPersonCamera : MonoBehaviour
             mobileBridge = FindFirstObjectByType<MobileControlsBridge>();
     }
 
+    private void Start()
+    {
+        if (!Application.isMobilePlatform)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+    }
+
+    private void Update()
+    {
+        if (!Application.isMobilePlatform)
+        {
+            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+            }
+        }
+    }
+
     private void OnEnable() => lookAction?.action.Enable();
     private void OnDisable() => lookAction?.action.Disable();
 
@@ -47,7 +68,6 @@ public class FirstPersonCamera : MonoBehaviour
         transform.position = Target.position;
 
         Vector2 lookInput = GetLookInput();
-
         float mouseX = lookInput.x * MouseSensitivity * 0.1f;
         float mouseY = lookInput.y * MouseSensitivity * 0.1f;
 
@@ -60,7 +80,8 @@ public class FirstPersonCamera : MonoBehaviour
 
     private Vector2 GetLookInput()
     {
-        if (Application.isMobilePlatform || Input.touchSupported)
+        // Removed Input.touchSupported — it can return true on PC builds and break mouse input
+        if (Application.isMobilePlatform)
         {
             if (mobileBridge != null)
                 return mobileBridge.CameraLookDelta * MobileSensitivity;
@@ -69,6 +90,10 @@ public class FirstPersonCamera : MonoBehaviour
         {
             if (lookAction != null && lookAction.action != null)
                 return lookAction.action.ReadValue<Vector2>();
+
+            // Fallback: read mouse delta directly if lookAction reference is missing
+            if (Mouse.current != null)
+                return Mouse.current.delta.ReadValue();
         }
         return Vector2.zero;
     }
@@ -76,7 +101,6 @@ public class FirstPersonCamera : MonoBehaviour
     void ApplyInvisibleLayer()
     {
         if (PlayerGraphics == null) return;
-
         int layerIndex = LayerMask.NameToLayer(InvisibleLayerName);
         if (layerIndex != -1)
             SetLayerRecursive(PlayerGraphics, layerIndex);
@@ -85,7 +109,6 @@ public class FirstPersonCamera : MonoBehaviour
     private void SetLayerRecursive(GameObject obj, int newLayer)
     {
         if (obj.layer == newLayer) return;
-
         obj.layer = newLayer;
         foreach (Transform child in obj.transform)
             SetLayerRecursive(child.gameObject, newLayer);
