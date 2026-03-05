@@ -52,12 +52,6 @@ public class SpectatorSystem : MonoBehaviour
     {
         fpCamera = Camera.main != null ? Camera.main.GetComponent<FirstPersonCamera>() : null;
 
-        if (fpCamera == null)
-        {
-            Debug.LogError("[SpectatorSystem] FirstPersonCamera not found on Main Camera!");
-            return;
-        }
-
         // Auto-find MobileControlsBridge so we can lock it during pinch zoom
         mobileBridge = FindFirstObjectByType<MobileControlsBridge>();
 
@@ -76,21 +70,19 @@ public class SpectatorSystem : MonoBehaviour
             TryAutoFindNavButtons(spectatorHUDInstance);
         }
 
-        // ── Step 2: on mobile, also search the scene's "Spectator Controller" canvas.
-        //    PlayerHealth.SetDeadUI activates that canvas before SpectatorSystem.Start
-        //    runs, so it is always findable here.
-        //    This is what wires up 'LastPlayer' → Navigate(-1) and 'NextPlayer' → Navigate(1).
-        if (Application.isMobilePlatform && (prevPlayerButton == null || nextPlayerButton == null))
+        // ── Step 2: search the scene's "Spectator Controller" canvas.
+        // Always search regardless of platform — the previous isMobilePlatform guard
+        // was false in the Unity Simulator and caused buttons to never be found.
+        if (prevPlayerButton == null || nextPlayerButton == null)
         {
+            // GameObject.Find only finds ACTIVE objects.
+            // PlayerHealth.SetDeadUI() activates "Spectator Controller" before
+            // SpectatorSystem.Start() runs, so it should be findable here.
             GameObject sceneCanvas = GameObject.Find("Spectator Controller");
+
             if (sceneCanvas != null)
             {
                 TryAutoFindNavButtons(sceneCanvas);
-            }
-            else
-            {
-                Debug.LogWarning("[SpectatorSystem] Could not find 'Spectator Controller' in scene. " +
-                                 "Make sure the canvas name matches exactly and it is active at this point.");
             }
         }
 
@@ -105,8 +97,6 @@ public class SpectatorSystem : MonoBehaviour
 
         if (livingPlayers.Count > 0)
             FocusCurrentTarget();
-
-        Debug.Log("[SpectatorSystem] Spectator mode active.");
     }
 
     void Update()
@@ -164,20 +154,12 @@ public class SpectatorSystem : MonoBehaviour
 
     // ── Auto-discovery ─────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Searches <paramref name="root"/> for Button children whose name matches known
-    /// navigation patterns and assigns them to prevPlayerButton / nextPlayerButton.
-    ///
-    /// Prev  patterns (Navigate -1): "prev", "last", "left"
-    /// Next  patterns (Navigate +1): "next", "right"
-    ///
-    /// Your scene uses 'LastPlayer' and 'NextPlayer', both of which match these rules.
-    /// </summary>
     private void TryAutoFindNavButtons(GameObject root)
     {
         if (root == null) return;
 
         Button[] buttons = root.GetComponentsInChildren<Button>(true);
+
         foreach (Button btn in buttons)
         {
             string lower = btn.gameObject.name.ToLower();
@@ -186,13 +168,11 @@ public class SpectatorSystem : MonoBehaviour
                 (lower.Contains("prev") || lower.Contains("last") || lower.Contains("left")))
             {
                 prevPlayerButton = btn;
-                Debug.Log($"[SpectatorSystem] Auto-found Prev button: '{btn.gameObject.name}' on '{root.name}'");
             }
             else if (nextPlayerButton == null &&
                      (lower.Contains("next") || lower.Contains("right")))
             {
                 nextPlayerButton = btn;
-                Debug.Log($"[SpectatorSystem] Auto-found Next button: '{btn.gameObject.name}' on '{root.name}'");
             }
         }
     }
@@ -237,11 +217,6 @@ public class SpectatorSystem : MonoBehaviour
             HandleScrollZoom();
     }
 
-    /// <summary>
-    /// PC: scroll wheel moves the camera closer/further from the pivot.
-    /// Scroll up → zoom in (towards first-person).
-    /// Scroll down → zoom out (towards third-person).
-    /// </summary>
     private void HandleScrollZoom()
     {
         var mouse = Mouse.current;
@@ -255,13 +230,6 @@ public class SpectatorSystem : MonoBehaviour
             minZoomDistance, maxZoomDistance);
     }
 
-    /// <summary>
-    /// Mobile: two-finger pinch moves the camera closer/further from the pivot.
-    /// Pinch apart → zoom in (closer/first-person). Pinch together → zoom out (further/third-person).
-    ///
-    /// IMPORTANT: we iterate ALL touch slots and collect the pressed ones ourselves.
-    /// Unity's Input System does NOT guarantee active touches sit at indices 0 and 1.
-    /// </summary>
     private void HandlePinchZoom()
     {
         var touchscreen = Touchscreen.current;
@@ -306,7 +274,6 @@ public class SpectatorSystem : MonoBehaviour
             minZoomDistance, maxZoomDistance);
     }
 
-    /// <summary>Smoothly lerps the actual camera distance towards the target.</summary>
     private void ApplySmoothedZoom()
     {
         currentZoomDistance = Mathf.Lerp(
@@ -330,11 +297,7 @@ public class SpectatorSystem : MonoBehaviour
 
     private void FocusCurrentTarget()
     {
-        if (livingPlayers.Count == 0)
-        {
-            Debug.Log("[SpectatorSystem] No living players to spectate.");
-            return;
-        }
+        if (livingPlayers.Count == 0) return;
 
         int normalised = GetNormalisedIndex();
         PlayerSetup target = livingPlayers[normalised];
@@ -342,15 +305,10 @@ public class SpectatorSystem : MonoBehaviour
         Transform pivot = target.GetCameraPivot();
 
         if (pivot == null)
-        {
-            Debug.LogWarning($"[SpectatorSystem] GetCameraPivot() null for '{target.gameObject.name}', falling back to root.");
             pivot = target.transform;
-        }
 
         // Pass null for graphics so the target player's mesh is never hidden
         fpCamera.SetTarget(pivot, null);
-
-        Debug.Log($"[SpectatorSystem] Now spectating '{target.gameObject.name}' pivot Y={pivot.position.y:F2}");
     }
 
     private void RefreshPlayerList()

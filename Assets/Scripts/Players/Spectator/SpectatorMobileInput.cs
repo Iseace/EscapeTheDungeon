@@ -4,38 +4,16 @@ using UnityEngine.EventSystems;
 
 /// <summary>
 /// Handles mobile touch input EXCLUSIVELY during spectator mode.
-///
-/// This script lives on its own GameObject inside the ControlsUI Canvas
-/// (a sibling of Joystick, Atack, Jump, pickUp, and Spectator Controller).
-/// PlayerHealth enables it on death and disables it on respawn.
-///
-/// Responsibilities while enabled:
-///   • Owns a full-screen transparent Image that receives camera-look drag events.
-///   • Feeds the drag delta to MobileControlsBridge.SetExternalLookDelta() so
-///     FirstPersonCamera keeps working without any changes.
-///   • Shows the LastPlayer / NextPlayer navigation buttons (auto-found by name
-///     inside the "Spectator Controller" GameObject).
-///   • Disables itself cleanly: removes its raycast coverage and hides nav buttons.
-///
-/// Setup in Unity:
-///   1. Inside your ControlsUI Canvas create an empty child GameObject, e.g. "SpectatorInput".
-///   2. Add this script to it.
-///   3. Make sure the GameObject starts INACTIVE or the component starts DISABLED —
-///      PlayerHealth will enable it when the player dies.
-///   4. (Optional) Drag the LastPlayer / NextPlayer buttons into the Inspector slots;
-///      if left empty the script finds them automatically by name.
+/// PlayerHealth enables this component on death, disables it on respawn.
 ///
 /// Scene hierarchy expected:
 ///   ControlsUI
-///     ├── [MobileControlsBridge GO]   ← gameplay drag, disabled when spectating
-///     ├── Joystick
-///     ├── Atack
-///     ├── Jump
-///     ├── pickUp
-///     ├── Spectator Controller        ← shown by PlayerHealth.SetDeadUI()
-///     │     ├── LastPlayer            ← Navigate(-1)
-///     │     └── NextPlayer            ← Navigate(+1)
-///     └── SpectatorInput             ← THIS script's GameObject
+///     ├── [MobileControlsBridge GO]   ← gameplay drag; its Image raycastTarget=false when spectating
+///     ├── Joystick / Atack / Jump / pickUp
+///     ├── SpectatorInput             ← THIS script's GameObject (always active, component toggled)
+///     └── Spectator Controller        ← shown by PlayerHealth.SetDeadUI()
+///           ├── LastPlayer
+///           └── NextPlayer
 /// </summary>
 [RequireComponent(typeof(RectTransform))]
 public class SpectatorMobileInput : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
@@ -52,8 +30,8 @@ public class SpectatorMobileInput : MonoBehaviour, IPointerDownHandler, IDragHan
     [SerializeField] private GameObject nextPlayerButton;
 
     // ── Runtime refs ───────────────────────────────────────────────────────────
-    private MobileControlsBridge _bridge;   // camera delta is written here so FirstPersonCamera needs no changes
-    private Image _touchArea;               // the full-screen transparent drag-catcher
+    private MobileControlsBridge _bridge;
+    private Image _touchArea;
     private Vector2 _lastPointerPos;
     private bool _isDragging;
 
@@ -61,16 +39,14 @@ public class SpectatorMobileInput : MonoBehaviour, IPointerDownHandler, IDragHan
 
     private void Awake()
     {
-        // Non-mobile: nothing to do — the component will just sit disabled
         bool isMobile = Application.platform == RuntimePlatform.Android
                      || Application.platform == RuntimePlatform.IPhonePlayer
-                     || Application.isEditor;
+                     || Application.isEditor;   // isEditor covers the Unity Simulator
 
         if (!isMobile) { enabled = false; return; }
 
-        // ── Full-screen transparent Image (raycastTarget starts OFF) ──────────
+        // ── Full-screen transparent Image — raycastTarget starts OFF ──────────
         // OnEnable turns it on; OnDisable turns it off.
-        // This prevents any overlap with MobileControlsBridge during gameplay.
         _touchArea = GetComponent<Image>() ?? gameObject.AddComponent<Image>();
         _touchArea.color = new Color(0, 0, 0, 0);
         _touchArea.raycastTarget = false;   // OFF until we go spectating
@@ -82,17 +58,14 @@ public class SpectatorMobileInput : MonoBehaviour, IPointerDownHandler, IDragHan
         rt.offsetMax        = Vector2.zero;
         rt.anchoredPosition = Vector2.zero;
 
-        // ── Find MobileControlsBridge (camera delta bus) ───────────────────────
+        // ── Find MobileControlsBridge ──────────────────────────────────────────
         _bridge = FindFirstObjectByType<MobileControlsBridge>();
-        if (_bridge == null)
-            Debug.LogWarning("[SpectatorMobileInput] MobileControlsBridge not found. Camera drag won't work.");
 
         // ── Auto-find nav buttons ──────────────────────────────────────────────
-        // They live inside "Spectator Controller" which may be inactive right now,
-        // so we use includeInactive=true when searching.
         if (lastPlayerButton == null || nextPlayerButton == null)
         {
             GameObject spectatorCanvas = FindInactiveByName("Spectator Controller");
+
             if (spectatorCanvas != null)
             {
                 if (lastPlayerButton == null)
@@ -101,14 +74,9 @@ public class SpectatorMobileInput : MonoBehaviour, IPointerDownHandler, IDragHan
                 if (nextPlayerButton == null)
                     nextPlayerButton = FindChildContains(spectatorCanvas, "next");
             }
-            else
-            {
-                Debug.LogWarning("[SpectatorMobileInput] Could not find 'Spectator Controller' in scene. " +
-                                 "Assign lastPlayerButton / nextPlayerButton manually in the Inspector.");
-            }
         }
 
-        // Nav buttons start hidden; OnEnable shows them when we go spectating
+        // Buttons start hidden; OnEnable shows them when we go spectating
         SetNavButtonsVisible(false);
     }
 
@@ -123,12 +91,9 @@ public class SpectatorMobileInput : MonoBehaviour, IPointerDownHandler, IDragHan
 
         SetNavButtonsVisible(true);
 
-        // Reset state so there's no sticky delta from the previous session
         _isDragging = false;
         if (_bridge != null)
             _bridge.SetExternalLookDelta(Vector2.zero);
-
-        Debug.Log("[SpectatorMobileInput] Spectator touch input ENABLED.");
     }
 
     /// <summary>
@@ -145,8 +110,6 @@ public class SpectatorMobileInput : MonoBehaviour, IPointerDownHandler, IDragHan
         _isDragging = false;
         if (_bridge != null)
             _bridge.SetExternalLookDelta(Vector2.zero);
-
-        Debug.Log("[SpectatorMobileInput] Spectator touch input DISABLED.");
     }
 
     private void LateUpdate()
@@ -192,16 +155,14 @@ public class SpectatorMobileInput : MonoBehaviour, IPointerDownHandler, IDragHan
     }
 
     /// <summary>
-    /// Finds a root or scene GameObject by exact name, including inactive ones.
-    /// GameObject.Find() skips inactive objects, so we iterate all roots instead.
+    /// Finds a GameObject by exact name, including inactive ones.
+    /// GameObject.Find() skips inactive objects, so we walk all scene roots instead.
     /// </summary>
     private static GameObject FindInactiveByName(string targetName)
     {
-        // Search active objects first (fast path)
         GameObject active = GameObject.Find(targetName);
         if (active != null) return active;
 
-        // Walk every root and their full hierarchy (handles inactive parents)
         foreach (GameObject root in UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects())
         {
             GameObject found = FindInHierarchy(root, targetName);
@@ -222,8 +183,7 @@ public class SpectatorMobileInput : MonoBehaviour, IPointerDownHandler, IDragHan
     }
 
     /// <summary>
-    /// Finds the first child (including inactive) whose name contains <paramref name="keyword"/>
-    /// (case-insensitive).
+    /// Finds the first child (including inactive) whose name contains the keyword (case-insensitive).
     /// </summary>
     private static GameObject FindChildContains(GameObject root, string keyword)
     {
