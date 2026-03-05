@@ -24,6 +24,10 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 
     private NetworkRunner _runner;
 
+    // Cached reference to the local player's health so OnInput can check IsDead.
+    // Looked up lazily the first time it is needed — avoids a Find() call every frame.
+    private PlayerHealth _localHealth;
+
     private void Start()
     {
         hostBtn.onClick.AddListener(OnHostRoom);
@@ -171,6 +175,9 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     public void OnShutdown(NetworkRunner runner, ShutdownReason reason)
     {
         Debug.Log($"Runner shutdown: {reason}");
+
+        // Clear cached health so it is re-fetched after a reconnect
+        _localHealth = null;
     }
 
     public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
@@ -200,16 +207,17 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnSceneLoadDone(NetworkRunner runner)
     {
-        // Check if we just loaded the game scene (not the lobby scene)
         string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
 
         Debug.Log($"[NETWORK] Scene loaded: {currentSceneName}");
+
+        // Clear cached health — the player object is re-spawned in the new scene
+        _localHealth = null;
 
         if (currentSceneName != lobbySceneName && runner.GameMode == GameMode.Host)
         {
             Debug.Log($"[NETWORK] Game scene '{currentSceneName}' loaded - marking session as started");
 
-            // Close the session so no new players can join
             if (runner.SessionInfo != null)
             {
                 runner.SessionInfo.IsOpen = false;
@@ -218,8 +226,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         }
     }
 
-    // Input handling
-    // Primero, necesitas las referencias a tus acciones (se asignan en el Inspector)
+    // ── Input action references ────────────────────────────────────────────────
     [Header("Input Action References")]
     public InputActionReference moveAction;
     public InputActionReference attackAction;
@@ -237,8 +244,8 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 
     private void OnEnable()
     {
-        if (moveAction != null) moveAction.action.Enable();
-        if (attackAction != null) attackAction.action.Enable();
+        if (moveAction != null)    moveAction.action.Enable();
+        if (attackAction != null)  attackAction.action.Enable();
         if (interactAction != null) interactAction.action.Enable();
         if (specialAction != null) specialAction.action.Enable();
         if (jumpAction != null)
@@ -251,45 +258,65 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     private void OnDisable()
     {
         if (jumpAction != null)
-        {
             jumpAction.action.performed -= OnJumpPerformed;
-        }
-        if (moveAction != null) moveAction.action.Disable();
-        if (attackAction != null) attackAction.action.Disable();
+
+        if (moveAction != null)    moveAction.action.Disable();
+        if (attackAction != null)  attackAction.action.Disable();
         if (interactAction != null) interactAction.action.Disable();
         if (specialAction != null) specialAction.action.Disable();
-        if (jumpAction != null) jumpAction.action.Disable();
+        if (jumpAction != null)    jumpAction.action.Disable();
     }
+
     public void OnInput(NetworkRunner runner, NetworkInput input)
     {
         var myInput = new PlayerInputData();
 
-        // Movement: Reads from Joystick (Mobile) or WASD (Keyboard)
-        if (moveAction != null)
+        // ── Dead check ────────────────────────────────────────────────────────
+        // Lazily find the local player's PlayerHealth once the player object exists.
+        // While the player is dead all action inputs stay zero so clicks from the
+        // spectator navigation buttons never trigger weapons or abilities.
+        if (_localHealth == null)
         {
-            Vector2 moveVal = moveAction.action.ReadValue<Vector2>();
-            myInput.MoveDirection = new Vector3(moveVal.x, 0, moveVal.y);
+            if (runner.TryGetPlayerObject(runner.LocalPlayer, out NetworkObject playerObj))
+                playerObj.TryGetComponent(out _localHealth);
         }
 
-        // Actions: WasPressedThisFrame handles both UI Button taps and Keys
-        if (attackAction != null)
-            myInput.AttackPressed = attackAction.action.WasPressedThisFrame();
+        bool isDead = _localHealth != null && _localHealth.IsDead;
 
-        // Consume the accumulated jump press
-        myInput.JumpPressed = _jumpPressed;
+        if (!isDead)
+        {
+            // Movement
+            if (moveAction != null)
+            {
+                Vector2 moveVal = moveAction.action.ReadValue<Vector2>();
+                myInput.MoveDirection = new Vector3(moveVal.x, 0, moveVal.y);
+            }
+
+            // Actions
+            if (attackAction != null)
+                myInput.AttackPressed = attackAction.action.WasPressedThisFrame();
+
+            // Consume accumulated jump press
+            myInput.JumpPressed = _jumpPressed;
+
+            if (interactAction != null)
+                myInput.InteractPressed = interactAction.action.WasPressedThisFrame();
+
+            if (specialAction != null)
+                myInput.SpecialPressed = specialAction.action.WasPressedThisFrame();
+        }
+
+        // Always consume the jump accumulator so it doesn't queue up while dead
+        // and fire the moment the player respawns.
         _jumpPressed = false;
 
-        if (interactAction != null)
-            myInput.InteractPressed = interactAction.action.WasPressedThisFrame();
-
-        if (specialAction != null)
-            myInput.SpecialPressed = specialAction.action.WasPressedThisFrame();
-
+        // Camera rotation is always sent — SpectatorSystem needs it to work.
         if (Camera.main != null)
             myInput.CameraRotation = Camera.main.transform.rotation;
 
         input.Set(myInput);
     }
+
     // Required by interface (unused)
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
@@ -312,7 +339,7 @@ public struct PlayerInputData : INetworkInput
     public Vector3 MoveDirection;
     public NetworkBool JumpPressed;
     public Quaternion CameraRotation;
-    public NetworkBool InteractPressed; //  (Tecla E / Especial 1)
-    public NetworkBool AttackPressed;   //  (Click / Ataque Básico)
-    public NetworkBool SpecialPressed;  //  (Tecla Q / Especial 2)
+    public NetworkBool InteractPressed;
+    public NetworkBool AttackPressed;
+    public NetworkBool SpecialPressed;
 }
