@@ -36,23 +36,15 @@ public class FirstPersonCamera : MonoBehaviour
             mobileBridge = FindFirstObjectByType<MobileControlsBridge>();
     }
 
-
-    // =========================================================
-    // START → Lock cursor on PC
-    // =========================================================
     private void Start()
     {
         if (!Application.isMobilePlatform)
         {
-            Cursor.lockState = CursorLockMode.Locked;  // Locks cursor to center
-            Cursor.visible = false;                    // Hides cursor
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
         }
     }
 
-
-    // =========================================================
-    // UPDATE → Re-lock cursor if clicked
-    // =========================================================
     private void Update()
     {
         if (!Application.isMobilePlatform)
@@ -65,10 +57,6 @@ public class FirstPersonCamera : MonoBehaviour
         }
     }
 
-
-    // =========================================================
-    // INPUT SYSTEM ENABLE / DISABLE
-    // =========================================================
     private void OnEnable() => lookAction?.action.Enable();
     private void OnDisable() => lookAction?.action.Disable();
 
@@ -115,7 +103,6 @@ public class FirstPersonCamera : MonoBehaviour
 
         // Get input
         Vector2 lookInput = GetLookInput();
-
         float mouseX = lookInput.x * MouseSensitivity * 0.1f;
         float mouseY = lookInput.y * MouseSensitivity * 0.1f;
 
@@ -136,9 +123,7 @@ public class FirstPersonCamera : MonoBehaviour
     // =========================================================
     private Vector2 GetLookInput()
     {
-        // IMPORTANT:
-        // We ONLY use Application.isMobilePlatform.
-        // Input.touchSupported can return true on PC builds and break mouse input.
+        // Removed Input.touchSupported — it can return true on PC builds and break mouse input
         if (Application.isMobilePlatform)
         {
             if (mobileBridge != null)
@@ -148,6 +133,10 @@ public class FirstPersonCamera : MonoBehaviour
         {
             if (lookAction != null && lookAction.action != null)
                 return lookAction.action.ReadValue<Vector2>();
+
+            // Fallback: read mouse delta directly if lookAction reference is missing
+            if (Mouse.current != null)
+                return Mouse.current.delta.ReadValue();
         }
 
         return Vector2.zero;
@@ -159,11 +148,10 @@ public class FirstPersonCamera : MonoBehaviour
     // =========================================================
     private void ApplyInvisibleLayer()
     {
-        if (PlayerGraphics == null)
-            return;
-
-        if (invisibleLayer != -1)
-            SetLayerRecursive(PlayerGraphics, invisibleLayer);
+        if (PlayerGraphics == null) return;
+        int layerIndex = LayerMask.NameToLayer(InvisibleLayerName);
+        if (layerIndex != -1)
+            SetLayerRecursive(PlayerGraphics, layerIndex);
     }
 
 
@@ -172,9 +160,7 @@ public class FirstPersonCamera : MonoBehaviour
     // =========================================================
     private void SetLayerRecursive(GameObject obj, int newLayer)
     {
-        if (obj.layer == newLayer)
-            return;
-
+        if (obj.layer == newLayer) return;
         obj.layer = newLayer;
 
         // Loop through all children

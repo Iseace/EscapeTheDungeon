@@ -37,8 +37,8 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
     private void Awake()
     {
         bool isMobile = Application.platform == RuntimePlatform.Android
-                     || Application.platform == RuntimePlatform.IPhonePlayer
-                     || Application.isEditor;
+                     || Application.platform == RuntimePlatform.IPhonePlayer;
+                     //|| Application.isEditor;
 
         if (!isMobile) { gameObject.SetActive(false); return; }
 

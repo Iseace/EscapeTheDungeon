@@ -14,22 +14,33 @@ public class DungeonNetworkRunner : NetworkBehaviour
     public override void Spawned()
     {
         Debug.Log($"=== DungeonNetworkRunner.Spawned() ===");
-        
-        dungeonCreator = FindAnyObjectByType<DungeonCreator>();
+        Debug.Log($"HasStateAuthority: {Object.HasStateAuthority}");
+        Debug.Log($"HasInputAuthority: {Object.HasInputAuthority}");
+        Debug.Log($"Runner.IsSharedModeMasterClient: {Runner.IsSharedModeMasterClient}");
+        Debug.Log($"Runner.LocalPlayer: {Runner.LocalPlayer}");
+        Debug.Log($"CurrentSeed: {SharedSeed}");
+
+        // Find the DungeonCreator in the scene
+        dungeonCreator = FindFirstObjectByType<DungeonCreator>();
 
         if (dungeonCreator == null)
         {
             Debug.LogError("DungeonCreator NOT found in scene!");
+            return;
         }
 
-        bool shouldGenerateSeed = Runner.GameMode == GameMode.Shared 
-            ? Runner.IsSharedModeMasterClient 
+        Debug.Log("DungeonCreator found!");
+
+        // Master client generates the seed ONLY if it's not set yet
+        bool shouldGenerateSeed = Runner.GameMode == GameMode.Shared
+            ? Runner.IsSharedModeMasterClient
             : Object.HasStateAuthority;
 
         if (shouldGenerateSeed && SharedSeed == 0)
         {
             int newSeed = Random.Range(1, int.MaxValue);
             SharedSeed = newSeed;
+
             Debug.Log($"[MASTER CLIENT] Generated seed: {SharedSeed}");
         }
     }
