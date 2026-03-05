@@ -21,6 +21,10 @@ public class PlayerHealth : NetworkBehaviour
   [Tooltip("Reference to MobileControlsBridge — hides gameplay widgets but keeps camera drag alive on mobile")]
   [SerializeField] private MobileControlsBridge mobileControls;
 
+  [Tooltip("Reference to SpectatorMobileInput — enabled on death so it owns the touch area and nav buttons. " +
+           "Auto-found if not assigned.")]
+  [SerializeField] private SpectatorMobileInput spectatorMobileInput;  // ← ADDED
+
   [Networked, OnChangedRender(nameof(HealthChanged))]
   public float CurrentHealth { get; set; }
 
@@ -61,6 +65,10 @@ public class PlayerHealth : NetworkBehaviour
       if (mobileControls == null)
         mobileControls = FindFirstObjectByType<MobileControlsBridge>();
 
+      // Auto-find SpectatorMobileInput if not assigned in the Inspector   ← ADDED
+      if (spectatorMobileInput == null)
+        spectatorMobileInput = FindFirstObjectByType<SpectatorMobileInput>();
+
       SetupHealthBar();
       ConfigureHUDForScene();
 
@@ -86,6 +94,7 @@ public class PlayerHealth : NetworkBehaviour
   /// Shows normal gameplay HUD.
   /// ControlsUI stays ACTIVE at all times so MobileControlsBridge (and its transparent
   /// drag-receiver Image) is never destroyed and camera look always works on mobile.
+  /// SpectatorMobileInput is DISABLED so it no longer intercepts any touches.
   /// </summary>
   private void SetAliveUI()
   {
@@ -98,10 +107,14 @@ public class PlayerHealth : NetworkBehaviour
     // Keep ControlsUI active — never SetActive(false) it
     if (controlsUI != null) controlsUI.SetActive(true);
 
-    // Tell MobileControlsBridge to show all gameplay widgets
+    // Tell MobileControlsBridge to show all gameplay widgets and reclaim its touch area
     if (mobileControls != null) mobileControls.SetSpectatorMode(false);
 
-    // Hide spectator overlay
+    // Disable spectator input first so its OnDisable hides nav buttons before
+    // MobileControlsBridge re-enables its own Image raycast
+    if (spectatorMobileInput != null) spectatorMobileInput.enabled = false;  // ← ADDED
+
+    // Hide spectator overlay (also hides LastPlayer / NextPlayer as children)
     if (spectatorUI != null) spectatorUI.SetActive(false);
   }
 
@@ -110,7 +123,10 @@ public class PlayerHealth : NetworkBehaviour
   /// ControlsUI stays ACTIVE so MobileControlsBridge keeps receiving drag events
   /// for camera look and pinch-to-zoom. Only the gameplay widgets inside it are
   /// hidden via SetSpectatorMode (joystick, attack, jump, pickup buttons).
-  /// "Spectator Controller" canvas is shown so the player can navigate targets.
+  /// MobileControlsBridge also disables its Image raycastTarget so it no longer
+  /// blocks the nav buttons.
+  /// SpectatorMobileInput is ENABLED: it owns the full-screen touch area for
+  /// camera drag and explicitly shows LastPlayer / NextPlayer.
   /// </summary>
   private void SetDeadUI()
   {
@@ -124,11 +140,14 @@ public class PlayerHealth : NetworkBehaviour
     // and breaks camera drag / pinch zoom in spectator mode on mobile.
     if (controlsUI != null) controlsUI.SetActive(true);
 
-    // Hide all gameplay widgets (joystick, attack, jump, pickup) via the bridge
+    // Hide all gameplay widgets and release the touch area
     if (mobileControls != null) mobileControls.SetSpectatorMode(true);
 
-    // Show the "Spectator Controller" canvas
+    // Show the "Spectator Controller" canvas parent so the nav buttons exist in the hierarchy
     if (spectatorUI != null) spectatorUI.SetActive(true);
+
+    // Enable SpectatorMobileInput: it owns camera drag and shows LastPlayer/NextPlayer  ← ADDED
+    if (spectatorMobileInput != null) spectatorMobileInput.enabled = true;
   }
 
   // ── Health Bar ──────────────────────────────────────────────────────────────

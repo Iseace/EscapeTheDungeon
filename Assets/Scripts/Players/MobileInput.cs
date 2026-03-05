@@ -41,22 +41,20 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
     private bool hasCheckedRole;
     private bool hasAppliedBossUI;
 
+    // Cached so SetSpectatorMode can toggle raycastTarget without calling GetComponent every time
+    private Image _bg;
+
     private void Awake()
     {
         bool isMobile = Application.platform == RuntimePlatform.Android
-                     || Application.platform == RuntimePlatform.IPhonePlayer;
-                     //|| Application.isEditor;
+                     || Application.platform == RuntimePlatform.IPhonePlayer
+                     || Application.isEditor;
 
         if (!isMobile) { gameObject.SetActive(false); return; }
 
         // ── Auto-find scene widgets that can't be assigned on a network prefab ──
-        // joystickParent lives in the scene's ControlsUI canvas, not on the player
-        // prefab, so Inspector assignment is impossible on spawned instances.
-        // We search by name as a reliable fallback.
         if (joystickParent == null)
         {
-            // Walk up to find the root ControlsUI canvas, then find 'Joystick' inside it
-            // Prefer the transform parent hierarchy first (works if this script IS inside ControlsUI)
             joystickParent = GameObject.Find("Joystick");
             if (joystickParent != null)
                 Debug.Log("[MobileControlsBridge] joystickParent auto-found: 'Joystick'");
@@ -79,11 +77,13 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
         if (pickupParent == null) pickupParent = GameObject.Find("pickUp");
 
         // ── Transparent full-screen image to receive pointer events ──────────
-        // This GameObject must NEVER be deactivated — only its child widgets are hidden
-        // in spectator mode so drag events keep arriving for camera look and pinch zoom.
-        Image bg = gameObject.GetComponent<Image>() ?? gameObject.AddComponent<Image>();
-        bg.color = new Color(0, 0, 0, 0);
-        bg.raycastTarget = true;
+        // raycastTarget=true during gameplay so this image catches drag for camera look.
+        // SetSpectatorMode(true) flips it to false so this image no longer blocks
+        // taps on the LastPlayer / NextPlayer buttons — SpectatorMobileInput owns
+        // the drag area instead.
+        _bg = gameObject.GetComponent<Image>() ?? gameObject.AddComponent<Image>();
+        _bg.color = new Color(0, 0, 0, 0);
+        _bg.raycastTarget = true;
 
         RectTransform rect = GetComponent<RectTransform>();
         if (rect != null)
@@ -132,34 +132,31 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
     /// <summary>
     /// Called by PlayerHealth when the local player dies (spectating=true) or respawns (false).
     ///
-    /// Expected hierarchy (matches your scene):
-    ///   ControlsUI
-    ///     └── Joystick           ← joystickParent  ← assign this in Inspector
-    ///           ├── background                        this disappears automatically as a child
-    ///           └── pad          ← joystickPad     ← assign this for OnScreenStick only
-    ///     ├── Atack              ← attackParent
-    ///     ├── Jump               ← jumpParent
-    ///     └── pickUp             ← pickupParent
+    /// spectating=true  → hide gameplay widgets, disable this Image's raycastTarget so
+    ///                    LastPlayer/NextPlayer buttons are no longer blocked.
+    ///                    SpectatorMobileInput is enabled by PlayerHealth and takes over
+    ///                    camera drag, writing back via SetExternalLookDelta().
     ///
-    /// This MobileControlsBridge GameObject stays ACTIVE so its transparent full-screen
-    /// Image keeps receiving drag events for camera look and pinch-to-zoom in spectator mode.
+    /// spectating=false → restore gameplay widgets and re-enable raycastTarget so this
+    ///                    script handles camera drag normally again.
     /// </summary>
     public void SetSpectatorMode(bool spectating)
     {
         isSpectating = spectating;
 
+        // Let go of (or reclaim) the touch area so the two scripts never overlap
+        if (_bg != null)
+            _bg.raycastTarget = !spectating;
+
         // Hiding joystickParent ('Joystick' root) hides BOTH its children:
         //   'background' → the visible circle image
         //   'pad'        → the draggable stick area
-        // This is why joystickParent must be assigned — hiding only joystickPad
-        // leaves the 'background' image still visible on screen.
         if (joystickParent != null)
         {
             joystickParent.SetActive(!spectating);
         }
         else
         {
-            // joystickParent not wired up → 'background' will stay visible!
             if (joystickPad != null) joystickPad.gameObject.SetActive(!spectating);
             Debug.LogWarning("[MobileControlsBridge] joystickParent is NOT assigned in the Inspector. " +
                              "Drag the 'Joystick' root GameObject into the joystickParent slot so that " +
@@ -192,6 +189,16 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
             isDragging = false;
             CameraLookDelta = Vector2.zero;
         }
+    }
+
+    /// <summary>
+    /// Called by SpectatorMobileInput to push camera look delta through this bridge.
+    /// FirstPersonCamera already reads CameraLookDelta from MobileControlsBridge, so
+    /// routing spectator drag here means FirstPersonCamera needs zero changes.
+    /// </summary>
+    public void SetExternalLookDelta(Vector2 delta)
+    {
+        CameraLookDelta = delta;
     }
 
     // ── Private helpers ────────────────────────────────────────────────────────
@@ -266,11 +273,13 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
         && joystickPad.gameObject.activeSelf
         && Vector2.Distance(screenPos, joystickCenter) < joystickRadius;
 
-    // ── Pointer events (camera drag) ───────────────────────────────────────────
+    // ── Pointer events — gameplay camera drag only ─────────────────────────────
+    // When spectating, _bg.raycastTarget=false so Unity never routes events here.
+    // SpectatorMobileInput owns the drag in that state.
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        if (isPinching) return;   // two-finger pinch is handled by SpectatorSystem
+        if (isPinching) return;
         if (!IsInJoistickArea(eventData.position))
         {
             isDragging = true;
