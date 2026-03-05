@@ -13,7 +13,12 @@ public class AnimatorBasic : NetworkBehaviour
     [Tooltip("Empty GameObject on the player where projectiles spawn from")]
     [SerializeField] private Transform spellSocket;
 
+    [Header("Cooldown")]
+    [Tooltip("Minimum seconds between attacks")]
+    [SerializeField] private float attackCooldown = 0.5f;
+
     [Networked] private int _savedWeaponID { get; set; }
+    [Networked] private TickTimer _attackCooldownTimer { get; set; }
 
     private void Awake()
     {
@@ -25,11 +30,16 @@ public class AnimatorBasic : NetworkBehaviour
     {
         if (GetInput(out PlayerInputData data) && data.AttackPressed)
         {
+            // Skip if still on cooldown
+            if (!_attackCooldownTimer.ExpiredOrNotRunning(Runner)) return;
+
             if (_inventory != null && _inventory.CurrentWeaponID > 0)
             {
                 _savedWeaponID = _inventory.CurrentWeaponID;
+                _attackCooldownTimer = TickTimer.CreateFromSeconds(Runner, attackCooldown);
 
-                if (HasStateAuthority)
+                // Only send the RPC on the forward tick, never during resimulation
+                if (HasStateAuthority && Runner.IsForward)
                     Rpc_PlayAttack();
             }
         }
@@ -42,7 +52,11 @@ public class AnimatorBasic : NetworkBehaviour
             _animator = GetComponentInChildren<Animator>();
 
         if (_animator != null)
+        {
+            // Reset first so triggers never pile up
+            _animator.ResetTrigger("Attack");
             _animator.SetTrigger("Attack");
+        }
     }
 
     public void OnAttackHit()

@@ -227,12 +227,18 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     public InputActionReference specialAction;
     public InputActionReference jumpAction;
 
-    // Accumulator: captures jump press via callback so Fusion's OnInput never misses it
+    // Accumulators: capture press via callback so Fusion's OnInput never misses it
     private bool _jumpPressed;
+    private bool _attackPressed;
 
     private void OnJumpPerformed(InputAction.CallbackContext ctx)
     {
         _jumpPressed = true;
+    }
+
+    private void OnAttackPerformed(InputAction.CallbackContext ctx)
+    {
+        _attackPressed = true;
     }
 
     private void OnEnable()
@@ -246,6 +252,10 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
             jumpAction.action.Enable();
             jumpAction.action.performed += OnJumpPerformed;
         }
+        if (attackAction != null)
+        {
+            attackAction.action.performed += OnAttackPerformed;
+        }
     }
 
     private void OnDisable()
@@ -253,6 +263,10 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         if (jumpAction != null)
         {
             jumpAction.action.performed -= OnJumpPerformed;
+        }
+        if (attackAction != null)
+        {
+            attackAction.action.performed -= OnAttackPerformed;
         }
         if (moveAction != null) moveAction.action.Disable();
         if (attackAction != null) attackAction.action.Disable();
@@ -272,8 +286,9 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         }
 
         // Actions: WasPressedThisFrame handles both UI Button taps and Keys
-        if (attackAction != null)
-            myInput.AttackPressed = attackAction.action.WasPressedThisFrame();
+        // Consume the accumulated attack press (same pattern as jump)
+        myInput.AttackPressed = _attackPressed;
+        _attackPressed = false;
 
         // Consume the accumulated jump press
         myInput.JumpPressed = _jumpPressed;
