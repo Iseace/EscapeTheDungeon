@@ -116,7 +116,6 @@ public class FirstPersonCamera : MonoBehaviour
 
         // Get input
         Vector2 lookInput = GetLookInput();
-
         float mouseX = lookInput.x * MouseSensitivity * 0.1f;
         float mouseY = lookInput.y * MouseSensitivity * 0.1f;
 
@@ -141,9 +140,7 @@ public class FirstPersonCamera : MonoBehaviour
     // =========================================================
     private Vector2 GetLookInput()
     {
-        // IMPORTANT:
-        // We ONLY use Application.isMobilePlatform.
-        // Input.touchSupported can return true on PC builds and break mouse input.
+        // Removed Input.touchSupported — it can return true on PC builds and break mouse input
         if (Application.isMobilePlatform)
         {
             if (mobileBridge != null)
@@ -153,6 +150,10 @@ public class FirstPersonCamera : MonoBehaviour
         {
             if (lookAction != null && lookAction.action != null)
                 return lookAction.action.ReadValue<Vector2>();
+
+            // Fallback: read mouse delta directly if lookAction reference is missing
+            if (Mouse.current != null)
+                return Mouse.current.delta.ReadValue();
         }
 
         return Vector2.zero;

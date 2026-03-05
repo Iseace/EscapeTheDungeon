@@ -533,7 +533,7 @@ Camera:
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 247
+    m_Bits: 119
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -2327,6 +2327,3 @@ SceneRoots:
   - {fileID: 1631324225}
   - {fileID: 1049264200}
   - {fileID: 463455399}
-  - {fileID: 1649419560}
-  - {fileID: 143918355}
-  - {fileID: 2078202613}

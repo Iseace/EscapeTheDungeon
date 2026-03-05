@@ -18,6 +18,8 @@ GameObject:
   - component: {fileID: 4147955335772351945}
   - component: {fileID: -6463542248434748298}
   - component: {fileID: 2209957841264246312}
+  - component: {fileID: 1457855953969738388}
+  - component: {fileID: 3180125345330576617}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -69,6 +71,7 @@ MonoBehaviour:
   - {fileID: 4147955335772351945}
   - {fileID: -6463542248434748298}
   - {fileID: 2209957841264246312}
+  - {fileID: 1457855953969738388}
   - {fileID: 1054681061754789690}
   ForceRemoteRenderTimeframe: 0
 --- !u!143 &3797531120297623430
@@ -240,7 +243,121 @@ MonoBehaviour:
   - RawGuidValue: fd501f3a739ab3548956a43b649183bb
   - RawGuidValue: 76cba172ca9d3834ba2f95d09bd0eef9
   spellSocket: {fileID: 5715548566014488333}
-  spawnDelay: 0.17
+--- !u!114 &1457855953969738388
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 574449443296909936}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be2016ee7ac120de99b92b621ce7e2b4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  walkClip: {fileID: 8300000, guid: c866924effff18ea081a1706107ec2c9, type: 3}
+  walkVolume: 0.2
+  fireWandAttackClip: {fileID: 8300000, guid: 3b237c6841887aeabb839d2d7d8b01c3, type: 3}
+  waterWandAttackClip: {fileID: 8300000, guid: 47a0d283deb3da08cae7fb524f691ccb, type: 3}
+  earthWandAttackClip: {fileID: 8300000, guid: 2aeb67569510d9b6a9ee44f302d3de5f, type: 3}
+  attackVolume: 0.4
+--- !u!82 &3180125345330576617
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 574449443296909936}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1 &1095891864883707470
 GameObject:
   m_ObjectHideFlags: 0
@@ -870,6 +987,7 @@ GameObject:
   - component: {fileID: 6129659452941521385}
   - component: {fileID: 1054681061754789690}
   - component: {fileID: 5077282449055594975}
+  - component: {fileID: 8606469831097594486}
   m_Layer: 0
   m_Name: Graphics
   m_TagString: Untagged
@@ -952,6 +1070,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 407e3642ff17a2b4db4c8e338ece7103, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimationEventReceiver
+--- !u!114 &8606469831097594486
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5212746028065857913}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 541c27826ac985b13aa329fe390e99d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationEvents
 --- !u!1 &6532854454972015787
 GameObject:
   m_ObjectHideFlags: 0
@@ -1522,7 +1652,10 @@ PrefabInstance:
     - {fileID: 5866666021909216657, guid: 028f5f21ec4bd784c8c2aea56e8d162d, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 784335718203620379, guid: 028f5f21ec4bd784c8c2aea56e8d162d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7935306465259758257}
   m_SourcePrefab: {fileID: 100100000, guid: 028f5f21ec4bd784c8c2aea56e8d162d, type: 3}
 --- !u!4 &2411937299688133739 stripped
 Transform:
@@ -1534,6 +1667,23 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 028f5f21ec4bd784c8c2aea56e8d162d, type: 3}
   m_PrefabInstance: {fileID: 2806399305107141504}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &3175266859087630235 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 784335718203620379, guid: 028f5f21ec4bd784c8c2aea56e8d162d, type: 3}
+  m_PrefabInstance: {fileID: 2806399305107141504}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7935306465259758257
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3175266859087630235}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 541c27826ac985b13aa329fe390e99d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationEvents
 --- !u!4 &3228108531093753419 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 738272406527819211, guid: 028f5f21ec4bd784c8c2aea56e8d162d, type: 3}
