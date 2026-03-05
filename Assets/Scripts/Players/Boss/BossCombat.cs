@@ -3,9 +3,19 @@ using UnityEngine;
 
 public class BossCombat : NetworkBehaviour
 {
+    private BossSpecial _bossSpecial;
+
+    private void Awake()
+    {
+        _bossSpecial = GetComponent<BossSpecial>();
+    }
+
     public override void FixedUpdateNetwork()
     {
         if (!HasInputAuthority) return;
+
+        // Block attacks while the boss is invisible
+        if (_bossSpecial != null && _bossSpecial.IsAttackBlocked()) return;
 
         if (GetInput(out PlayerInputData data) && data.AttackPressed)
         {
