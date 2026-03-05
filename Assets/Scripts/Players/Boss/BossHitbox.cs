@@ -18,6 +18,11 @@ public class BossHitbox : NetworkBehaviour
     [Networked] private TickTimer AttackCooldownTimer { get; set; }
     [Networked] public NetworkBool IsAttacking { get; set; } // Changed to public so PlayerMovement can access it
 
+    // Local (non-networked) mirror of IsAttacking.  Set immediately on every
+    // machine via the RPC / animation events so the InputAuthority client
+    // doesn't have to wait for networked-state replication.
+    private bool _isAttackingLocal;
+
     private bool _canAttack = true;
 
     private void Awake()
@@ -63,13 +68,24 @@ public class BossHitbox : NetworkBehaviour
     {
         if (_animator != null)
         {
+            _animator.ResetTrigger(attackAnimationName);
             _animator.SetTrigger(attackAnimationName);
         }
     }
 
-    private void OnTriggerEnter(Collider other)
+    private void OnTriggerEnter(Collider other) => HandleHit(other);
+
+    // OnTriggerStay covers the case where the target is already overlapping
+    // when the collider is enabled – OnTriggerEnter won't fire in that
+    // situation, but OnTriggerStay will on the next physics step.
+    private void OnTriggerStay(Collider other) => HandleHit(other);
+
+    private void HandleHit(Collider other)
     {
-        // Security: Ignore hits with myself
+        // Already scored a hit this swing – ignore further contacts
+        if (!_myCollider.enabled) return;
+
+        // Ignore hits with myself
         if (other.transform.root == _bossRoot) return;
 
         if (other.TryGetComponent<PlayerHealth>(out var health))
@@ -78,12 +94,22 @@ public class BossHitbox : NetworkBehaviour
             if (Object.HasStateAuthority)
             {
                 health.DealDamage(damage);
-                Debug.Log($"¡Impacto! El Boss golpeó a {other.name}");
+                Debug.Log($"Boss hit {other.name}!");
             }
 
             // Disable after first hit to prevent multiple damage in one swing
             _myCollider.enabled = false;
         }
+    }
+
+    /// <summary>
+    /// Called from BossCombat.Rpc_PlayMeleeAttack (runs on ALL machines)
+    /// so the movement penalty applies instantly without waiting for
+    /// networked-state replication.
+    /// </summary>
+    public void SetAttackingLocal(bool attacking)
+    {
+        _isAttackingLocal = attacking;
     }
 
     // Animation Events - Called from the Animation timeline
@@ -99,7 +125,10 @@ public class BossHitbox : NetworkBehaviour
 
     public void AttackAnimationEnd()
     {
-        // Called at the end of attack animation
+        // Runs on every machine via animation event
+        _isAttackingLocal = false;
+
+        // Networked flag update is authoritative
         if (Object.HasStateAuthority)
         {
             IsAttacking = false;
@@ -108,7 +137,7 @@ public class BossHitbox : NetworkBehaviour
 
     // Public methods for external scripts
     public bool CanAttack() => _canAttack;
-    public float GetMoveSpeedMultiplier() => IsAttacking ? attackMoveSpeedMultiplier : 1f;
+    public float GetMoveSpeedMultiplier() => (IsAttacking || _isAttackingLocal) ? attackMoveSpeedMultiplier : 1f;
 
     // Optional: Get current cooldown percentage for UI
     public float GetCooldownPercent()
