@@ -24,6 +24,7 @@ UserSettings/
 .utmp/
 
 # Unity crash recovery
+mono_crash.*
 Assets/_Recovery/
 
 # OS
