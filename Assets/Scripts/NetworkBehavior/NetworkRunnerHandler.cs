@@ -24,6 +24,10 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 
     private NetworkRunner _runner;
 
+    // Cached reference to the local player's health so OnInput can check IsDead.
+    // Looked up lazily the first time it is needed — avoids a Find() call every frame.
+    private PlayerHealth _localHealth;
+
     private void Start()
     {
         hostBtn.onClick.AddListener(OnHostRoom);
@@ -171,6 +175,9 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     public void OnShutdown(NetworkRunner runner, ShutdownReason reason)
     {
         Debug.Log($"Runner shutdown: {reason}");
+
+        // Clear cached health so it is re-fetched after a reconnect
+        _localHealth = null;
     }
 
     public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
@@ -200,16 +207,17 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnSceneLoadDone(NetworkRunner runner)
     {
-        // Check if we just loaded the game scene (not the lobby scene)
         string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
 
         Debug.Log($"[NETWORK] Scene loaded: {currentSceneName}");
+
+        // Clear cached health — the player object is re-spawned in the new scene
+        _localHealth = null;
 
         if (currentSceneName != lobbySceneName && runner.GameMode == GameMode.Host)
         {
             Debug.Log($"[NETWORK] Game scene '{currentSceneName}' loaded - marking session as started");
 
-            // Close the session so no new players can join
             if (runner.SessionInfo != null)
             {
                 runner.SessionInfo.IsOpen = false;
@@ -218,8 +226,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         }
     }
 
-    // Input handling
-    // Primero, necesitas las referencias a tus acciones (se asignan en el Inspector)
+    // ── Input action references ────────────────────────────────────────────────
     [Header("Input Action References")]
     public InputActionReference moveAction;
     public InputActionReference attackAction;
@@ -261,24 +268,38 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     private void OnDisable()
     {
         if (jumpAction != null)
-        {
             jumpAction.action.performed -= OnJumpPerformed;
-        }
+    }
         if (attackAction != null)
         {
             attackAction.action.performed -= OnAttackPerformed;
         }
-        if (moveAction != null) moveAction.action.Disable();
-        if (attackAction != null) attackAction.action.Disable();
-        if (interactAction != null) interactAction.action.Disable();
-        if (specialAction != null) specialAction.action.Disable();
-        if (jumpAction != null) jumpAction.action.Disable();
+if (moveAction != null) moveAction.action.Disable();
+if (attackAction != null) attackAction.action.Disable();
+if (interactAction != null) interactAction.action.Disable();
+if (specialAction != null) specialAction.action.Disable();
+if (jumpAction != null) jumpAction.action.Disable();
     }
-    public void OnInput(NetworkRunner runner, NetworkInput input)
-    {
-        var myInput = new PlayerInputData();
 
-        // Movement: Reads from Joystick (Mobile) or WASD (Keyboard)
+    public void OnInput(NetworkRunner runner, NetworkInput input)
+{
+    var myInput = new PlayerInputData();
+
+    // ── Dead check ────────────────────────────────────────────────────────
+    // Lazily find the local player's PlayerHealth once the player object exists.
+    // While the player is dead all action inputs stay zero so clicks from the
+    // spectator navigation buttons never trigger weapons or abilities.
+    if (_localHealth == null)
+    {
+        if (runner.TryGetPlayerObject(runner.LocalPlayer, out NetworkObject playerObj))
+            playerObj.TryGetComponent(out _localHealth);
+    }
+
+    bool isDead = _localHealth != null && _localHealth.IsDead;
+
+    if (!isDead)
+    {
+        // Movement
         if (moveAction != null)
         {
             Vector2 moveVal = moveAction.action.ReadValue<Vector2>();
@@ -290,36 +311,42 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         myInput.AttackPressed = _attackPressed;
         _attackPressed = false;
 
-        // Consume the accumulated jump press
+        // Consume accumulated jump press
         myInput.JumpPressed = _jumpPressed;
-        _jumpPressed = false;
 
         if (interactAction != null)
             myInput.InteractPressed = interactAction.action.WasPressedThisFrame();
 
         if (specialAction != null)
             myInput.SpecialPressed = specialAction.action.WasPressedThisFrame();
-
-        if (Camera.main != null)
-            myInput.CameraRotation = Camera.main.transform.rotation;
-
-        input.Set(myInput);
     }
-    // Required by interface (unused)
-    public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
-    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
-    public void OnConnectedToServer(NetworkRunner runner) { }
-    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
-    public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
-    public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
-    public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
-    public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
-    public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
-    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data) { }
-    public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
-    public void OnSceneLoadStart(NetworkRunner runner) { }
-    public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
-    public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
+
+    // Always consume the jump accumulator so it doesn't queue up while dead
+    // and fire the moment the player respawns.
+    _jumpPressed = false;
+
+    // Camera rotation is always sent — SpectatorSystem needs it to work.
+    if (Camera.main != null)
+        myInput.CameraRotation = Camera.main.transform.rotation;
+
+    input.Set(myInput);
+}
+
+// Required by interface (unused)
+public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
+public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
+public void OnConnectedToServer(NetworkRunner runner) { }
+public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
+public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
+public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
+public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
+public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
+public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
+public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data) { }
+public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
+public void OnSceneLoadStart(NetworkRunner runner) { }
+public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
+public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
 }
 
 public struct PlayerInputData : INetworkInput
@@ -327,7 +354,7 @@ public struct PlayerInputData : INetworkInput
     public Vector3 MoveDirection;
     public NetworkBool JumpPressed;
     public Quaternion CameraRotation;
-    public NetworkBool InteractPressed; //  (Tecla E / Especial 1)
-    public NetworkBool AttackPressed;   //  (Click / Ataque Básico)
-    public NetworkBool SpecialPressed;  //  (Tecla Q / Especial 2)
+    public NetworkBool InteractPressed;
+    public NetworkBool AttackPressed;
+    public NetworkBool SpecialPressed;
 }
