@@ -1,10 +1,32 @@
+# Unity generated folders
 Library/
 Temp/
 Logs/
 Obj/
 Build/
+Builds/
+UserSettings/
+
+# IDE
 .vscode/
 .vs/
-UserSettings/
+
+# Unity / Visual Studio files
 *.csproj
+*.sln
 *.slnx
+*.user
+*.unityproj
+*.booproj
+*.svd
+
+# Android / NDK build artifacts
+.utmp/
+
+# Unity crash recovery
+mono_crash.*
+Assets/_Recovery/
+
+# OS
+.DS_Store
+Thumbs.db

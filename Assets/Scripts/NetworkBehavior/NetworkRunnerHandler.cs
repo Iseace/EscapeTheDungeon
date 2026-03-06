@@ -234,18 +234,24 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     public InputActionReference specialAction;
     public InputActionReference jumpAction;
 
-    // Accumulator: captures jump press via callback so Fusion's OnInput never misses it
+    // Accumulators: capture press via callback so Fusion's OnInput never misses it
     private bool _jumpPressed;
+    private bool _attackPressed;
 
     private void OnJumpPerformed(InputAction.CallbackContext ctx)
     {
         _jumpPressed = true;
     }
 
+    private void OnAttackPerformed(InputAction.CallbackContext ctx)
+    {
+        _attackPressed = true;
+    }
+
     private void OnEnable()
     {
-        if (moveAction != null)    moveAction.action.Enable();
-        if (attackAction != null)  attackAction.action.Enable();
+        if (moveAction != null) moveAction.action.Enable();
+        if (attackAction != null) attackAction.action.Enable();
         if (interactAction != null) interactAction.action.Enable();
         if (specialAction != null) specialAction.action.Enable();
         if (jumpAction != null)
@@ -253,18 +259,23 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
             jumpAction.action.Enable();
             jumpAction.action.performed += OnJumpPerformed;
         }
+        if (attackAction != null)
+        {
+            attackAction.action.performed += OnAttackPerformed;
+        }
     }
 
     private void OnDisable()
     {
         if (jumpAction != null)
             jumpAction.action.performed -= OnJumpPerformed;
-
-        if (moveAction != null)    moveAction.action.Disable();
-        if (attackAction != null)  attackAction.action.Disable();
+        if (attackAction != null)
+            attackAction.action.performed -= OnAttackPerformed;
+        if (moveAction != null) moveAction.action.Disable();
+        if (attackAction != null) attackAction.action.Disable();
         if (interactAction != null) interactAction.action.Disable();
         if (specialAction != null) specialAction.action.Disable();
-        if (jumpAction != null)    jumpAction.action.Disable();
+        if (jumpAction != null) jumpAction.action.Disable();
     }
 
     public void OnInput(NetworkRunner runner, NetworkInput input)
@@ -292,9 +303,10 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
                 myInput.MoveDirection = new Vector3(moveVal.x, 0, moveVal.y);
             }
 
-            // Actions
-            if (attackAction != null)
-                myInput.AttackPressed = attackAction.action.WasPressedThisFrame();
+            // Actions: WasPressedThisFrame handles both UI Button taps and Keys
+            // Consume the accumulated attack press (same pattern as jump)
+            myInput.AttackPressed = _attackPressed;
+            _attackPressed = false;
 
             // Consume accumulated jump press
             myInput.JumpPressed = _jumpPressed;
