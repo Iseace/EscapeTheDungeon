@@ -133,7 +133,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0.9693308, b: 1, a: 0}
+  m_Color: {r: 0, g: 0.99058723, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -275,6 +275,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1453769562666889480}
+  - component: {fileID: 2680092599195113386}
   m_Layer: 0
   m_Name: UI_Progress
   m_TagString: Untagged
@@ -299,6 +300,21 @@ Transform:
   - {fileID: 8929004154806085834}
   m_Father: {fileID: 6159211367188160714}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2680092599195113386
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3759916516402808750}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d29ceec9ef9fd34299a5acb9b50c13c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorldCanvasBillboard
+  targetCamera: {fileID: 0}
+  yawOnly: 1
+  invertForward: 0
 --- !u!1 &4164423717315815627
 GameObject:
   m_ObjectHideFlags: 0
@@ -382,6 +398,7 @@ MonoBehaviour:
   activationDuration: 5
   progressDecayPerSecond: 1
   requiredPlayersInZone: 1
+  allowBossToActivate: 0
   interactText: Activar pylon
   progressText: Reparando pylon
   activatedText: Pylon activado
@@ -391,6 +408,8 @@ MonoBehaviour:
   showWorldProgress: 0
   progressCanvasGroup: {fileID: 113455984553866528}
   progressFillImage: {fileID: 3464323102060861171}
+  progressFillRect: {fileID: 0}
+  autoCreateFillSpriteIfMissing: 1
   progressPercentText: {fileID: 7526015820485520199}
   activationAnimator: {fileID: 0}
   activationAnimatorTrigger: Activate
@@ -491,8 +510,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 24
-  m_fontSizeBase: 24
+  m_fontSize: 36
+  m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18

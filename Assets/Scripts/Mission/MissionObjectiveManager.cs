@@ -12,6 +12,7 @@ public class MissionObjectiveManager : MonoBehaviour
     [SerializeField] private GameObject portalPrefab;
     [SerializeField] private Transform portalSpawnPoint;
     [SerializeField] private bool useRandomSpawnFromDungeon = true;
+    [SerializeField] private float portalHeightOffset = 0f;
 
     [Header("Escape Timer")]
     [SerializeField] private bool enableEscapeTimeLimit = true;
@@ -52,12 +53,18 @@ public class MissionObjectiveManager : MonoBehaviour
         }
     }
 
-    public void Configure(GameObject portalPrefabOverride, float timeLimitSeconds, bool randomSpawn, List<Vector3> randomCandidates)
+    public void Configure(
+        GameObject portalPrefabOverride,
+        float timeLimitSeconds,
+        bool randomSpawn,
+        List<Vector3> randomCandidates,
+        float heightOffset)
     {
         if (portalPrefabOverride != null)
             portalPrefab = portalPrefabOverride;
 
         useRandomSpawnFromDungeon = randomSpawn;
+        portalHeightOffset = heightOffset;
         escapeTimeLimitSeconds = Mathf.Max(5f, timeLimitSeconds);
         enableEscapeTimeLimit = true;
 
@@ -141,6 +148,11 @@ public class MissionObjectiveManager : MonoBehaviour
         {
             int index = Random.Range(0, portalCandidates.Count);
             position = portalCandidates[index];
+        }
+
+        if (!Mathf.Approximately(portalHeightOffset, 0f))
+        {
+            position += Vector3.up * portalHeightOffset;
         }
 
         SpawnPortalInternal(position, rotation, emitEvent: true);

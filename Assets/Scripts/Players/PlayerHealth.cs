@@ -35,6 +35,7 @@ public class PlayerHealth : NetworkBehaviour
   private string currentSceneName;
   private bool isHealthInitialized = false;
   private bool deathHandled = false;
+  private bool spectatorModeActive = false;
 
   void OnIsDeadChanged()
   {
@@ -44,6 +45,7 @@ public class PlayerHealth : NetworkBehaviour
   public override void Spawned()
   {
     deathHandled = false;
+    spectatorModeActive = false;
 
     // Only the Server/Host sets the initial value once
     if (Object.HasStateAuthority && !isHealthInitialized)
@@ -148,6 +150,26 @@ public class PlayerHealth : NetworkBehaviour
 
     // Enable SpectatorMobileInput: it owns camera drag and shows LastPlayer/NextPlayer  ← ADDED
     if (spectatorMobileInput != null) spectatorMobileInput.enabled = true;
+  }
+
+  public void EnterSpectatorModeFromEscape()
+  {
+    if (!HasInputAuthority) return;
+    if (spectatorModeActive) return;
+
+    spectatorModeActive = true;
+
+    if (TryGetComponent<PlayerInteraction>(out var pi)) pi.enabled = false;
+    if (TryGetComponent<AnimatorBasic>(out var ab))     ab.enabled = false;
+    if (TryGetComponent<PlayerMovement>(out var pm))    pm.enabled = false;
+
+    if (TryGetComponent<CharacterController>(out var cc))
+      cc.enabled = false;
+
+    SetDeadUI();
+
+    if (GetComponent<SpectatorSystem>() == null)
+      gameObject.AddComponent<SpectatorSystem>();
   }
 
   // ── Health Bar ──────────────────────────────────────────────────────────────
@@ -255,6 +277,7 @@ public class PlayerHealth : NetworkBehaviour
   {
     if (!IsDead || deathHandled) return;
     deathHandled = true;
+    spectatorModeActive = true;
 
     Debug.Log($"[PlayerHealth] HandleDeath called for player {Object.InputAuthority.PlayerId}");
 

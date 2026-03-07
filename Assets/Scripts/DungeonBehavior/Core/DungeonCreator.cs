@@ -23,6 +23,14 @@ public class DungeonCreator : MonoBehaviour
     [Tooltip("Tiling por unidad (X = largo, Y = alto)")]
     public Vector2 wallTextureTilingPerUnit = Vector2.one;
 
+    [Header("Ceiling Settings")]
+    [Tooltip("Genera un techo usando la misma logica de celdas del piso")]
+    public bool spawnCeiling = true;
+    [Tooltip("Offset extra sobre la altura de pared para posicionar el techo")]
+    public float ceilingHeightOffset = 0f;
+    [Tooltip("Prefab de referencia para material del techo (opcional)")]
+    public GameObject ceilingTilePrefab;
+
     [Header("Anchor Generator Settings")]
     [Tooltip("Numero maximo de salas (incluye el ancla)")] public int anchorMaxRooms = 18;
     [Tooltip("Intentos por sala antes de descartar")] public int anchorAttemptsPerRoom = 100;
@@ -74,6 +82,14 @@ public class DungeonCreator : MonoBehaviour
     public float escapeTimeLimitSeconds = 90f;
     [Tooltip("Si esta activo, el portal aparece en una posicion aleatoria valida de la dungeon")]
     public bool randomPortalSpawnInDungeon = true;
+    [Tooltip("Offset vertical del portal para evitar que se incruste en el piso")]
+    public float missionPortalHeightOffset = 1f;
+    [Tooltip("Area minima de sala para considerar spawn random del portal")]
+    public int missionPortalMinRoomArea = 120;
+    [Tooltip("Ancho/alto minimo de sala para considerar spawn random del portal")]
+    public int missionPortalMinRoomSpan = 8;
+    [Tooltip("Separacion minima del portal respecto a paredes (en tiles)")]
+    public int missionPortalClearanceFromWall = 1;
 
     [Header("Wall Decorations")]
     public bool spawnWallDecorations = true;
@@ -175,6 +191,9 @@ public class DungeonCreator : MonoBehaviour
                 corridorPrefab,
                 roomFloorTilePrefab,
                 corridorFloorTilePrefab,
+                ceilingTilePrefab,
+                spawnCeiling,
+                Mathf.Max(0.1f, wallHeight + ceilingHeightOffset),
                 wallPiecePrefab,
                 pillarPrefab,
                 wallHeight,
@@ -207,7 +226,8 @@ public class DungeonCreator : MonoBehaviour
                     missionPortalPrefab,
                     escapeTimeLimitSeconds,
                     randomPortalSpawnInDungeon,
-                    portalCandidates
+                    portalCandidates,
+                    missionPortalHeightOffset
                 );
 
                 if (missionObjectives != null && missionObjectives.Count > 0)
@@ -322,6 +342,45 @@ public class DungeonCreator : MonoBehaviour
         List<Vector3> candidates = new List<Vector3>();
         if (grid == null || rooms == null) return candidates;
 
+        int minArea = Mathf.Max(1, missionPortalMinRoomArea);
+        int minSpan = Mathf.Max(1, missionPortalMinRoomSpan);
+        int clearance = Mathf.Max(0, missionPortalClearanceFromWall);
+
+        // First pass: strict filtering (room size + clearance).
+        foreach (var room in rooms)
+        {
+            if (!IsPortalRoomEligible(room, excludedRoom, minArea, minSpan)) continue;
+
+            var cells = grid.GetAvailableCellsInRoom(room);
+            for (int i = 0; i < cells.Count; i++)
+            {
+                Vector2Int c = cells[i];
+                if (!HasPortalClearance(grid, c, room, clearance)) continue;
+
+                Vector3 world = new Vector3(c.x + 0.5f, 0f, c.y + 0.5f) + offset;
+                candidates.Add(world);
+            }
+        }
+
+        if (candidates.Count > 0) return candidates;
+
+        // Second pass fallback: keep room constraints but relax clearance.
+        foreach (var room in rooms)
+        {
+            if (!IsPortalRoomEligible(room, excludedRoom, minArea, minSpan)) continue;
+
+            var cells = grid.GetAvailableCellsInRoom(room);
+            for (int i = 0; i < cells.Count; i++)
+            {
+                Vector2Int c = cells[i];
+                Vector3 world = new Vector3(c.x + 0.5f, 0f, c.y + 0.5f) + offset;
+                candidates.Add(world);
+            }
+        }
+
+        if (candidates.Count > 0) return candidates;
+
+        // Last fallback: old behavior, any room/cell except central room.
         foreach (var room in rooms)
         {
             if (excludedRoom != null && ReferenceEquals(room, excludedRoom)) continue;
@@ -335,7 +394,42 @@ public class DungeonCreator : MonoBehaviour
             }
         }
 
+        if (candidates.Count == 0)
+        {
+            Debug.LogWarning("[DungeonCreator] No se encontraron candidatos para portal con filtros actuales.");
+        }
+
         return candidates;
+    }
+
+    private bool IsPortalRoomEligible(RoomNode room, RoomNode excludedRoom, int minArea, int minSpan)
+    {
+        if (room == null) return false;
+        if (excludedRoom != null && ReferenceEquals(room, excludedRoom)) return false;
+
+        int area = room.Width * room.Length;
+        if (area < minArea) return false;
+        if (room.Width < minSpan || room.Length < minSpan) return false;
+        return true;
+    }
+
+    private bool HasPortalClearance(DungeonGrid grid, Vector2Int pos, RoomNode room, int clearance)
+    {
+        if (clearance <= 0) return true;
+
+        for (int dx = -clearance; dx <= clearance; dx++)
+        {
+            for (int dz = -clearance; dz <= clearance; dz++)
+            {
+                Vector2Int p = new Vector2Int(pos.x + dx, pos.y + dz);
+                var cell = grid.GetCell(p);
+                if (cell == null) return false;
+                if (cell.Type != CellType.Floor) return false;
+                if (!ReferenceEquals(cell.ParentRoom, room)) return false;
+            }
+        }
+
+        return true;
     }
 
     private GameObject GetFirstPylonObjectivePrefab()

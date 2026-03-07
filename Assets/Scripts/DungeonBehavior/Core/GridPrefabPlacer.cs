@@ -20,6 +20,9 @@ public static class GridPrefabPlacer
         GameObject corridorPrefab,
         GameObject roomFloorTile,
         GameObject corridorFloorTile,
+        GameObject ceilingTile,
+        bool placeCeiling,
+        float ceilingHeight,
         GameObject wallPiece,
         GameObject pillarPrefab,
         int wallHeight,
@@ -29,8 +32,63 @@ public static class GridPrefabPlacer
 
         PlaceRooms(grid, rooms, root, centerOffset, roomPrefab, roomFloorTile);
         PlaceCorridors(grid, root, centerOffset, corridorPrefab, corridorFloorTile);
+        PlaceCeiling(
+            grid,
+            root,
+            centerOffset,
+            roomPrefab,
+            corridorPrefab,
+            roomFloorTile,
+            corridorFloorTile,
+            ceilingTile,
+            placeCeiling,
+            ceilingHeight);
         PlaceWalls(grid, root, centerOffset, wallPiece, wallHeight, wallTextureTilingPerUnit);
         PlacePillars(grid, root, centerOffset, pillarPrefab, wallHeight);
+    }
+
+    private static void PlaceCeiling(
+        DungeonGrid grid,
+        Transform root,
+        Vector3 offset,
+        GameObject roomPrefab,
+        GameObject corridorPrefab,
+        GameObject roomFloorTile,
+        GameObject corridorFloorTile,
+        GameObject ceilingTile,
+        bool placeCeiling,
+        float ceilingHeight)
+    {
+        if (!placeCeiling) return;
+
+        GameObject materialSource =
+            ceilingTile != null ? ceilingTile :
+            roomFloorTile != null ? roomFloorTile :
+            corridorFloorTile != null ? corridorFloorTile :
+            roomPrefab != null ? roomPrefab :
+            corridorPrefab;
+
+        if (materialSource == null) return;
+
+        BuildFloorMesh(
+            "RoomCeilingCombined",
+            grid,
+            root,
+            offset,
+            materialSource,
+            includeCorridors: false,
+            yHeight: ceilingHeight,
+            flipFaces: true);
+
+        BuildFloorMesh(
+            "CorridorCeilingCombined",
+            grid,
+            root,
+            offset,
+            materialSource,
+            includeCorridors: true,
+            yHeight: ceilingHeight,
+            flipFaces: true);
     }
 
     private static void PlaceRooms(
@@ -327,7 +385,9 @@ public static class GridPrefabPlacer
         Transform parent,
         Vector3 offset,
         GameObject tileSource,
-        bool includeCorridors)
+        bool includeCorridors,
+        float yHeight = 0f,
+        bool flipFaces = false)
     {
         var cells = grid.GetAllCells();
         List<Vector2Int> targets = new List<Vector2Int>();
@@ -385,22 +445,34 @@ public static class GridPrefabPlacer
 
             // Crear quad para el rectangulo [start, start + (maxW, maxH)]
             int idx = vertices.Count;
-            vertices.Add(new Vector3(start.x, 0, start.y) + offset);
-            vertices.Add(new Vector3(start.x + maxW, 0, start.y) + offset);
-            vertices.Add(new Vector3(start.x, 0, start.y + maxH) + offset);
-            vertices.Add(new Vector3(start.x + maxW, 0, start.y + maxH) + offset);
+            vertices.Add(new Vector3(start.x, yHeight, start.y) + offset);
+            vertices.Add(new Vector3(start.x + maxW, yHeight, start.y) + offset);
+            vertices.Add(new Vector3(start.x, yHeight, start.y + maxH) + offset);
+            vertices.Add(new Vector3(start.x + maxW, yHeight, start.y + maxH) + offset);
 
             uvs.Add(new Vector2(start.x, start.y));
             uvs.Add(new Vector2(start.x + maxW, start.y));
             uvs.Add(new Vector2(start.x, start.y + maxH));
             uvs.Add(new Vector2(start.x + maxW, start.y + maxH));
 
-            triangles.Add(idx + 2);
-            triangles.Add(idx + 3);
-            triangles.Add(idx + 0);
-            triangles.Add(idx + 0);
-            triangles.Add(idx + 3);
-            triangles.Add(idx + 1);
+            if (flipFaces)
+            {
+                triangles.Add(idx + 0);
+                triangles.Add(idx + 3);
+                triangles.Add(idx + 2);
+                triangles.Add(idx + 1);
+                triangles.Add(idx + 3);
+                triangles.Add(idx + 0);
+            }
+            else
+            {
+                triangles.Add(idx + 2);
+                triangles.Add(idx + 3);
+                triangles.Add(idx + 0);
+                triangles.Add(idx + 0);
+                triangles.Add(idx + 3);
+                triangles.Add(idx + 1);
+            }
 
             for (int y = start.y; y < start.y + maxH; y++)
             {

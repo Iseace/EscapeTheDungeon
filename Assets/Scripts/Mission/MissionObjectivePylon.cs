@@ -11,6 +11,7 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
     [SerializeField] private float activationDuration = 5f;
     [SerializeField] private float progressDecayPerSecond = 1f;
     [SerializeField] private int requiredPlayersInZone = 1;
+    [SerializeField] private bool allowBossToActivate = false;
     [SerializeField] private string interactText = "Activar pylon";
     [SerializeField] private string progressText = "Reparando pylon";
     [SerializeField] private string activatedText = "Pylon activado";
@@ -24,6 +25,8 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
     [SerializeField] private bool showWorldProgress = true;
     [SerializeField] private CanvasGroup progressCanvasGroup;
     [SerializeField] private Image progressFillImage;
+    [SerializeField] private RectTransform progressFillRect;
+    [SerializeField] private bool autoCreateFillSpriteIfMissing = true;
     [SerializeField] private TMP_Text progressPercentText;
     [SerializeField] private Animator activationAnimator;
     [SerializeField] private string activationAnimatorTrigger = "Activate";
@@ -39,9 +42,25 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
     private float currentProgress;
     private int lastLoggedStep = -1;
     private int lastPlayersInZone = -1;
+    private float progressFillBaseWidth;
+    private Vector3 progressFillBaseScale = Vector3.one;
+    private static Sprite runtimeWhiteSprite;
 
     private void Start()
     {
+        if (progressFillRect == null && progressFillImage != null)
+        {
+            progressFillRect = progressFillImage.rectTransform;
+        }
+
+        EnsureProgressFillRenderable();
+
+        if (progressFillRect != null)
+        {
+            progressFillBaseWidth = progressFillRect.sizeDelta.x;
+            progressFillBaseScale = progressFillRect.localScale;
+        }
+
         RefreshProgressVisuals();
         ApplyActivatedVisuals(IsActivated);
     }
@@ -73,16 +92,26 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
     private void Update()
     {
         if (IsActivated || !autoActivateByZone) return;
-        if (!ShouldSimulateProgressOnThisPeer()) return;
 
-        int playersInZone = CountEligiblePlayersInZone();
+        bool canCommitActivation = ShouldSimulateProgressOnThisPeer();
+        int playersInZone = CountEligiblePlayersInZone(authoritativeOnly: canCommitActivation);
         LogPlayersInZoneIfChanged(playersInZone);
+
+        float completionThreshold = Mathf.Max(0.01f, activationDuration);
 
         if (playersInZone >= Mathf.Max(1, requiredPlayersInZone))
         {
             currentProgress += Time.deltaTime;
+
+            // On non-authority peers this is visual-only; authority will send final activation.
+            if (!canCommitActivation && currentProgress >= completionThreshold)
+            {
+                currentProgress = Mathf.Max(0f, completionThreshold - 0.01f);
+            }
+
             LogProgressStepIfNeeded();
-            if (currentProgress >= Mathf.Max(0.01f, activationDuration))
+
+            if (canCommitActivation && currentProgress >= completionThreshold)
             {
                 Activate();
             }
@@ -95,7 +124,7 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
         RefreshProgressVisuals();
     }
 
-    private int CountEligiblePlayersInZone()
+    private int CountEligiblePlayersInZone(bool authoritativeOnly)
     {
         Collider[] hits = Physics.OverlapSphere(transform.position, activationRadius);
         int count = 0;
@@ -106,6 +135,15 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
             if (player == null) continue;
             if (player.HasEscaped) continue;
 
+            if (!allowBossToActivate)
+            {
+                var role = player.GetComponent<PlayerRole>();
+                if (role != null && role.IsBoss)
+                {
+                    continue;
+                }
+            }
+
             if (player.Object == null)
             {
                 if (allowOfflineDebugActivation)
@@ -115,7 +153,11 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
                 continue;
             }
 
-            if (!player.Object.HasStateAuthority) continue;
+            if (authoritativeOnly)
+            {
+                if (!player.Object.HasStateAuthority) continue;
+            }
+
             count++;
         }
 
@@ -181,7 +223,26 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
     {
         if (progressFillImage != null)
         {
-            progressFillImage.fillAmount = Progress01;
+            if (progressFillImage.type == Image.Type.Filled)
+            {
+                progressFillImage.fillAmount = Progress01;
+            }
+        }
+
+        // Fallback: if Image is not Filled, drive bar width using RectTransform.
+        if (progressFillRect != null && progressFillBaseWidth > 0.01f)
+        {
+            Vector2 size = progressFillRect.sizeDelta;
+            size.x = progressFillBaseWidth * Progress01;
+            progressFillRect.sizeDelta = size;
+        }
+
+        // Extra fallback: drive local scale X in case sizeDelta is controlled by layout.
+        if (progressFillRect != null)
+        {
+            Vector3 scale = progressFillBaseScale;
+            scale.x = Mathf.Max(0.001f, progressFillBaseScale.x * Progress01);
+            progressFillRect.localScale = scale;
         }
 
         if (progressPercentText != null)
@@ -234,6 +295,32 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
         {
             activationAudioSource.PlayOneShot(activationSfx);
         }
+    }
+
+    private void EnsureProgressFillRenderable()
+    {
+        if (progressFillImage == null) return;
+        if (!autoCreateFillSpriteIfMissing) return;
+        if (progressFillImage.sprite != null) return;
+
+        if (runtimeWhiteSprite == null)
+        {
+            Texture2D tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            tex.SetPixels(new[]
+            {
+                Color.white, Color.white,
+                Color.white, Color.white
+            });
+            tex.Apply();
+
+            runtimeWhiteSprite = Sprite.Create(
+                tex,
+                new Rect(0, 0, tex.width, tex.height),
+                new Vector2(0.5f, 0.5f),
+                100f);
+        }
+
+        progressFillImage.sprite = runtimeWhiteSprite;
     }
 
     private void LogPlayersInZoneIfChanged(int playersInZone)
