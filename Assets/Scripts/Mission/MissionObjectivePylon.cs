@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 
 public class MissionObjectivePylon : MonoBehaviour, IInteractable
 {
@@ -18,12 +20,31 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
     [SerializeField] private bool debugDrawActivationRadius = true;
     [SerializeField] private int debugLogStepPercent = 10;
 
+    [Header("Visual Feedback")]
+    [SerializeField] private bool showWorldProgress = true;
+    [SerializeField] private CanvasGroup progressCanvasGroup;
+    [SerializeField] private Image progressFillImage;
+    [SerializeField] private TMP_Text progressPercentText;
+    [SerializeField] private Animator activationAnimator;
+    [SerializeField] private string activationAnimatorTrigger = "Activate";
+    [SerializeField] private ParticleSystem activationParticles;
+    [SerializeField] private AudioSource activationAudioSource;
+    [SerializeField] private AudioClip activationSfx;
+    [SerializeField] private GameObject[] objectsToEnableOnActivated;
+    [SerializeField] private GameObject[] objectsToDisableOnActivated;
+
     public bool IsActivated { get; private set; }
     public float Progress01 => activationDuration <= 0f ? 1f : Mathf.Clamp01(currentProgress / activationDuration);
 
     private float currentProgress;
     private int lastLoggedStep = -1;
     private int lastPlayersInZone = -1;
+
+    private void Start()
+    {
+        RefreshProgressVisuals();
+        ApplyActivatedVisuals(IsActivated);
+    }
 
     public string GetInteractText()
     {
@@ -70,6 +91,8 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
         {
             currentProgress = Mathf.Max(0f, currentProgress - Mathf.Max(0f, progressDecayPerSecond) * Time.deltaTime);
         }
+
+        RefreshProgressVisuals();
     }
 
     private int CountEligiblePlayersInZone()
@@ -125,6 +148,8 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
         IsActivated = true;
         currentProgress = Mathf.Max(currentProgress, activationDuration);
         MissionObjectiveManager.Instance?.NotifyPylonActivated(this);
+        ApplyActivatedVisuals(true);
+        RefreshProgressVisuals();
 
         if (debugLogs)
         {
@@ -138,6 +163,8 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
 
         IsActivated = true;
         currentProgress = Mathf.Max(currentProgress, activationDuration);
+        ApplyActivatedVisuals(true);
+        RefreshProgressVisuals();
 
         if (debugLogs)
         {
@@ -148,6 +175,65 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
     public void SetDebugLogs(bool enabled)
     {
         debugLogs = enabled;
+    }
+
+    private void RefreshProgressVisuals()
+    {
+        if (progressFillImage != null)
+        {
+            progressFillImage.fillAmount = Progress01;
+        }
+
+        if (progressPercentText != null)
+        {
+            progressPercentText.text = $"{Mathf.RoundToInt(Progress01 * 100f)}%";
+        }
+
+        if (progressCanvasGroup != null)
+        {
+            bool show = showWorldProgress && !IsActivated;
+            progressCanvasGroup.alpha = show ? 1f : 0f;
+            progressCanvasGroup.interactable = false;
+            progressCanvasGroup.blocksRaycasts = false;
+        }
+    }
+
+    private void ApplyActivatedVisuals(bool activated)
+    {
+        if (objectsToEnableOnActivated != null)
+        {
+            for (int i = 0; i < objectsToEnableOnActivated.Length; i++)
+            {
+                if (objectsToEnableOnActivated[i] != null)
+                    objectsToEnableOnActivated[i].SetActive(activated);
+            }
+        }
+
+        if (objectsToDisableOnActivated != null)
+        {
+            for (int i = 0; i < objectsToDisableOnActivated.Length; i++)
+            {
+                if (objectsToDisableOnActivated[i] != null)
+                    objectsToDisableOnActivated[i].SetActive(!activated);
+            }
+        }
+
+        if (!activated) return;
+
+        if (activationAnimator != null && !string.IsNullOrWhiteSpace(activationAnimatorTrigger))
+        {
+            activationAnimator.SetTrigger(activationAnimatorTrigger);
+        }
+
+        if (activationParticles != null)
+        {
+            activationParticles.Play();
+        }
+
+        if (activationAudioSource != null && activationSfx != null)
+        {
+            activationAudioSource.PlayOneShot(activationSfx);
+        }
     }
 
     private void LogPlayersInZoneIfChanged(int playersInZone)
