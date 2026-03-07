@@ -22,6 +22,10 @@ public class FirstPersonCamera : MonoBehaviour
     private int invisibleLayer = -1;             // Cached layer index
     private GameObject previousGraphics;         // Used to restore old model layer
 
+    // Spectator zoom: 0 = first-person (on pivot), positive = pull back (third-person)
+    // Set by SpectatorSystem; ignored during normal gameplay (stays 0).
+    public float ZoomDistance { get; set; } = 0f;
+
 
     // =========================================================
     // AWAKE → Runs before Start()
@@ -36,15 +40,23 @@ public class FirstPersonCamera : MonoBehaviour
             mobileBridge = FindFirstObjectByType<MobileControlsBridge>();
     }
 
+
+    // =========================================================
+    // START → Lock cursor on PC
+    // =========================================================
     private void Start()
     {
         if (!Application.isMobilePlatform)
         {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
+            Cursor.lockState = CursorLockMode.Locked;  // Locks cursor to center
+            Cursor.visible = false;                    // Hides cursor
         }
     }
 
+
+    // =========================================================
+    // UPDATE → Re-lock cursor if clicked
+    // =========================================================
     private void Update()
     {
         if (!Application.isMobilePlatform)
@@ -57,6 +69,10 @@ public class FirstPersonCamera : MonoBehaviour
         }
     }
 
+
+    // =========================================================
+    // INPUT SYSTEM ENABLE / DISABLE
+    // =========================================================
     private void OnEnable() => lookAction?.action.Enable();
     private void OnDisable() => lookAction?.action.Disable();
 
@@ -98,9 +114,6 @@ public class FirstPersonCamera : MonoBehaviour
         if (PlayerGraphics != null)
             ApplyInvisibleLayer();
 
-        // Follow target position
-        transform.position = Target.position;
-
         // Get input
         Vector2 lookInput = GetLookInput();
         float mouseX = lookInput.x * MouseSensitivity * 0.1f;
@@ -113,8 +126,12 @@ public class FirstPersonCamera : MonoBehaviour
         // Horizontal (Y axis)
         horizontalRotation += mouseX;
 
-        // Apply final rotation
+        // Apply rotation FIRST so transform.forward is up-to-date this frame
         transform.rotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0f);
+
+        // Then set position using the freshly-updated forward vector.
+        // ZoomDistance is 0 during normal play so this has no effect then.
+        transform.position = Target.position - transform.forward * ZoomDistance;
     }
 
 
@@ -148,10 +165,11 @@ public class FirstPersonCamera : MonoBehaviour
     // =========================================================
     private void ApplyInvisibleLayer()
     {
-        if (PlayerGraphics == null) return;
-        int layerIndex = LayerMask.NameToLayer(InvisibleLayerName);
-        if (layerIndex != -1)
-            SetLayerRecursive(PlayerGraphics, layerIndex);
+        if (PlayerGraphics == null)
+            return;
+
+        if (invisibleLayer != -1)
+            SetLayerRecursive(PlayerGraphics, invisibleLayer);
     }
 
 
@@ -160,7 +178,9 @@ public class FirstPersonCamera : MonoBehaviour
     // =========================================================
     private void SetLayerRecursive(GameObject obj, int newLayer)
     {
-        if (obj.layer == newLayer) return;
+        if (obj.layer == newLayer)
+            return;
+
         obj.layer = newLayer;
 
         // Loop through all children

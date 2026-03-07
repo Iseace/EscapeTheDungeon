@@ -18,5 +18,6 @@ public class AnimationBridge : MonoBehaviour
 
     public void AttackAnimationEnd()
     {
+        if (hitbox != null) hitbox.AttackAnimationEnd();
     }
 }

@@ -19,6 +19,7 @@ public class PlayerMovement : NetworkBehaviour
     [Header("Boss Settings (Optional)")]
     public bool isBoss = false; // Check this for boss characters
     private BossHitbox _bossHitbox;
+    private BossSpecial _bossSpecial;
 
     [Networked] private Vector3 _velocity { get; set; }
     [Networked] private NetworkBool _isGrounded { get; set; }
@@ -30,11 +31,9 @@ public class PlayerMovement : NetworkBehaviour
         _controller = GetComponent<CharacterController>();
         RefreshAnimatorReference();
 
-        // Get boss hitbox if this is a boss
-        if (isBoss)
-        {
-            _bossHitbox = GetComponentInChildren<BossHitbox>();
-        }
+        // Get boss components (auto-detected; works even if isBoss isn't ticked)
+        _bossHitbox = GetComponentInChildren<BossHitbox>();
+        _bossSpecial = GetComponent<BossSpecial>();
     }
 
     private void Update()
@@ -68,11 +67,11 @@ public class PlayerMovement : NetworkBehaviour
             // 2. Cálculo de Movimiento Horizontal con modificador de velocidad
             float currentSpeed = PlayerSpeed;
 
-            // Apply speed reduction if boss is attacking
-            if (isBoss && _bossHitbox != null)
-            {
+            // Apply speed modifiers (auto-detected, only active on boss prefab)
+            if (_bossHitbox != null)
                 currentSpeed *= _bossHitbox.GetMoveSpeedMultiplier();
-            }
+            if (_bossSpecial != null)
+                currentSpeed *= _bossSpecial.GetSpeedMultiplier();
 
             Vector3 move = transform.rotation * data.MoveDirection * currentSpeed;
 
@@ -137,6 +136,12 @@ public class PlayerMovement : NetworkBehaviour
 
     public override void Spawned()
     {
+        // Re-resolve boss references after Fusion spawns the object (safety net)
+        if (_bossSpecial == null)
+            _bossSpecial = GetComponent<BossSpecial>();
+        if (_bossHitbox == null)
+            _bossHitbox = GetComponentInChildren<BossHitbox>();
+
         if (HasInputAuthority)
         {
             // 1. Configuramos la cámara

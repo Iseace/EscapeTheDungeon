@@ -108,7 +108,7 @@ SphereCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -148,6 +148,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpellLogic
   speed: 15
   maxLifetime: 5
+  damage: 20
 --- !u!114 &-7629743083155470750
 MonoBehaviour:
   m_ObjectHideFlags: 0

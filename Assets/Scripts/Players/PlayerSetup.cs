@@ -21,12 +21,20 @@ public class PlayerSetup : NetworkBehaviour
     public NetworkBool HasEscaped { get; set; }
     public ParentConstraint wandConstraint;
 
+    // The resolved eye-height pivot for this player, available on ALL instances
+    // (not just the local one) so SpectatorSystem can read it on remote players.
+    private Transform _activeCameraPivot;
+    public Transform GetCameraPivot() => _activeCameraPivot;
+
     public override void Spawned()
     {
+        // Pivot creation runs on EVERY instance so remote players have it too
+        EnsureCameraPivot();
+
         if (HasInputAuthority)
         {
-            SetupCamera();
-            // Initial cursor state
+            // Attach the main camera only on the machine that owns this player
+            AttachCamera();
             HandleCursorState();
 
             int idGuardado = PlayerPrefs.GetInt("SelectedCharacterID", 0);
@@ -108,7 +116,37 @@ public class PlayerSetup : NetworkBehaviour
         }
     }
 
-    private void SetupCamera()
+    // Runs on ALL instances: ensures _activeCameraPivot is set at eye height.
+    private void EnsureCameraPivot()
+    {
+        if (_activeCameraPivot != null) return; // already done
+
+        if (cameraPivot != null)
+        {
+            // Use the pivot assigned in the Inspector
+            _activeCameraPivot = cameraPivot;
+        }
+        else
+        {
+            // Create one at the configured eye height (same as before, but for everyone)
+            const string runtimeName = "CameraPivot_Runtime";
+            Transform existing = transform.Find(runtimeName);
+            if (existing != null)
+            {
+                _activeCameraPivot = existing;
+            }
+            else
+            {
+                GameObject pivot = new GameObject(runtimeName);
+                pivot.transform.SetParent(transform);
+                pivot.transform.localPosition = new Vector3(0, cameraHeight, 0);
+                _activeCameraPivot = pivot.transform;
+            }
+        }
+    }
+
+    // Runs only on the local player: attaches the main camera to the pivot.
+    private void AttachCamera()
     {
         Camera mainCam = Camera.main;
         if (mainCam == null) return;
@@ -116,16 +154,7 @@ public class PlayerSetup : NetworkBehaviour
         FirstPersonCamera fpCamera = mainCam.GetComponent<FirstPersonCamera>();
         if (fpCamera == null) return;
 
-        Transform cameraTarget = cameraPivot;
-        if (cameraTarget == null)
-        {
-            GameObject pivot = new GameObject("CameraPivot_Runtime");
-            pivot.transform.SetParent(transform);
-            pivot.transform.localPosition = new Vector3(0, cameraHeight, 0);
-            cameraTarget = pivot.transform;
-        }
-
-        fpCamera.SetTarget(cameraTarget, graphicsContainer);
+        fpCamera.SetTarget(_activeCameraPivot, graphicsContainer);
     }
 
     private void HandleCursorState()
