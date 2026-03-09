@@ -225,7 +225,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
   maxHealth: 100
   healthBarObject: {fileID: 2052108852590498247}
+  controlsUI: {fileID: 0}
+  spectatorUI: {fileID: 0}
+  mobileControls: {fileID: 0}
+  spectatorMobileInput: {fileID: 0}
   _CurrentHealth: 100
+  _IsDead:
+    _value: 0
 --- !u!114 &2209957841264246312
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -261,6 +267,8 @@ MonoBehaviour:
   waterWandAttackClip: {fileID: 8300000, guid: 47a0d283deb3da08cae7fb524f691ccb, type: 3}
   earthWandAttackClip: {fileID: 8300000, guid: 2aeb67569510d9b6a9ee44f302d3de5f, type: 3}
   attackVolume: 0.4
+  landingClip: {fileID: 8300000, guid: 416c688ff58be8696aeec5450a7343c5, type: 3}
+  landingVolume: 1
 --- !u!82 &3180125345330576617
 AudioSource:
   m_ObjectHideFlags: 0
