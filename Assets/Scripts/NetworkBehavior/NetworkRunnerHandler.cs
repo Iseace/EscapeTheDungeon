@@ -286,11 +286,8 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         // Lazily find the local player's PlayerHealth once the player object exists.
         // While the player is dead all action inputs stay zero so clicks from the
         // spectator navigation buttons never trigger weapons or abilities.
-        if (_localHealth == null)
-        {
-            if (runner.TryGetPlayerObject(runner.LocalPlayer, out NetworkObject playerObj))
-                playerObj.TryGetComponent(out _localHealth);
-        }
+        if (_localHealth != null && (_localHealth.Object == null || !_localHealth.Object.IsValid))
+            _localHealth = null;
 
         bool isDead = _localHealth != null && _localHealth.IsDead;
 
