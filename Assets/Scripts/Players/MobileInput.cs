@@ -20,6 +20,7 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
     [SerializeField] private GameObject attackParent;
     [SerializeField] private GameObject jumpParent;
     [SerializeField] private GameObject pickupParent;
+    [SerializeField] private GameObject specialParent;
 
     [Header("Camera Settings")]
     [SerializeField] private float cameraSensitivity = 0.5f;
@@ -40,6 +41,7 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
     private PlayerRole localPlayerRole;
     private bool hasCheckedRole;
     private bool hasAppliedBossUI;
+    private bool hasSetButtonVisibility;
 
     // Cached so SetSpectatorMode can toggle raycastTarget without calling GetComponent every time
     private Image _bg;
@@ -47,8 +49,8 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
     private void Awake()
     {
     bool isMobile = Application.platform == RuntimePlatform.Android
-                 || Application.platform == RuntimePlatform.IPhonePlayer;
-                     /*|| Application.isEditor;*/
+                 || Application.platform == RuntimePlatform.IPhonePlayer
+                  || Application.isEditor;
 
         if (!isMobile) { gameObject.SetActive(false); return; }
 
@@ -75,6 +77,7 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
         if (attackParent == null) attackParent = GameObject.Find("Atack");   // note: matches your scene spelling
         if (jumpParent   == null) jumpParent   = GameObject.Find("Jump");
         if (pickupParent == null) pickupParent = GameObject.Find("pickUp");
+        if (specialParent == null) specialParent = GameObject.Find("Special");
 
         // ── Transparent full-screen image to receive pointer events ──────────
         // raycastTarget=true during gameplay so this image catches drag for camera look.
@@ -106,19 +109,29 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
         SetupButton(attackParent, "<Gamepad>/buttonWest");
         SetupButton(jumpParent,   "<Gamepad>/buttonSouth");
         SetupButton(pickupParent, "<Gamepad>/buttonNorth");
+        SetupButton(specialParent, "<Gamepad>/buttonEast");
+if (specialParent != null) specialParent.SetActive(false);
     }
 
     private void Update()
     {
-        // While spectating we skip all role/button logic — only drag events matter
         if (isSpectating) return;
 
         if (!hasCheckedRole || localPlayerRole == null)
+        {
+            if (specialParent != null && specialParent.activeSelf)
+                specialParent.SetActive(false);
+            
             FindLocalPlayerRole();
+        }
 
         if (localPlayerRole == null) return;
 
-        UpdateButtonVisibility();
+        if (!hasSetButtonVisibility)
+        {
+            UpdateButtonVisibility();
+            hasSetButtonVisibility = true;
+        }
 
         if (localPlayerRole.IsBoss && !hasAppliedBossUI)
         {
@@ -166,6 +179,7 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
         if (attackParent != null)  attackParent.SetActive(!spectating);
         if (jumpParent != null)    jumpParent.SetActive(!spectating);
         if (pickupParent != null)  pickupParent.SetActive(!spectating);
+        if (specialParent != null) specialParent.SetActive(!spectating);
 
         // Cancel any in-progress drag so there is no sticky delta when switching modes
         if (spectating)
@@ -222,8 +236,10 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
     private void UpdateButtonVisibility()
     {
         bool isBoss = localPlayerRole.IsBoss;
-        if (jumpParent != null)   jumpParent.SetActive(!isBoss);
+        if (jumpParent != null) jumpParent.SetActive(!isBoss);
         if (pickupParent != null) pickupParent.SetActive(!isBoss);
+        if (specialParent != null) specialParent.SetActive(isBoss);
+
     }
 
     private void ApplyBossUI()
