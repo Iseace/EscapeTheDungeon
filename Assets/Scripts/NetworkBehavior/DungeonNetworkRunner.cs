@@ -5,11 +5,13 @@ using UnityEngine.SceneManagement;
 public class DungeonNetworkRunner : NetworkBehaviour
 {
     [Networked] public int SharedSeed { get; set; }
+    [SerializeField] private float pylonProgressSyncInterval = 0.1f;
 
     private DungeonCreator dungeonCreator;
     private MissionObjectiveManager missionObjectiveManager;
     private bool hasGeneratedLocally = false;
     private bool missionSyncHooked = false;
+    private float nextPylonProgressSyncTime;
 
     public override void Spawned()
     {
@@ -63,6 +65,16 @@ public class DungeonNetworkRunner : NetworkBehaviour
         TryHookMissionSync();
     }
 
+    private void LateUpdate()
+    {
+        if (!Object || !Object.HasStateAuthority) return;
+        if (SceneManager.GetActiveScene().name != "Game") return;
+        if (Time.time < nextPylonProgressSyncTime) return;
+
+        nextPylonProgressSyncTime = Time.time + Mathf.Max(0.02f, pylonProgressSyncInterval);
+        SyncPylonProgressToPeers();
+    }
+
     private void TryHookMissionSync()
     {
         if (missionSyncHooked) return;
@@ -101,6 +113,19 @@ public class DungeonNetworkRunner : NetworkBehaviour
         Rpc_SyncPortalSpawn(position, rotation);
     }
 
+    private void SyncPylonProgressToPeers()
+    {
+        MissionObjectivePylon[] pylons = FindObjectsOfType<MissionObjectivePylon>();
+        if (pylons == null || pylons.Length == 0) return;
+
+        for (int i = 0; i < pylons.Length; i++)
+        {
+            var pylon = pylons[i];
+            if (pylon == null) continue;
+            Rpc_SyncPylonProgress(pylon.transform.position, pylon.Progress01, pylon.IsActivated);
+        }
+    }
+
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_SyncPylonActivated(Vector3 pylonWorldPosition)
     {
@@ -128,6 +153,40 @@ public class DungeonNetworkRunner : NetworkBehaviour
         {
             closest.ForceActivateFromNetwork();
         }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_SyncPylonProgress(Vector3 pylonWorldPosition, float progress01, bool isActivated)
+    {
+        if (Object.HasStateAuthority) return;
+
+        MissionObjectivePylon[] pylons = FindObjectsOfType<MissionObjectivePylon>();
+        if (pylons == null || pylons.Length == 0) return;
+
+        MissionObjectivePylon closest = null;
+        float bestDistSqr = float.MaxValue;
+
+        for (int i = 0; i < pylons.Length; i++)
+        {
+            var p = pylons[i];
+            if (p == null) continue;
+            float d = (p.transform.position - pylonWorldPosition).sqrMagnitude;
+            if (d < bestDistSqr)
+            {
+                bestDistSqr = d;
+                closest = p;
+            }
+        }
+
+        if (closest == null || bestDistSqr > 4f) return;
+
+        if (isActivated)
+        {
+            closest.ForceActivateFromNetwork();
+            return;
+        }
+
+        closest.ForceProgressFromNetwork(progress01);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

@@ -214,6 +214,16 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
         }
     }
 
+    public void ForceProgressFromNetwork(float progress01)
+    {
+        if (IsActivated) return;
+
+        float clampedProgress = Mathf.Clamp01(progress01);
+        float targetDuration = Mathf.Max(0.01f, activationDuration);
+        currentProgress = clampedProgress * targetDuration;
+        RefreshProgressVisuals();
+    }
+
     public void SetDebugLogs(bool enabled)
     {
         debugLogs = enabled;

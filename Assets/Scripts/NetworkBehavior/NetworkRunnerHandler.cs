@@ -292,7 +292,18 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
                 playerObj.TryGetComponent(out _localHealth);
         }
 
-        bool isDead = _localHealth != null && _localHealth.IsDead;
+        bool isDead = false;
+        if (_localHealth != null)
+        {
+            if (_localHealth.Object == null)
+            {
+                _localHealth = null;
+            }
+            else
+            {
+                _localHealth.TryGetIsDeadSafe(out isDead);
+            }
+        }
 
         if (!isDead)
         {

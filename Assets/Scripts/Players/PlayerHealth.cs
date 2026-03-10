@@ -1,4 +1,5 @@
 using Fusion;
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
@@ -31,6 +32,8 @@ public class PlayerHealth : NetworkBehaviour
   [Networked, OnChangedRender(nameof(OnIsDeadChanged))]
   public NetworkBool IsDead { get; set; }
 
+  public bool HasCompletedSpawn { get; private set; }
+
   private Slider localHealthSlider;
   private string currentSceneName;
   private bool isHealthInitialized = false;
@@ -44,6 +47,7 @@ public class PlayerHealth : NetworkBehaviour
 
   public override void Spawned()
   {
+    HasCompletedSpawn = true;
     deathHandled = false;
     spectatorModeActive = false;
 
@@ -85,8 +89,32 @@ public class PlayerHealth : NetworkBehaviour
     }
   }
 
+  public override void Despawned(NetworkRunner runner, bool hasState)
+  {
+    HasCompletedSpawn = false;
+  }
+
+  public bool TryGetIsDeadSafe(out bool isDead)
+  {
+    isDead = false;
+
+    if (!HasCompletedSpawn || Object == null)
+      return false;
+
+    try
+    {
+      isDead = IsDead;
+      return true;
+    }
+    catch (InvalidOperationException)
+    {
+      return false;
+    }
+  }
+
   private void OnDestroy()
   {
+    HasCompletedSpawn = false;
     SceneManager.activeSceneChanged -= OnSceneChanged;
   }
 
