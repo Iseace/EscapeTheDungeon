@@ -20,4 +20,10 @@ public class PlayerAnimationEvents : MonoBehaviour
         if (_playerSounds != null)
             _playerSounds.OnWandAttack();
     }
+
+    public void OnLanding()
+    {
+        if (_playerSounds != null)
+            _playerSounds.OnLanding();
+    }
 }
