@@ -16,7 +16,11 @@ public class PlayerSetup : NetworkBehaviour
 
     [Networked]
     public int SelectedCharacterIndex { get; set; }
+
+    [Networked]
+    public NetworkBool HasEscaped { get; set; }
     public ParentConstraint wandConstraint;
+    private bool escapeHandledLocally;
 
     // The resolved eye-height pivot for this player, available on ALL instances
     // (not just the local one) so SpectatorSystem can read it on remote players.
@@ -25,6 +29,8 @@ public class PlayerSetup : NetworkBehaviour
 
     public override void Spawned()
     {
+        escapeHandledLocally = false;
+
         // Pivot creation runs on EVERY instance so remote players have it too
         EnsureCameraPivot();
 
@@ -58,8 +64,17 @@ public class PlayerSetup : NetworkBehaviour
         SelectedCharacterIndex = index;
     }
 
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    public void Rpc_RequestEscapePortal()
+    {
+        if (HasEscaped) return;
+        HasEscaped = true;
+    }
+
     public override void Render()
     {
+        TryHandleEscapedState();
+
         if (graphicsContainer == null) return;
 
         var role = GetComponent<PlayerRole>();
@@ -110,6 +125,27 @@ public class PlayerSetup : NetworkBehaviour
                     wandConstraint.SetSource(s, source);
                 }
             }
+        }
+    }
+
+    private void TryHandleEscapedState()
+    {
+        if (!HasInputAuthority) return;
+        if (!HasEscaped) return;
+        if (escapeHandledLocally) return;
+
+        escapeHandledLocally = true;
+
+        var health = GetComponent<PlayerHealth>();
+        if (health != null)
+        {
+            health.EnterSpectatorModeFromEscape();
+            return;
+        }
+
+        if (GetComponent<SpectatorSystem>() == null)
+        {
+            gameObject.AddComponent<SpectatorSystem>();
         }
     }
 

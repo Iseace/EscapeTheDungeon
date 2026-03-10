@@ -16,12 +16,60 @@ public class MissionObjectiveConfig
 
 public class MissionObjectiveSpawner
 {
+    public bool SpawnObjectiveInRoom(
+        DungeonGrid grid,
+        RoomNode room,
+        Transform parent,
+        Vector3 offset,
+        GameObject prefab,
+        bool ensurePylonComponent = false,
+        bool enablePylonDebugLogs = false)
+    {
+        if (grid == null || room == null || parent == null || prefab == null) return false;
+
+        Vector2Int? spawnCell = FindSpawnCellInRoom(grid, room);
+        if (!spawnCell.HasValue) return false;
+
+        Vector3 worldPos = new Vector3(spawnCell.Value.x + 0.5f, 0f, spawnCell.Value.y + 0.5f) + offset;
+        var go = Object.Instantiate(prefab, worldPos, Quaternion.identity, parent);
+        go.transform.localPosition = parent.InverseTransformPoint(worldPos);
+        go.transform.localRotation = Quaternion.identity;
+        go.name = prefab.name;
+        grid.OccupyCell(spawnCell.Value, go);
+
+        var pylon = go.GetComponentInChildren<MissionObjectivePylon>(true);
+        if (pylon == null && ensurePylonComponent)
+        {
+            pylon = go.AddComponent<MissionObjectivePylon>();
+            Debug.LogWarning($"[MissionObjectiveSpawner] Se agregó MissionObjectivePylon en runtime al objeto '{go.name}' para debug.");
+        }
+
+        if (pylon != null)
+        {
+            if (enablePylonDebugLogs)
+            {
+                pylon.SetDebugLogs(true);
+            }
+
+            MissionObjectiveManager.Instance?.RegisterPylon(pylon);
+        }
+        else
+        {
+            Debug.LogWarning($"[MissionObjectiveSpawner] El objeto debug '{go.name}' no tiene MissionObjectivePylon (ni en hijos). Revisa el prefab.");
+        }
+
+        Debug.Log($"[MissionObjectiveSpawner] Debug spawn '{go.name}' en {worldPos}. Pylon={(pylon != null)}");
+
+        return true;
+    }
+
     public void SpawnObjectives(
         DungeonGrid grid,
         List<RoomNode> rooms,
         Transform parent,
         Vector3 offset,
-        List<MissionObjectiveConfig> configs)
+        List<MissionObjectiveConfig> configs,
+        RoomNode excludedRoom = null)
     {
         if (grid == null || rooms == null || parent == null) return;
         if (configs == null || configs.Count == 0) return;
@@ -30,11 +78,11 @@ public class MissionObjectiveSpawner
         {
             if (cfg.prefab == null || cfg.maxCount <= 0) continue;
 
-            List<(RoomNode room, List<Vector2Int> spots)> eligible = BuildEligibleRooms(grid, rooms, cfg);
+            List<(RoomNode room, List<Vector2Int> spots)> eligible = BuildEligibleRooms(grid, rooms, cfg, excludedRoom);
             if (eligible.Count == 0)
             {
                 // Intento relajado: ignora maxRoomArea pero respeta clearance y tamaño mínimo.
-                eligible = BuildEligibleRooms(grid, rooms, cfg, relaxedArea: true);
+                eligible = BuildEligibleRooms(grid, rooms, cfg, excludedRoom, relaxedArea: true);
                 if (eligible.Count == 0) continue;
             }
 
@@ -60,12 +108,17 @@ public class MissionObjectiveSpawner
                 go.transform.localRotation = Quaternion.identity;
                 go.name = cfg.prefab.name;
                 grid.OccupyCell(spot.Value, go);
+                var pylon = go.GetComponentInChildren<MissionObjectivePylon>(true);
+                if (pylon != null)
+                {
+                    MissionObjectiveManager.Instance?.RegisterPylon(pylon);
+                }
                 placed++;
             }
         }
     }
 
-    private List<(RoomNode room, List<Vector2Int> spots)> BuildEligibleRooms(DungeonGrid grid, List<RoomNode> rooms, MissionObjectiveConfig cfg, bool relaxedArea = false)
+    private List<(RoomNode room, List<Vector2Int> spots)> BuildEligibleRooms(DungeonGrid grid, List<RoomNode> rooms, MissionObjectiveConfig cfg, RoomNode excludedRoom, bool relaxedArea = false)
     {
         List<(RoomNode room, List<Vector2Int> spots)> result = new List<(RoomNode, List<Vector2Int>)>();
 
@@ -78,6 +131,8 @@ public class MissionObjectiveSpawner
 
         foreach (var room in sortedRooms)
         {
+            if (excludedRoom != null && ReferenceEquals(room, excludedRoom)) continue;
+
             int area = room.Width * room.Length;
             if (room.Width < minSpan || room.Length < minSpan) continue;
             if (area > effectiveMaxArea) continue;
@@ -139,5 +194,16 @@ public class MissionObjectiveSpawner
             int r = Random.Range(i, list.Count);
             (list[i], list[r]) = (list[r], list[i]);
         }
+    }
+
+    private Vector2Int? FindSpawnCellInRoom(DungeonGrid grid, RoomNode room)
+    {
+        Vector2Int center = room.GetCenterPosition();
+        if (grid.IsCellAvailable(center)) return center;
+
+        List<Vector2Int> available = grid.GetAvailableCellsInRoom(room);
+        if (available == null || available.Count == 0) return null;
+
+        return available[Random.Range(0, available.Count)];
     }
 }

@@ -271,6 +271,8 @@ MonoBehaviour:
   waterWandAttackClip: {fileID: 8300000, guid: 47a0d283deb3da08cae7fb524f691ccb, type: 3}
   earthWandAttackClip: {fileID: 8300000, guid: 2aeb67569510d9b6a9ee44f302d3de5f, type: 3}
   attackVolume: 0.4
+  landingClip: {fileID: 8300000, guid: 416c688ff58be8696aeec5450a7343c5, type: 3}
+  landingVolume: 1
 --- !u!82 &3180125345330576617
 AudioSource:
   m_ObjectHideFlags: 0
