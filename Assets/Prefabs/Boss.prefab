@@ -123,6 +123,7 @@ GameObject:
   - component: {fileID: 8279410038602175480}
   - component: {fileID: 3180125345330576617}
   - component: {fileID: 3936060843174464797}
+  - component: {fileID: 215168371486843807}
   m_Layer: 7
   m_Name: Boss
   m_TagString: Untagged
@@ -145,6 +146,7 @@ Transform:
   m_Children:
   - {fileID: 6911928216170632202}
   - {fileID: 2514575367837769583}
+  - {fileID: 745530241130901227}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &6293013754538618073
@@ -172,6 +174,7 @@ MonoBehaviour:
   - {fileID: 7756113825659338862}
   - {fileID: 8279410038602175480}
   - {fileID: 3936060843174464797}
+  - {fileID: 215168371486843807}
   - {fileID: 1054681061754789690}
   - {fileID: 4020915017744210802}
   ForceRemoteRenderTimeframe: 0
@@ -288,7 +291,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
   maxHealth: 2000
   healthBarObject: {fileID: 345259118353679250}
+  controlsUI: {fileID: 0}
+  spectatorUI: {fileID: 0}
+  mobileControls: {fileID: 0}
+  spectatorMobileInput: {fileID: 0}
   _CurrentHealth: 2000
+  _IsDead:
+    _value: 0
 --- !u!114 &7756113825659338862
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -301,6 +310,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fd13bde862c18a140b5e70e4512881be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BossCombat
+  attackCooldown: 0.5
 --- !u!114 &8279410038602175480
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -431,6 +441,20 @@ MonoBehaviour:
   localGhostAlpha: 0.3
   _IsInvisible:
     _value: 0
+--- !u!114 &215168371486843807
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 574449443296909936}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72358a72d2294944da4dc7c58a42aae7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GlowPlayer
+  glowDuration: 3
+  cooldown: 15
 --- !u!1 &1348152760186214227
 GameObject:
   m_ObjectHideFlags: 0
@@ -458,11 +482,11 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0.64832234, y: 0.18811384, z: 0.65280133, w: 0.34371758}
   m_LocalPosition: {x: -0.8808798, y: 1.8450418, z: 0.1641419}
-  m_LocalScale: {x: 13.789101, y: 13.78909, z: 13.789102}
+  m_LocalScale: {x: 13.789101, y: 13.78909, z: 13.789103}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3021168189467054524}
-  m_Father: {fileID: 2514575367837769583}
+  m_Father: {fileID: 2114787404498270025}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1773428102 &6462243346643022460
 ParentConstraint:
@@ -711,7 +735,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5419070186492526692}
-  - {fileID: 745530241130901227}
   m_Father: {fileID: 2114787404498270025}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!95 &6129659452941521385

@@ -237,6 +237,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     // Accumulators: capture press via callback so Fusion's OnInput never misses it
     private bool _jumpPressed;
     private bool _attackPressed;
+    private bool _specialPressed;
 
     private void OnJumpPerformed(InputAction.CallbackContext ctx)
     {
@@ -248,12 +249,21 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         _attackPressed = true;
     }
 
+    private void OnSpecialPerformed(InputAction.CallbackContext ctx)
+    {
+        _specialPressed = true;
+    }
+
     private void OnEnable()
     {
         if (moveAction != null) moveAction.action.Enable();
         if (attackAction != null) attackAction.action.Enable();
         if (interactAction != null) interactAction.action.Enable();
-        if (specialAction != null) specialAction.action.Enable();
+        if (specialAction != null)
+        {
+            specialAction.action.Enable();
+            specialAction.action.performed += OnSpecialPerformed;
+        }
         if (jumpAction != null)
         {
             jumpAction.action.Enable();
@@ -271,6 +281,8 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
             jumpAction.action.performed -= OnJumpPerformed;
         if (attackAction != null)
             attackAction.action.performed -= OnAttackPerformed;
+        if (specialAction != null)
+            specialAction.action.performed -= OnSpecialPerformed;
         if (moveAction != null) moveAction.action.Disable();
         if (attackAction != null) attackAction.action.Disable();
         if (interactAction != null) interactAction.action.Disable();
@@ -292,7 +304,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
                 playerObj.TryGetComponent(out _localHealth);
         }
 
-        bool isDead = _localHealth != null && _localHealth.IsDead;
+        bool isDead = _localHealth != null && _localHealth.IsDeadSafe;
 
         if (!isDead)
         {
@@ -314,13 +326,13 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
             if (interactAction != null)
                 myInput.InteractPressed = interactAction.action.WasPressedThisFrame();
 
-            if (specialAction != null)
-                myInput.SpecialPressed = specialAction.action.WasPressedThisFrame();
+            myInput.SpecialPressed = _specialPressed;
         }
 
-        // Always consume the jump accumulator so it doesn't queue up while dead
+        // Always consume accumulators so they don't queue up while dead
         // and fire the moment the player respawns.
         _jumpPressed = false;
+        _specialPressed = false;
 
         // Camera rotation is always sent — SpectatorSystem needs it to work.
         if (Camera.main != null)

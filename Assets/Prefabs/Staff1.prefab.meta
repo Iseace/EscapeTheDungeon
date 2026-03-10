@@ -1,16 +1,14 @@
 fileFormatVersion: 2
 guid: b7d3f0c93a9b0154a977c8a154620663
-labels:
-- FusionPrefab
-AssetOrigin:
-  serializedVersion: 1
-  productId: 237616
-  packageName: Low Poly Fantasy Characters & Weapon
-  packageVersion: 1.0
-  assetPath: Assets/_Assets/Low Poly Fantasy Characters & Weapon/prefabs/Staff1.prefab
-  uploadId: 560316
 PrefabImporter:
   externalObjects: {}
   userData: 
   assetBundleName: 
   assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 237616
+  packageName: Low Poly Fantasy Characters & Weapon
+  packageVersion: 1.0
+  assetPath: Assets/Prefabs/Staff1.prefab
+  uploadId: 560316
