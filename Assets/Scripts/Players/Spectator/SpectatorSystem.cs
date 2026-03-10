@@ -19,11 +19,11 @@ public class SpectatorSystem : MonoBehaviour
     [SerializeField] private Button nextPlayerButton;   // ►  Navigate( 1)  — matches: NextPlayer, NextButton, RightArrow …
 
     [Header("Zoom Settings")]
-    [SerializeField] private float minZoomDistance  = 0f;   // fully first-person
-    [SerializeField] private float maxZoomDistance  = 3.5f; // fully third-person
-    [SerializeField] private float scrollSpeed      = 30f;  // PC scroll sensitivity
-    [SerializeField] private float pinchSpeed       = 1f;   // Mobile pinch sensitivity
-    [SerializeField] private float zoomSmoothSpeed  = 10f;  // smoothing towards target
+    [SerializeField] private float minZoomDistance = 0f;   // fully first-person
+    [SerializeField] private float maxZoomDistance = 3.5f; // fully third-person
+    [SerializeField] private float scrollSpeed = 30f;  // PC scroll sensitivity
+    [SerializeField] private float pinchSpeed = 1f;   // Mobile pinch sensitivity
+    [SerializeField] private float zoomSmoothSpeed = 10f;  // smoothing towards target
 
     // ── Internal state ─────────────────────────────────────────────────────────
     private List<PlayerSetup> livingPlayers = new List<PlayerSetup>();
@@ -40,7 +40,7 @@ public class SpectatorSystem : MonoBehaviour
     private float previousHorizontalInput = 0f;
 
     // Zoom state
-    private float targetZoomDistance  = 0f; // what we're zooming towards
+    private float targetZoomDistance = 0f; // what we're zooming towards
     private float currentZoomDistance = 0f; // smoothed value sent to fpCamera
 
     // Pinch state
@@ -56,12 +56,12 @@ public class SpectatorSystem : MonoBehaviour
         mobileBridge = FindFirstObjectByType<MobileControlsBridge>();
 
         // Start fully first-person
-        targetZoomDistance  = 0f;
+        targetZoomDistance = 0f;
         currentZoomDistance = 0f;
         fpCamera.ZoomDistance = 0f;
 
         Cursor.lockState = CursorLockMode.None;
-        Cursor.visible   = true;
+        Cursor.visible = true;
 
         // ── Step 1: search inside the optional HUD prefab ─────────────────────
         if (spectatorHUDPrefab != null)
@@ -122,7 +122,7 @@ public class SpectatorSystem : MonoBehaviour
         {
             if (p == null) { needsRefresh = true; break; }
             PlayerHealth health = p.GetComponent<PlayerHealth>();
-            if (health != null && health.IsDead) { needsRefresh = true; break; }
+            if (health != null && health.IsDeadSafe) { needsRefresh = true; break; }
         }
 
         if (needsRefresh)
@@ -181,7 +181,7 @@ public class SpectatorSystem : MonoBehaviour
 
     private void HandleNavigationInput()
     {
-        var kb    = Keyboard.current;
+        var kb = Keyboard.current;
         var mouse = Mouse.current;
 
         float horizontalInput = 0f;
@@ -196,7 +196,7 @@ public class SpectatorSystem : MonoBehaviour
         // Fire once on the leading edge of the key press (debounce)
         if (previousHorizontalInput == 0f)
         {
-            if (horizontalInput > 0.5f)       Navigate(1);
+            if (horizontalInput > 0.5f) Navigate(1);
             else if (horizontalInput < -0.5f) Navigate(-1);
         }
         previousHorizontalInput = horizontalInput;
@@ -204,7 +204,7 @@ public class SpectatorSystem : MonoBehaviour
         // Mouse left/right click also navigates (existing behaviour)
         if (mouse != null)
         {
-            if (mouse.leftButton.wasPressedThisFrame)  Navigate(1);
+            if (mouse.leftButton.wasPressedThisFrame) Navigate(1);
             if (mouse.rightButton.wasPressedThisFrame) Navigate(-1);
         }
     }
@@ -323,7 +323,7 @@ public class SpectatorSystem : MonoBehaviour
             if (p.HasEscaped) continue;
 
             PlayerHealth health = p.GetComponent<PlayerHealth>();
-            if (health == null || !health.IsDead)
+            if (health == null || !health.IsDeadSafe)
                 livingPlayers.Add(p);
         }
     }

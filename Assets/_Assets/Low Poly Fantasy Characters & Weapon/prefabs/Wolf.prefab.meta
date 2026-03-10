@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: b7d3f0c93a9b0154a977c8a154620663
+guid: 6346e97527ffc2c4d94350952aa197dd
 PrefabImporter:
   externalObjects: {}
   userData: 
@@ -10,5 +10,5 @@ AssetOrigin:
   productId: 237616
   packageName: Low Poly Fantasy Characters & Weapon
   packageVersion: 1.0
-  assetPath: Assets/Prefabs/Staff1.prefab
+  assetPath: Assets/_Assets/Low Poly Fantasy Characters & Weapon/prefabs/Wolf.prefab
   uploadId: 560316
