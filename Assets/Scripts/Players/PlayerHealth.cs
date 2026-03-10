@@ -40,13 +40,26 @@ public class PlayerHealth : NetworkBehaviour
   private bool deathHandled = false;
   private bool spectatorModeActive = false;
 
+  private bool _hasSpawned = false;
+
+  // Local mirror of IsDead — always safe to read, never touches the networked backing
+  // until Spawned() has been called and the object is valid.
+  private bool _isDeadLocal = false;
+
+  /// <summary>Safe to call at any time — returns false if not yet networked.</summary>
+  public bool IsDeadSafe => _isDeadLocal;
+
   void OnIsDeadChanged()
   {
+    if (!_hasSpawned) return;
+    _isDeadLocal = (bool)IsDead;
     HandleDeath();
   }
 
   public override void Spawned()
   {
+    _hasSpawned = true;
+    _isDeadLocal = (bool)IsDead;
     HasCompletedSpawn = true;
     deathHandled = false;
     spectatorModeActive = false;
@@ -188,8 +201,8 @@ public class PlayerHealth : NetworkBehaviour
     spectatorModeActive = true;
 
     if (TryGetComponent<PlayerInteraction>(out var pi)) pi.enabled = false;
-    if (TryGetComponent<AnimatorBasic>(out var ab))     ab.enabled = false;
-    if (TryGetComponent<PlayerMovement>(out var pm))    pm.enabled = false;
+    if (TryGetComponent<AnimatorBasic>(out var ab)) ab.enabled = false;
+    if (TryGetComponent<PlayerMovement>(out var pm)) pm.enabled = false;
 
     if (TryGetComponent<CharacterController>(out var cc))
       cc.enabled = false;
@@ -326,7 +339,7 @@ public class PlayerHealth : NetworkBehaviour
     if (HasInputAuthority)
     {
       if (TryGetComponent<PlayerInteraction>(out var pi)) pi.enabled = false;
-      if (TryGetComponent<AnimatorBasic>(out var ab))     ab.enabled = false;
+      if (TryGetComponent<AnimatorBasic>(out var ab)) ab.enabled = false;
 
       // Switch canvas panels: hide controls, show spectator overlay
       SetDeadUI();
