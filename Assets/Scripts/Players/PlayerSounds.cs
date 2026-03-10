@@ -14,6 +14,10 @@ public class PlayerSounds : NetworkBehaviour
     [SerializeField] private AudioClip earthWandAttackClip;
     [SerializeField] [Range(0f, 1f)] private float attackVolume = 1.0f;
 
+    [Header("Landing Sound")]
+    [SerializeField] private AudioClip landingClip;
+    [SerializeField] [Range(0f, 1f)] private float landingVolume = 1.0f;
+
     private AudioSource _audioSource;
     private PlayerInventory _inventory;
 
@@ -44,6 +48,12 @@ public class PlayerSounds : NetworkBehaviour
         RPC_PlayWandAttack(weaponID);
     }
 
+    public void OnLanding()
+    {
+        if (HasStateAuthority)
+            RPC_PlayLanding();
+    }
+
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_PlayFootstep()
     {
@@ -67,5 +77,12 @@ public class PlayerSounds : NetworkBehaviour
 
         if (clipToPlay == null) return;
         _audioSource.PlayOneShot(clipToPlay, attackVolume);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_PlayLanding()
+    {
+        if (landingClip == null || _audioSource == null) return;
+        _audioSource.PlayOneShot(landingClip, landingVolume);
     }
 }
