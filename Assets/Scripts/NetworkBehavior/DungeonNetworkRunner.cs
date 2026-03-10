@@ -4,8 +4,13 @@ using UnityEngine.SceneManagement;
 
 public class DungeonNetworkRunner : NetworkBehaviour
 {
+    public static DungeonNetworkRunner Instance { get; private set; }
+
+    public bool HasMissionStateAuthority => Object != null && Object.HasStateAuthority;
+
     [Networked] public int SharedSeed { get; set; }
     [SerializeField] private float pylonProgressSyncInterval = 0.1f;
+    [SerializeField] private float pylonSyncMaxDistance = 0.5f;
 
     private DungeonCreator dungeonCreator;
     private MissionObjectiveManager missionObjectiveManager;
@@ -15,6 +20,8 @@ public class DungeonNetworkRunner : NetworkBehaviour
 
     public override void Spawned()
     {
+        Instance = this;
+
         Debug.Log($"=== DungeonNetworkRunner.Spawned() ===");
         Debug.Log($"HasStateAuthority: {Object.HasStateAuthority}");
         Debug.Log($"HasInputAuthority: {Object.HasInputAuthority}");
@@ -94,6 +101,11 @@ public class DungeonNetworkRunner : NetworkBehaviour
 
     private void OnDestroy()
     {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+
         if (!missionSyncHooked || missionObjectiveManager == null) return;
 
         missionObjectiveManager.PylonActivated -= OnLocalPylonActivated;
@@ -131,6 +143,9 @@ public class DungeonNetworkRunner : NetworkBehaviour
     {
         if (Object.HasStateAuthority) return;
 
+        float maxDistSqr = Mathf.Max(0.01f, pylonSyncMaxDistance);
+        maxDistSqr *= maxDistSqr;
+
         MissionObjectivePylon[] pylons = FindObjectsOfType<MissionObjectivePylon>();
         if (pylons == null || pylons.Length == 0) return;
 
@@ -149,7 +164,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
             }
         }
 
-        if (closest != null && bestDistSqr <= 4f)
+        if (closest != null && bestDistSqr <= maxDistSqr)
         {
             closest.ForceActivateFromNetwork();
         }
@@ -160,6 +175,9 @@ public class DungeonNetworkRunner : NetworkBehaviour
     {
         if (Object.HasStateAuthority) return;
 
+        float maxDistSqr = Mathf.Max(0.01f, pylonSyncMaxDistance);
+        maxDistSqr *= maxDistSqr;
+
         MissionObjectivePylon[] pylons = FindObjectsOfType<MissionObjectivePylon>();
         if (pylons == null || pylons.Length == 0) return;
 
@@ -178,7 +196,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
             }
         }
 
-        if (closest == null || bestDistSqr > 4f) return;
+        if (closest == null || bestDistSqr > maxDistSqr) return;
 
         if (isActivated)
         {
