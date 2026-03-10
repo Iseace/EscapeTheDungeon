@@ -12,7 +12,7 @@ public class MissionObjectiveManager : MonoBehaviour
     [SerializeField] private GameObject portalPrefab;
     [SerializeField] private Transform portalSpawnPoint;
     [SerializeField] private bool useRandomSpawnFromDungeon = true;
-    [SerializeField] private float portalHeightOffset = 0f;
+    [SerializeField] private float portalHeightOffset = 3f;
 
     [Header("Escape Timer")]
     [SerializeField] private bool enableEscapeTimeLimit = true;

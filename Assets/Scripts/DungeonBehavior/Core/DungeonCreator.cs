@@ -83,13 +83,13 @@ public class DungeonCreator : MonoBehaviour
     [Tooltip("Si esta activo, el portal aparece en una posicion aleatoria valida de la dungeon")]
     public bool randomPortalSpawnInDungeon = true;
     [Tooltip("Offset vertical del portal para evitar que se incruste en el piso")]
-    public float missionPortalHeightOffset = 1f;
+    public float missionPortalHeightOffset = 3f;
     [Tooltip("Area minima de sala para considerar spawn random del portal")]
     public int missionPortalMinRoomArea = 120;
     [Tooltip("Ancho/alto minimo de sala para considerar spawn random del portal")]
     public int missionPortalMinRoomSpan = 8;
     [Tooltip("Separacion minima del portal respecto a paredes (en tiles)")]
-    public int missionPortalClearanceFromWall = 1;
+    public int missionPortalClearanceFromWall = 5;
 
     [Header("Wall Decorations")]
     public bool spawnWallDecorations = true;
