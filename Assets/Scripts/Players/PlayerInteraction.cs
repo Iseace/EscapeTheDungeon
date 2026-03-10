@@ -51,6 +51,18 @@ public class PlayerInteraction : NetworkBehaviour
                 return;
             }
         }
+
+        if (Physics.Raycast(ray, out hit, range))
+        {
+            IInteractable target = hit.collider.GetComponentInParent<IInteractable>();
+            if (target != null)
+            {
+                signUI.SetActive(true);
+                signText.text = target.GetInteractText();
+                return;
+            }
+        }
+
         signUI.SetActive(false);
     }
 
@@ -59,6 +71,8 @@ public class PlayerInteraction : NetworkBehaviour
     {
         // El servidor valida la física basándose en lo que el cliente mandó
         Ray ray = new Ray(origin, direction);
+        bool didInteract = false;
+
         if (Physics.Raycast(ray, out RaycastHit hit, range, interactLayer))
         {
             InteractableItem target = hit.collider.GetComponentInParent<InteractableItem>();
@@ -76,6 +90,33 @@ public class PlayerInteraction : NetworkBehaviour
                 // Equipar nueva y borrar del suelo
                 inv.CurrentWeaponID = target.itemID;
                 Runner.Despawn(target.Object);
+                return;
+            }
+
+            IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
+            if (interactable != null)
+            {
+                PlayerSetup player = GetComponent<PlayerSetup>();
+                if (player != null)
+                {
+                    interactable.Interact(player);
+                    didInteract = true;
+                }
+            }
+        }
+
+        if (didInteract) return;
+
+        if (Physics.Raycast(ray, out hit, range))
+        {
+            IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
+            if (interactable != null)
+            {
+                PlayerSetup player = GetComponent<PlayerSetup>();
+                if (player != null)
+                {
+                    interactable.Interact(player);
+                }
             }
         }
     }
