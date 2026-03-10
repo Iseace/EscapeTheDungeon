@@ -94,6 +94,12 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
         if (IsActivated || !autoActivateByZone) return;
 
         bool canCommitActivation = ShouldSimulateProgressOnThisPeer();
+        if (!canCommitActivation)
+        {
+            RefreshProgressVisuals();
+            return;
+        }
+
         int playersInZone = CountEligiblePlayersInZone(authoritativeOnly: canCommitActivation);
         LogPlayersInZoneIfChanged(playersInZone);
 
@@ -102,12 +108,6 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
         if (playersInZone >= Mathf.Max(1, requiredPlayersInZone))
         {
             currentProgress += Time.deltaTime;
-
-            // On non-authority peers this is visual-only; authority will send final activation.
-            if (!canCommitActivation && currentProgress >= completionThreshold)
-            {
-                currentProgress = Mathf.Max(0f, completionThreshold - 0.01f);
-            }
 
             LogProgressStepIfNeeded();
 
@@ -166,21 +166,13 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
 
     private bool ShouldSimulateProgressOnThisPeer()
     {
-        PlayerSetup[] players = FindObjectsOfType<PlayerSetup>();
-        for (int i = 0; i < players.Length; i++)
+        var dungeonNetworkRunner = DungeonNetworkRunner.Instance;
+        if (dungeonNetworkRunner != null)
         {
-            var player = players[i];
-            if (player == null) continue;
-
-            if (player.Object == null)
-            {
-                if (allowOfflineDebugActivation) return true;
-                continue;
-            }
-
-            if (player.Object.HasStateAuthority) return true;
+            return dungeonNetworkRunner.HasMissionStateAuthority;
         }
-        return false;
+
+        return allowOfflineDebugActivation;
     }
 
     private void Activate()
