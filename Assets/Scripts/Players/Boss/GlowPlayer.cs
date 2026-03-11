@@ -60,12 +60,12 @@ public class GlowPlayer : NetworkBehaviour
         _activeIndicators.Clear();
 
         // Debug: list ALL networked objects in scene
-        var allNetObjs = FindObjectsOfType<Fusion.NetworkObject>();
+        var allNetObjs = FindObjectsByType<Fusion.NetworkObject>(FindObjectsSortMode.None);
         Debug.Log($"[GlowPlayer] Total NetworkObjects in scene: {allNetObjs.Length}");
         foreach (var no in allNetObjs)
             Debug.Log($"[GlowPlayer]   NetworkObj: {no.gameObject.name}");
 
-        PlayerRole[] allPlayers = FindObjectsOfType<PlayerRole>();
+        PlayerRole[] allPlayers = FindObjectsByType<PlayerRole>(FindObjectsSortMode.None);
         Debug.Log($"[GlowPlayer] Found {allPlayers.Length} PlayerRole objects in scene");
 
         foreach (var player in allPlayers)
