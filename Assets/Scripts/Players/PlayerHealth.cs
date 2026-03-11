@@ -195,7 +195,6 @@ public class PlayerHealth : NetworkBehaviour
 
   public void EnterSpectatorModeFromEscape()
   {
-    if (!HasInputAuthority) return;
     if (spectatorModeActive) return;
 
     spectatorModeActive = true;
@@ -207,10 +206,13 @@ public class PlayerHealth : NetworkBehaviour
     if (TryGetComponent<CharacterController>(out var cc))
       cc.enabled = false;
 
-    SetDeadUI();
+    if (HasInputAuthority)
+    {
+      SetDeadUI();
 
-    if (GetComponent<SpectatorSystem>() == null)
-      gameObject.AddComponent<SpectatorSystem>();
+      if (GetComponent<SpectatorSystem>() == null)
+        gameObject.AddComponent<SpectatorSystem>();
+    }
   }
 
   // ── Health Bar ──────────────────────────────────────────────────────────────

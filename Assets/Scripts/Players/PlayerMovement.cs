@@ -56,6 +56,22 @@ public class PlayerMovement : NetworkBehaviour
             return;
         }
 
+        var playerSetup = GetComponent<PlayerSetup>();
+        if (playerSetup != null && playerSetup.HasEscaped)
+        {
+            _velocity = Vector3.zero;
+            StopAnimations();
+            return;
+        }
+
+        var health = GetComponent<PlayerHealth>();
+        if (health != null && health.IsDeadSafe)
+        {
+            _velocity = Vector3.zero;
+            StopAnimations();
+            return;
+        }
+
         if (GetInput(out PlayerInputData data))
         {
             _isGrounded = _controller.isGrounded;
