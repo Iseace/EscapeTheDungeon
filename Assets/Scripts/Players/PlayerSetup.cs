@@ -76,6 +76,12 @@ public class PlayerSetup : NetworkBehaviour
     {
         TryHandleEscapedState();
 
+        if (HasEscaped)
+        {
+            SetAllCharacterModelsActive(false);
+            return;
+        }
+
         if (graphicsContainer == null) return;
 
         var role = GetComponent<PlayerRole>();
@@ -131,7 +137,6 @@ public class PlayerSetup : NetworkBehaviour
 
     private void TryHandleEscapedState()
     {
-        if (!HasInputAuthority) return;
         if (!HasEscaped) return;
         if (escapeHandledLocally) return;
 
@@ -144,9 +149,23 @@ public class PlayerSetup : NetworkBehaviour
             return;
         }
 
-        if (GetComponent<SpectatorSystem>() == null)
+        if (HasInputAuthority && GetComponent<SpectatorSystem>() == null)
         {
             gameObject.AddComponent<SpectatorSystem>();
+        }
+    }
+
+    private void SetAllCharacterModelsActive(bool active)
+    {
+        if (characterModels == null || characterModels.Length == 0) return;
+
+        for (int i = 0; i < characterModels.Length; i++)
+        {
+            var model = characterModels[i];
+            if (model != null && model.activeSelf != active)
+            {
+                model.SetActive(active);
+            }
         }
     }
 
