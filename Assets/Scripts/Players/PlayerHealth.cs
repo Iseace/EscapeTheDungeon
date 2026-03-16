@@ -324,11 +324,10 @@ public class PlayerHealth : NetworkBehaviour
 
     Debug.Log($"[PlayerHealth] HandleDeath called for player {Object.InputAuthority.PlayerId}");
 
-    // 1. Play death animation — use safe setter so a missing trigger name
-    //    doesn't throw an exception and halt the rest of HandleDeath.
+    // 1. Play death animation
     Animator anim = GetComponentInChildren<Animator>();
     if (anim != null)
-      TrySetTrigger(anim, "Die");
+      anim.SetBool("IsDead", true);
 
     // 2. Disable physics / movement so the corpse freezes on all clients
     if (TryGetComponent<CharacterController>(out var cc))
