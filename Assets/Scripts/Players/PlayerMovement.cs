@@ -72,6 +72,14 @@ public class PlayerMovement : NetworkBehaviour
             return;
         }
 
+        var role = GetComponent<PlayerRole>();
+        if (role != null && role.IsBoss && DungeonNetworkRunner.Instance != null && DungeonNetworkRunner.Instance.IsBossFrozen)
+        {
+            _velocity = Vector3.zero;
+            StopAnimations();
+            return;
+        }
+
         if (GetInput(out PlayerInputData data))
         {
             _isGrounded = _controller.isGrounded;

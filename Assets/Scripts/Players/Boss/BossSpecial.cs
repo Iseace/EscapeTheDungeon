@@ -39,6 +39,8 @@ public class BossSpecial : NetworkBehaviour
     {
         if (!HasInputAuthority) return;
 
+        if (DungeonNetworkRunner.Instance != null && DungeonNetworkRunner.Instance.IsBossFrozen) return;
+
         if (GetInput(out PlayerInputData data) && data.SpecialPressed)
         {
             if (CooldownTimer.ExpiredOrNotRunning(Runner))

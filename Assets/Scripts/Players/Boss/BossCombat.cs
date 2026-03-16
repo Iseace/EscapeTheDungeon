@@ -23,6 +23,8 @@ public class BossCombat : NetworkBehaviour
     {
         if (!HasInputAuthority) return;
 
+        if (DungeonNetworkRunner.Instance != null && DungeonNetworkRunner.Instance.IsBossFrozen) return;
+
         // Block attacks while the boss is invisible
         if (_bossSpecial != null && _bossSpecial.IsAttackBlocked()) return;
 
