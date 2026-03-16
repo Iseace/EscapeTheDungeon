@@ -18,6 +18,11 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
     public NetworkObject dungeonNetworkRunnerPrefab;
     private bool dungeonRunnerSpawned = false;
 
+    [Header("Game Spawn")]
+    [SerializeField] private Vector3 fallbackGameCenterSpawn = new Vector3(0f, 1f, 0f);
+    [SerializeField] private float gameSpawnRingRadius = 2.5f;
+    [SerializeField] private float gameSpawnY = 1f;
+
     [Header("Boss System")]
     [SerializeField] private string menuSceneName = "LobbyList";
     [SerializeField] private int menuSceneIndex = 0;
@@ -25,6 +30,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
     private bool bossSelected = false;
     private PlayerRef bossPlayer;
     private bool isSwappingBoss = false;
+    private bool matchFlowStarted = false;
 
     private void Start()
     {
@@ -75,6 +81,11 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             spawnRot = Quaternion.identity;
         }
 
+        if (SceneManager.GetActiveScene().name == "Game")
+        {
+            spawnPos = GetGameCentralSpawnForPlayer(runner, player);
+        }
+
         NetworkObject playerObj = runner.Spawn(PlayerPrefab, spawnPos, spawnRot, player);
         runner.SetPlayerObject(player, playerObj);
 
@@ -108,7 +119,15 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             }
         }
         
-        if (!Runner.IsServer || SceneManager.GetActiveScene().name != "Game" || bossSelected || isSwappingBoss) return;
+        if (!Runner.IsServer || SceneManager.GetActiveScene().name != "Game") return;
+
+        if (bossSelected && !matchFlowStarted)
+        {
+            TryStartMatchFlow();
+            return;
+        }
+
+        if (bossSelected || isSwappingBoss) return;
 
         if (Runner.ActivePlayers.Count() == 0) return;
         foreach (var p in Runner.ActivePlayers)
@@ -126,18 +145,19 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
         if (Runner.TryGetPlayerObject(bossPlayer, out NetworkObject oldObj))
         {
-            Vector3 pos = oldObj.transform.position;
+            Vector3 centerSpawn = GetDungeonCentralPosition();
+            centerSpawn.y = gameSpawnY;
             Quaternion rot = oldObj.transform.rotation;
 
-            Debug.Log($"[SPAWNER] Despawning old player object at {pos}");
+            Debug.Log($"[SPAWNER] Despawning old player object at {centerSpawn}");
 
             Runner.SetPlayerObject(bossPlayer, null);
             Runner.Despawn(oldObj);
 
             if (BossPrefab != null)
             {
-                Debug.Log($"[SPAWNER] Spawning Boss prefab at {pos}");
-                NetworkObject newBoss = Runner.Spawn(BossPrefab, pos, rot, bossPlayer);
+                Debug.Log($"[SPAWNER] Spawning Boss prefab at {centerSpawn}");
+                NetworkObject newBoss = Runner.Spawn(BossPrefab, centerSpawn, rot, bossPlayer);
                 Runner.SetPlayerObject(bossPlayer, newBoss);
 
                 if (newBoss.TryGetComponent<PlayerRole>(out var role))
@@ -145,6 +165,8 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
                     role.SetBoss();
                     Debug.Log($"[SPAWNER] Boss role set successfully");
                 }
+
+                TryStartMatchFlow();
             }
             else
             {
@@ -168,6 +190,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             dungeonRunnerSpawned = false;
             bossSelected = false; // Reset boss selection for new scene
             isSwappingBoss = false; // Reset swap flag
+            matchFlowStarted = false;
 
             foreach (var player in runner.ActivePlayers)
             {
@@ -182,6 +205,50 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
                 }
             }
         }
+    }
+
+    private void TryStartMatchFlow()
+    {
+        if (matchFlowStarted) return;
+
+        var dungeonRunner = DungeonNetworkRunner.Instance;
+        if (dungeonRunner == null) return;
+
+        dungeonRunner.StartMatchFlow();
+        if (dungeonRunner.MatchInProgress)
+        {
+            matchFlowStarted = true;
+        }
+    }
+
+    private Vector3 GetGameCentralSpawnForPlayer(NetworkRunner runner, PlayerRef player)
+    {
+        Vector3 center = GetDungeonCentralPosition();
+        center.y = gameSpawnY;
+
+        var orderedPlayers = runner.ActivePlayers.OrderBy(p => p.PlayerId).ToList();
+        int totalPlayers = orderedPlayers.Count;
+        int index = orderedPlayers.FindIndex(p => p == player);
+
+        if (totalPlayers <= 1 || index < 0 || gameSpawnRingRadius <= 0.01f)
+        {
+            return center;
+        }
+
+        float angle = (Mathf.PI * 2f * index) / totalPlayers;
+        Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * gameSpawnRingRadius;
+        return center + offset;
+    }
+
+    private Vector3 GetDungeonCentralPosition()
+    {
+        var dungeonCreator = FindFirstObjectByType<DungeonCreator>();
+        if (dungeonCreator != null)
+        {
+            return dungeonCreator.GetCentralRoomWorldPosition();
+        }
+
+        return fallbackGameCenterSpawn;
     }
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)

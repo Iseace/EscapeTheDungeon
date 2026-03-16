@@ -91,6 +91,14 @@ public class DungeonCreator : MonoBehaviour
     [Tooltip("Separacion minima del portal respecto a paredes (en tiles)")]
     public int missionPortalClearanceFromWall = 5;
 
+    [Header("Match Flow")]
+    [Tooltip("Tiempo en segundos que el boss queda inmovil al iniciar la partida")]
+    [SerializeField] private float bossFreezeDurationSeconds = 10f;
+    [Tooltip("Activa tiempo limite global para terminar la partida")]
+    [SerializeField] private bool enableMatchTimeLimit = true;
+    [Tooltip("Duracion total de la partida en segundos")]
+    [SerializeField] private float matchDurationSeconds = 600f;
+
     [Header("Wall Decorations")]
     public bool spawnWallDecorations = true;
     public List<WallDecoration> wallDecorations = new List<WallDecoration>();
@@ -309,6 +317,32 @@ public class DungeonCreator : MonoBehaviour
     public int GetLastUsedSeed()
     {
         return lastUsedSeed;
+    }
+
+    public Vector3 GetCentralRoomWorldPosition()
+    {
+        if (anchorGenerator != null && anchorGenerator.CentralRoom != null)
+        {
+            Vector2Int centerGrid = anchorGenerator.CentralRoom.GetCenterPosition();
+            return new Vector3(centerGrid.x + 0.5f, 0f, centerGrid.y + 0.5f) + currentCenterOffset;
+        }
+
+        return Vector3.zero;
+    }
+
+    public float GetBossFreezeDurationSeconds()
+    {
+        return Mathf.Max(0f, bossFreezeDurationSeconds);
+    }
+
+    public bool GetEnableMatchTimeLimit()
+    {
+        return enableMatchTimeLimit;
+    }
+
+    public float GetMatchDurationSeconds()
+    {
+        return Mathf.Max(5f, matchDurationSeconds);
     }
 
     public void DestroyAllChildren()

@@ -12,11 +12,58 @@ public class DungeonNetworkRunner : NetworkBehaviour
     [SerializeField] private float pylonProgressSyncInterval = 0.1f;
     [SerializeField] private float pylonSyncMaxDistance = 0.5f;
 
+    [Header("Match Flow")]
+    [Tooltip("Fallback: usado si no se encuentra DungeonCreator o no tiene config")]
+    [SerializeField] private float bossFreezeDurationSeconds = 10f;
+    [Tooltip("Fallback: usado si no se encuentra DungeonCreator o no tiene config")]
+    [SerializeField] private bool enableMatchTimeLimit = true;
+    [Tooltip("Fallback: usado si no se encuentra DungeonCreator o no tiene config")]
+    [SerializeField] private float matchDurationSeconds = 600f;
+
+    [Networked] public NetworkBool MatchInProgress { get; set; }
+    [Networked] public NetworkBool MatchEnded { get; set; }
+    [Networked] private TickTimer BossFreezeTimer { get; set; }
+    [Networked] private TickTimer MatchTimer { get; set; }
+
     private DungeonCreator dungeonCreator;
     private MissionObjectiveManager missionObjectiveManager;
     private bool hasGeneratedLocally = false;
     private bool missionSyncHooked = false;
     private float nextPylonProgressSyncTime;
+    private bool localBossReleasedLogged;
+    private bool localMatchEndedLogged;
+    private bool isEndingMatch;
+
+    public float RemainingMatchTimeSeconds
+    {
+        get
+        {
+            if (!MatchInProgress || !enableMatchTimeLimit) return 0f;
+            float? remaining = MatchTimer.RemainingTime(Runner);
+            return Mathf.Max(0f, remaining ?? 0f);
+        }
+    }
+
+    public bool HasMatchTimeLimit => enableMatchTimeLimit;
+
+    public float RemainingBossFreezeTimeSeconds
+    {
+        get
+        {
+            if (!MatchInProgress || !IsBossFrozen) return 0f;
+            float? remaining = BossFreezeTimer.RemainingTime(Runner);
+            return Mathf.Max(0f, remaining ?? 0f);
+        }
+    }
+
+    public bool IsBossFrozen
+    {
+        get
+        {
+            if (!MatchInProgress) return false;
+            return !BossFreezeTimer.ExpiredOrNotRunning(Runner);
+        }
+    }
 
     public override void Spawned()
     {
@@ -28,6 +75,18 @@ public class DungeonNetworkRunner : NetworkBehaviour
         Debug.Log($"Runner.IsSharedModeMasterClient: {Runner.IsSharedModeMasterClient}");
         Debug.Log($"Runner.LocalPlayer: {Runner.LocalPlayer}");
         Debug.Log($"CurrentSeed: {SharedSeed}");
+
+        if (Object.HasStateAuthority)
+        {
+            MatchInProgress = false;
+            MatchEnded = false;
+            BossFreezeTimer = TickTimer.None;
+            MatchTimer = TickTimer.None;
+        }
+
+        localBossReleasedLogged = false;
+        localMatchEndedLogged = false;
+        isEndingMatch = false;
 
         // Find the DungeonCreator in the scene
         dungeonCreator = FindFirstObjectByType<DungeonCreator>();
@@ -56,20 +115,96 @@ public class DungeonNetworkRunner : NetworkBehaviour
 
     public override void Render()
     {
-        if (hasGeneratedLocally) return;
-        if (SceneManager.GetActiveScene().name != "Game") return;
-        if (SharedSeed == 0) return;
+        if (!hasGeneratedLocally)
+        {
+            if (SceneManager.GetActiveScene().name != "Game") return;
+            if (SharedSeed == 0) return;
 
+            if (dungeonCreator == null)
+            {
+                dungeonCreator = FindAnyObjectByType<DungeonCreator>();
+                if (dungeonCreator == null) return;
+            }
+
+            Debug.Log($"[Player {Runner.LocalPlayer}] Generating dungeon in Game Scene with seed: {SharedSeed}");
+            dungeonCreator.CreateDungeonWithSeed(SharedSeed);
+            hasGeneratedLocally = true;
+            TryHookMissionSync();
+        }
+
+        if (MatchInProgress && !IsBossFrozen && !localBossReleasedLogged)
+        {
+            localBossReleasedLogged = true;
+            Debug.Log("[MATCH] Boss liberado. Los supervivientes ya tuvieron tiempo para alejarse.");
+        }
+
+        if (MatchEnded && !localMatchEndedLogged)
+        {
+            localMatchEndedLogged = true;
+            Debug.Log("[MATCH] Tiempo de partida finalizado.");
+        }
+    }
+
+    public override void FixedUpdateNetwork()
+    {
+        if (!Object || !Object.HasStateAuthority) return;
+        if (!MatchInProgress || MatchEnded) return;
+
+        if (!enableMatchTimeLimit) return;
+
+        if (IsBossFrozen) return;
+
+        if (!MatchTimer.IsRunning)
+        {
+            MatchTimer = TickTimer.CreateFromSeconds(Runner, matchDurationSeconds);
+            Debug.Log($"[MATCH] Inicia el timer global de partida: {matchDurationSeconds:0.##}s");
+            return;
+        }
+
+        if (MatchTimer.Expired(Runner))
+        {
+            EndMatchByTimeLimit();
+        }
+    }
+
+    public void StartMatchFlow()
+    {
+        if (!Object || !Object.HasStateAuthority) return;
+        if (MatchInProgress || MatchEnded) return;
+
+        ApplyMatchSettingsFromDungeonCreator();
+
+        bossFreezeDurationSeconds = Mathf.Max(0f, bossFreezeDurationSeconds);
+        matchDurationSeconds = Mathf.Max(5f, matchDurationSeconds);
+
+        MatchInProgress = true;
+        MatchEnded = false;
+        BossFreezeTimer = bossFreezeDurationSeconds > 0f
+            ? TickTimer.CreateFromSeconds(Runner, bossFreezeDurationSeconds)
+            : TickTimer.None;
+        MatchTimer = TickTimer.None;
+
+        localBossReleasedLogged = false;
+        localMatchEndedLogged = false;
+
+        Debug.Log($"[MATCH] Inicio de partida. Boss inmovil por {bossFreezeDurationSeconds:0.##}s. " +
+                  (enableMatchTimeLimit
+                      ? $"Duracion total: {matchDurationSeconds:0.##}s (comienza tras liberar al boss)"
+                      : "Sin limite de tiempo global"));
+    }
+
+    private void ApplyMatchSettingsFromDungeonCreator()
+    {
         if (dungeonCreator == null)
         {
             dungeonCreator = FindAnyObjectByType<DungeonCreator>();
-            if (dungeonCreator == null) return; 
         }
 
-        Debug.Log($"[Player {Runner.LocalPlayer}] Generating dungeon in Game Scene with seed: {SharedSeed}");
-        dungeonCreator.CreateDungeonWithSeed(SharedSeed);
-        hasGeneratedLocally = true;
-        TryHookMissionSync();
+        if (dungeonCreator == null) return;
+
+        bossFreezeDurationSeconds = dungeonCreator.GetBossFreezeDurationSeconds();
+        enableMatchTimeLimit = dungeonCreator.GetEnableMatchTimeLimit();
+        matchDurationSeconds = dungeonCreator.GetMatchDurationSeconds();
     }
 
     private void LateUpdate()
@@ -111,6 +246,26 @@ public class DungeonNetworkRunner : NetworkBehaviour
         missionObjectiveManager.PylonActivated -= OnLocalPylonActivated;
         missionObjectiveManager.PortalSpawned -= OnLocalPortalSpawned;
         missionSyncHooked = false;
+    }
+
+    private async void EndMatchByTimeLimit()
+    {
+        if (isEndingMatch) return;
+        isEndingMatch = true;
+
+        MatchEnded = true;
+        MatchInProgress = false;
+        BossFreezeTimer = TickTimer.None;
+
+        Debug.Log("[MATCH] El tiempo global se agoto. Cerrando sesion del host para terminar la partida.");
+        try
+        {
+            await Runner.Shutdown();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[MATCH] Error al cerrar la sesion: {e.Message}");
+        }
     }
 
     private void OnLocalPylonActivated(MissionObjectivePylon pylon)
