@@ -56,6 +56,39 @@ public class PlayerMovement : NetworkBehaviour
             return;
         }
 
+        var playerSetup = GetComponent<PlayerSetup>();
+        if (playerSetup != null && playerSetup.HasEscaped)
+        {
+            _velocity = Vector3.zero;
+            StopAnimations();
+            return;
+        }
+
+        var health = GetComponent<PlayerHealth>();
+        if (health != null && health.IsDeadSafe)
+        {
+            _velocity = Vector3.zero;
+            StopAnimations();
+            return;
+        }
+
+        var role = GetComponent<PlayerRole>();
+        if (role != null && role.IsBoss && DungeonNetworkRunner.Instance != null && DungeonNetworkRunner.Instance.IsBossFrozen)
+        {
+            _isGrounded = _controller.isGrounded;
+
+            Vector3 frozenVelocity = _velocity;
+            if (_isGrounded && frozenVelocity.y < 0)
+                frozenVelocity.y = -2f;
+
+            frozenVelocity.y += Gravity * Runner.DeltaTime;
+            _velocity = frozenVelocity;
+
+            _controller.Move(_velocity * Runner.DeltaTime);
+            StopAnimations();
+            return;
+        }
+
         if (GetInput(out PlayerInputData data))
         {
             _isGrounded = _controller.isGrounded;
