@@ -23,12 +23,15 @@ public class MissionObjectiveManager : MonoBehaviour
     private readonly List<Vector3> portalCandidates = new List<Vector3>();
     private int activatedCount;
     private bool portalSpawned;
+    private Vector3 currentPortalPosition;
     private bool escapeTimerRunning;
     private float remainingEscapeTime;
     private bool escapeWindowClosed;
 
     public bool IsEscapeWindowOpen => portalSpawned && !escapeWindowClosed;
     public float RemainingEscapeTime => remainingEscapeTime;
+    public bool HasPortalSpawned => portalSpawned;
+    public Vector3 CurrentPortalPosition => currentPortalPosition;
 
     private void Awake()
     {
@@ -83,6 +86,7 @@ public class MissionObjectiveManager : MonoBehaviour
         activatedPylons.Clear();
         activatedCount = 0;
         portalSpawned = false;
+        currentPortalPosition = Vector3.zero;
         escapeWindowClosed = false;
         escapeTimerRunning = false;
         remainingEscapeTime = escapeTimeLimitSeconds;
@@ -168,6 +172,7 @@ public class MissionObjectiveManager : MonoBehaviour
     {
         Instantiate(portalPrefab, position, rotation);
         portalSpawned = true;
+        currentPortalPosition = position;
 
         remainingEscapeTime = escapeTimeLimitSeconds;
         escapeTimerRunning = enableEscapeTimeLimit;
