@@ -1,6 +1,28 @@
 using System.Collections.Generic;
+using Fusion;
 using UnityEngine;
 using Random = UnityEngine.Random;
+
+[System.Serializable]
+public class SpawnablePickupItem
+{
+    public NetworkPrefabRef prefab;
+    public string itemName = "Pickup Item";
+    [Range(0f, 100f)]
+    public float spawnChance = 50f;
+
+    public bool needsClearSpace = true;
+    [Range(0, 5)]
+    public int clearanceRadius = 1;
+
+    public bool avoidWalls = true;
+    [Range(0, 6)]
+    public int wallClearanceRadius = 1;
+
+    [Header("Random Rotation")]
+    public bool randomizeRotationY = true;
+    public Vector2 rotationRangeY = new Vector2(0f, 360f);
+}
 
 public class DungeonCreator : MonoBehaviour
 {
@@ -50,9 +72,6 @@ public class DungeonCreator : MonoBehaviour
     [Tooltip("Multiplicador del radio maximo para salas externas")] public float anchorOuterDistanceMultiplier = 1.6f;
 
     [Header("Prefabs (Placement)")]
-    [Tooltip("Prefab principal de habitación (se escala al tamaño de la sala)")] public GameObject roomPrefab;
-    [Tooltip("Prefab de corredor (tramos rectos escalados); si es null usa tiles")]
-    public GameObject corridorPrefab;
     [Tooltip("Tile de piso para salas (fallback 1x1)")] public GameObject roomFloorTilePrefab;
     [Tooltip("Tile de piso para corredor (fallback 1x1)")] public GameObject corridorFloorTilePrefab;
     [Tooltip("Segmento de pared escalable (pivot centrado)")] public GameObject wallPiecePrefab;
@@ -68,6 +87,22 @@ public class DungeonCreator : MonoBehaviour
     public int minObjectsPerRoom = 0;
     [Range(0, 20)]
     public int maxObjectsPerRoom = 17;
+    [Tooltip("Si esta activo y hay pickups de red, los objetos decorativos se spawnean despues para no bloquear celdas de pickups")]
+    public bool deferGenericObjectSpawnUntilPickupItems = true;
+    [Tooltip("Fallback: si el spawn diferido no es disparado por red, se ejecuta localmente tras este delay")]
+    [Range(0.05f, 5f)]
+    public float deferredObjectSpawnFallbackDelay = 0.5f;
+
+    [Header("Pickup Items (Network)")]
+    [Tooltip("Spawnea items agarrables sincronizados por red")]
+    public bool spawnPickupItems = true;
+    public List<SpawnablePickupItem> pickupItems = new List<SpawnablePickupItem>();
+
+    [Header("Pickup Spawn Settings")]
+    [Range(0, 10)]
+    public int minPickupItemsPerRoom = 0;
+    [Range(0, 20)]
+    public int maxPickupItemsPerRoom = 3;
 
     [Header("Mission Objectives")]
     public bool spawnMissionObjectives = true;
@@ -103,11 +138,14 @@ public class DungeonCreator : MonoBehaviour
     public bool spawnWallDecorations = true;
     public List<WallDecoration> wallDecorations = new List<WallDecoration>();
     [Range(1, 16)] public int wallDecorSpacing = 3;
-    [Range(0.1f, 5f)] public float wallDecorHeight = 1.6f;
     [Range(0f, 0.5f)] public float wallDecorInwardOffset = 0.05f;
 
     [Header("Debug")]
     public bool showGrid = false;
+
+    [Header("Runtime Generation")]
+    [Tooltip("Nombre del contenedor donde se crea toda la dungeon runtime")]
+    [SerializeField] private string runtimeRootName = "_RuntimeDungeon";
 
     private AnchorDungeonGenerator anchorGenerator;
     private ProceduralObjectSpawner objectSpawner;
@@ -119,6 +157,9 @@ public class DungeonCreator : MonoBehaviour
     private DungeonPostProcessResult postProcessResult;
     private DungeonShapePostProcessor shapePostProcessor;
     private MissionObjectiveManager missionObjectiveManager;
+    private Transform runtimeRoot;
+    private bool hasPendingGenericObjectSpawn;
+    private int generationCounter;
 
     void Start()
     {
@@ -128,6 +169,9 @@ public class DungeonCreator : MonoBehaviour
 
     public void CreateDungeon()
     {
+        CancelInvoke(nameof(ForceSpawnDeferredObjectsFallback));
+        generationCounter++;
+
         if (useRandomSeed)
         {
             seed = Random.Range(0, int.MaxValue);
@@ -136,9 +180,12 @@ public class DungeonCreator : MonoBehaviour
         lastUsedSeed = seed;
         Random.InitState(seed);
 
+        EnsureRuntimeRoot();
+        WarnIfLegacyDirectChildrenExist();
         DestroyAllChildren();
 
         anchorGenerator = null;
+        objectSpawner = null;
         currentGrid = null;
         currentRooms = null;
         currentCenterOffset = Vector3.zero;
@@ -147,6 +194,7 @@ public class DungeonCreator : MonoBehaviour
         wallDecorationSpawner = new WallDecorationSpawner();
         missionObjectiveSpawner = new MissionObjectiveSpawner();
         missionObjectiveManager = GetComponent<MissionObjectiveManager>();
+        hasPendingGenericObjectSpawn = false;
 
         if (missionObjectiveManager == null)
         {
@@ -193,10 +241,10 @@ public class DungeonCreator : MonoBehaviour
             GridPrefabPlacer.Place(
                 currentGrid,
                 currentRooms,
-                transform,
+                runtimeRoot,
                 currentCenterOffset,
-                roomPrefab,
-                corridorPrefab,
+                null,
+                null,
                 roomFloorTilePrefab,
                 corridorFloorTilePrefab,
                 ceilingTilePrefab,
@@ -213,11 +261,10 @@ public class DungeonCreator : MonoBehaviour
                 var doorSet = new HashSet<Vector2Int>(postProcessResult?.DoorCells ?? new List<Vector2Int>());
                 wallDecorationSpawner.Spawn(
                     currentGrid,
-                    transform,
+                    runtimeRoot,
                     currentCenterOffset,
                     wallDecorations,
                     Mathf.Max(1, wallDecorSpacing),
-                    wallDecorHeight,
                     wallDecorInwardOffset,
                     doorSet
                 );
@@ -226,7 +273,7 @@ public class DungeonCreator : MonoBehaviour
             if (spawnMissionObjectives && ((missionObjectives != null && missionObjectives.Count > 0) || debugForcePylonInCentralRoom))
             {
                 GameObject missionParent = new GameObject("MissionObjectives");
-                missionParent.transform.SetParent(transform, false);
+                missionParent.transform.SetParent(runtimeRoot, false);
                 missionParent.transform.localPosition = Vector3.zero;
 
                 List<Vector3> portalCandidates = BuildPortalCandidates(currentGrid, currentRooms, currentCenterOffset, anchorGenerator != null ? anchorGenerator.CentralRoom : null);
@@ -280,15 +327,66 @@ public class DungeonCreator : MonoBehaviour
 
         if (spawnObjects && currentGrid != null && currentRooms != null)
         {
-            GameObject objectParent = new GameObject("ObjectParent");
-            objectParent.transform.parent = transform;
-            objectSpawner = new ProceduralObjectSpawner(currentGrid, objectParent.transform, currentCenterOffset);
-            SpawnAllObjects();
+            EnsureObjectSpawner();
+
+            bool canUseDeferredFlow = Application.isPlaying;
+            bool networkSessionActive = canUseDeferredFlow && FindAnyObjectByType<DungeonNetworkRunner>() != null;
+            bool shouldDeferGenericObjects =
+                canUseDeferredFlow &&
+                !networkSessionActive &&
+                deferGenericObjectSpawnUntilPickupItems &&
+                ShouldSpawnPickupItems();
+            if (shouldDeferGenericObjects)
+            {
+                hasPendingGenericObjectSpawn = true;
+                Invoke(nameof(ForceSpawnDeferredObjectsFallback), Mathf.Max(0.05f, deferredObjectSpawnFallbackDelay));
+            }
+            else
+            {
+                SpawnAllObjects();
+            }
         }
+
+        if (!Application.isPlaying && ShouldSpawnPickupItems())
+        {
+            Debug.LogWarning("[DungeonCreator] Pickup Items (Network) solo se spawnean durante Play con NetworkRunner/StateAuthority.");
+        }
+    }
+
+    public void SpawnDeferredGenericObjectsLocal()
+    {
+        if (!hasPendingGenericObjectSpawn) return;
+        if (objectSpawner == null || currentRooms == null || currentGrid == null) return;
+
+        CancelInvoke(nameof(ForceSpawnDeferredObjectsFallback));
+        SpawnAllObjects();
+    }
+
+    private void ForceSpawnDeferredObjectsFallback()
+    {
+        if (!hasPendingGenericObjectSpawn) return;
+
+        Debug.LogWarning("[DungeonCreator] Fallback de spawn diferido activado. Spawneando objetos genericos localmente.");
+        SpawnDeferredGenericObjectsLocal();
+    }
+
+    private void EnsureObjectSpawner()
+    {
+        if (objectSpawner != null) return;
+
+        GameObject objectParent = new GameObject("ObjectParent");
+        objectParent.transform.SetParent(runtimeRoot, false);
+        objectSpawner = new ProceduralObjectSpawner(currentGrid, objectParent.transform, currentCenterOffset);
     }
 
     private void SpawnAllObjects()
     {
+        if (objectSpawner == null || currentRooms == null) return;
+
+        Random.State previousRandomState = Random.state;
+        int objectSeed = unchecked(seed * 486187739 + 137);
+        Random.InitState(objectSeed);
+
         foreach (var room in currentRooms)
         {
             if (genericObjects.Count > 0)
@@ -296,6 +394,10 @@ public class DungeonCreator : MonoBehaviour
                 objectSpawner.SpawnObjects(room, genericObjects, minObjectsPerRoom, maxObjectsPerRoom);
             }
         }
+
+        Random.state = previousRandomState;
+
+        hasPendingGenericObjectSpawn = false;
     }
 
     public void CreateDungeonRandom()
@@ -317,6 +419,11 @@ public class DungeonCreator : MonoBehaviour
     public int GetLastUsedSeed()
     {
         return lastUsedSeed;
+    }
+
+    public int GetGenerationCounter()
+    {
+        return generationCounter;
     }
 
     public Vector3 GetCentralRoomWorldPosition()
@@ -347,12 +454,63 @@ public class DungeonCreator : MonoBehaviour
 
     public void DestroyAllChildren()
     {
-        while (transform.childCount != 0)
+        EnsureRuntimeRoot();
+
+        while (runtimeRoot.childCount != 0)
         {
-            foreach (Transform item in transform)
+            foreach (Transform item in runtimeRoot)
             {
                 DestroyImmediate(item.gameObject);
             }
+        }
+    }
+
+    [ContextMenu("Sanitize Legacy Generated Children")]
+    public void SanitizeLegacyGeneratedChildren()
+    {
+        EnsureRuntimeRoot();
+
+        List<Transform> legacy = new List<Transform>();
+        foreach (Transform child in transform)
+        {
+            if (child == runtimeRoot) continue;
+            legacy.Add(child);
+        }
+
+        for (int i = 0; i < legacy.Count; i++)
+        {
+            DestroyImmediate(legacy[i].gameObject);
+        }
+
+        Debug.Log($"[DungeonCreator] Legacy cleanup completo. Objetos eliminados: {legacy.Count}");
+    }
+
+    private void EnsureRuntimeRoot()
+    {
+        if (runtimeRoot != null) return;
+
+        Transform existing = transform.Find(runtimeRootName);
+        if (existing != null)
+        {
+            runtimeRoot = existing;
+            return;
+        }
+
+        GameObject root = new GameObject(runtimeRootName);
+        root.transform.SetParent(transform, false);
+        runtimeRoot = root.transform;
+    }
+
+    private void WarnIfLegacyDirectChildrenExist()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            Transform child = transform.GetChild(i);
+            if (child == runtimeRoot) continue;
+
+            Debug.LogWarning("[DungeonCreator] Se detectaron hijos legacy fuera de _RuntimeDungeon. " +
+                             "Para limpiar la escena usa el ContextMenu: 'Sanitize Legacy Generated Children'.", this);
+            return;
         }
     }
 
@@ -366,9 +524,47 @@ public class DungeonCreator : MonoBehaviour
         return currentRooms;
     }
 
+    public RoomNode GetCentralRoom()
+    {
+        return anchorGenerator != null ? anchorGenerator.CentralRoom : null;
+    }
+
+    public Vector3 GetCenterOffset()
+    {
+        return currentCenterOffset;
+    }
+
+    public Vector3 GridToWorld(Vector2Int gridPos, float y = 0f)
+    {
+        return new Vector3(gridPos.x + 0.5f, y, gridPos.y + 0.5f) + currentCenterOffset;
+    }
+
     public DungeonPostProcessResult GetPostProcessResult()
     {
         return postProcessResult;
+    }
+
+    public bool ShouldSpawnPickupItems()
+    {
+        return spawnPickupItems
+            && pickupItems != null
+            && pickupItems.Count > 0
+            && Mathf.Max(0, maxPickupItemsPerRoom) > 0;
+    }
+
+    public List<SpawnablePickupItem> GetPickupItems()
+    {
+        return pickupItems;
+    }
+
+    public int GetMinPickupItemsPerRoom()
+    {
+        return Mathf.Max(0, minPickupItemsPerRoom);
+    }
+
+    public int GetMaxPickupItemsPerRoom()
+    {
+        return Mathf.Max(GetMinPickupItemsPerRoom(), maxPickupItemsPerRoom);
     }
 
     private List<Vector3> BuildPortalCandidates(DungeonGrid grid, List<RoomNode> rooms, Vector3 offset, RoomNode excludedRoom)

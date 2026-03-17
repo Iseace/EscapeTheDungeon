@@ -12,8 +12,10 @@ public class MatchTimerHUD : MonoBehaviour
     [SerializeField] private string labelPrefix = "Tiempo";
     [SerializeField] private string bossFreezeLabelPrefix = "Boss libre en";
     [SerializeField] private bool hideWhenNoTimeLimit = true;
+    [SerializeField] private bool verboseBuildLogs = true;
 
     private DungeonNetworkRunner dungeonRunner;
+    private float nextRunnerResolveTime;
 
     private void Awake()
     {
@@ -31,16 +33,43 @@ public class MatchTimerHUD : MonoBehaviour
 
         if (dungeonRunner == null)
         {
-            dungeonRunner = DungeonNetworkRunner.Instance;
+            if (Time.unscaledTime >= nextRunnerResolveTime)
+            {
+                dungeonRunner = DungeonNetworkRunner.Instance;
+                if (dungeonRunner == null)
+                {
+                    dungeonRunner = FindAnyObjectByType<DungeonNetworkRunner>();
+                }
+
+                nextRunnerResolveTime = Time.unscaledTime + 0.5f;
+            }
+
             if (dungeonRunner == null)
             {
+                if (verboseBuildLogs)
+                {
+                    timerText.text = labelPrefix + " --:--";
+                    SetVisible(true);
+                    return;
+                }
                 SetVisible(false);
                 return;
+            }
+
+            if (verboseBuildLogs)
+            {
+                Debug.Log("[MatchTimerHUD] DungeonNetworkRunner resuelto correctamente.", this);
             }
         }
 
         if (!dungeonRunner.MatchInProgress || dungeonRunner.MatchEnded)
         {
+            if (verboseBuildLogs)
+            {
+                timerText.text = labelPrefix + " --:--";
+                SetVisible(true);
+                return;
+            }
             SetVisible(false);
             return;
         }
@@ -51,7 +80,7 @@ public class MatchTimerHUD : MonoBehaviour
             int freezeMinutesPart = freezeSeconds / 60;
             int freezeSecondsPart = freezeSeconds % 60;
 
-            timerText.text = string.Format("{0}: {1:00}:{2:00}", bossFreezeLabelPrefix, freezeMinutesPart, freezeSecondsPart);
+            timerText.text = string.Format("{0} {1:00}:{2:00}", bossFreezeLabelPrefix, freezeMinutesPart, freezeSecondsPart);
             SetVisible(true);
             return;
         }
@@ -64,7 +93,7 @@ public class MatchTimerHUD : MonoBehaviour
                 return;
             }
 
-            timerText.text = labelPrefix + ": --:--";
+            timerText.text = labelPrefix + " --:--";
             SetVisible(true);
             return;
         }
@@ -73,7 +102,7 @@ public class MatchTimerHUD : MonoBehaviour
         int minutesPart = seconds / 60;
         int secondsPart = seconds % 60;
 
-        timerText.text = string.Format("{0}: {1:00}:{2:00}", labelPrefix, minutesPart, secondsPart);
+        timerText.text = string.Format("{0} {1:00}:{2:00}", labelPrefix, minutesPart, secondsPart);
         SetVisible(true);
     }
 
@@ -93,9 +122,12 @@ public class MatchTimerHUD : MonoBehaviour
 
     private void SetVisible(bool visible)
     {
-        if (timerText != null && timerText.enabled != visible)
+        if (timerText != null)
         {
-            timerText.enabled = visible;
+            if (timerText.enabled != visible)
+            {
+                timerText.enabled = visible;
+            }
         }
     }
 }

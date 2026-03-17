@@ -52,7 +52,11 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
                  || Application.platform == RuntimePlatform.IPhonePlayer
                   || Application.isEditor;
 
-        if (!isMobile) { gameObject.SetActive(false); return; }
+        if (!isMobile)
+        {
+            enabled = false;
+            return;
+        }
 
         // ── Auto-find scene widgets that can't be assigned on a network prefab ──
         if (joystickParent == null)

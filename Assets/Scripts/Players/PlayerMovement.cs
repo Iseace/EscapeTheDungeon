@@ -75,7 +75,16 @@ public class PlayerMovement : NetworkBehaviour
         var role = GetComponent<PlayerRole>();
         if (role != null && role.IsBoss && DungeonNetworkRunner.Instance != null && DungeonNetworkRunner.Instance.IsBossFrozen)
         {
-            _velocity = Vector3.zero;
+            _isGrounded = _controller.isGrounded;
+
+            Vector3 frozenVelocity = _velocity;
+            if (_isGrounded && frozenVelocity.y < 0)
+                frozenVelocity.y = -2f;
+
+            frozenVelocity.y += Gravity * Runner.DeltaTime;
+            _velocity = frozenVelocity;
+
+            _controller.Move(_velocity * Runner.DeltaTime);
             StopAnimations();
             return;
         }
