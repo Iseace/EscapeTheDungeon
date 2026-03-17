@@ -39,6 +39,7 @@ public class PlayerSetup : NetworkBehaviour
             // Attach the main camera only on the machine that owns this player
             AttachCamera();
             HandleCursorState();
+            EnsurePortalDirectionHud();
 
             int idGuardado = PlayerPrefs.GetInt("SelectedCharacterID", 0);
             Rpc_RequestCharacterSelection(idGuardado);
@@ -203,5 +204,11 @@ public class PlayerSetup : NetworkBehaviour
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
         }
+    }
+
+    private void EnsurePortalDirectionHud()
+    {
+        if (GetComponent<PortalDirectionHUD>() != null) return;
+        gameObject.AddComponent<PortalDirectionHUD>();
     }
 }
