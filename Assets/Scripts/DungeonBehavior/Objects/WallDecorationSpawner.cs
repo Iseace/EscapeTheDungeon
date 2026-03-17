@@ -1,13 +1,15 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [System.Serializable]
 public class WallDecoration
 {
     public GameObject prefab;
     [Range(0f, 1f)] public float probability = 0.5f;
-    [Tooltip("Si es >=0 usa esta altura Y; si es <0 usa la altura por defecto global.")]
-    public float heightOverride = -1f;
+    [FormerlySerializedAs("heightOverride")]
+    [Tooltip("Altura Y de esta decoración.")]
+    public float height = 1.6f;
     [Tooltip("Rotación adicional en Euler para compensar pivots u orientación del prefab.")]
     public Vector3 rotationOffsetEuler = Vector3.zero;
 }
@@ -29,7 +31,6 @@ public class WallDecorationSpawner
         Vector3 offset,
         List<WallDecoration> decorations,
         int spacing,
-        float height,
         float inwardOffset,
         HashSet<Vector2Int> doorCells)
     {
@@ -52,24 +53,23 @@ public class WallDecorationSpawner
         }
 
         GameObject root = new GameObject("WallDecorations");
-        root.transform.parent = parent;
+        root.transform.SetParent(parent, false);
 
         spacing = Mathf.Max(1, spacing);
-        float clampedHeight = Mathf.Max(0f, height);
         float inward = Mathf.Max(0f, inwardOffset);
 
         // Horizontal edges (bottom and top per row)
         for (int z = zMin; z <= zMax; z++)
         {
-            SpawnHorizontalRow(cells, corners, root.transform, offset, z, true, xMin, xMax, spacing, clampedHeight, inward, doorCells);
-            SpawnHorizontalRow(cells, corners, root.transform, offset, z, false, xMin, xMax, spacing, clampedHeight, inward, doorCells);
+            SpawnHorizontalRow(cells, corners, root.transform, offset, z, true, xMin, xMax, spacing, inward, doorCells);
+            SpawnHorizontalRow(cells, corners, root.transform, offset, z, false, xMin, xMax, spacing, inward, doorCells);
         }
 
         // Vertical edges (left and right per column)
         for (int x = xMin; x <= xMax; x++)
         {
-            SpawnVerticalCol(cells, corners, root.transform, offset, x, true, zMin, zMax, spacing, clampedHeight, inward, doorCells);
-            SpawnVerticalCol(cells, corners, root.transform, offset, x, false, zMin, zMax, spacing, clampedHeight, inward, doorCells);
+            SpawnVerticalCol(cells, corners, root.transform, offset, x, true, zMin, zMax, spacing, inward, doorCells);
+            SpawnVerticalCol(cells, corners, root.transform, offset, x, false, zMin, zMax, spacing, inward, doorCells);
         }
     }
 
@@ -83,7 +83,6 @@ public class WallDecorationSpawner
         int xMin,
         int xMax,
         int spacing,
-        float height,
         float inward,
         HashSet<Vector2Int> doorCells)
     {
@@ -100,7 +99,7 @@ public class WallDecorationSpawner
             {
                 int runEnd = needsWall && x == xMax ? x : x - 1;
                 int length = runEnd - runStart + 1;
-                PlaceAlongHorizontalRun(parent, offset, zRow, isBottomEdge, runStart, length, spacing, height, inward, cells, doorCells, corners);
+                PlaceAlongHorizontalRun(parent, offset, zRow, isBottomEdge, runStart, length, spacing, inward, cells, doorCells, corners);
                 runStart = -1;
             }
         }
@@ -114,7 +113,6 @@ public class WallDecorationSpawner
         int runStart,
         int length,
         int spacing,
-        float height,
         float inward,
         Dictionary<Vector2Int, GridCell> cells,
         HashSet<Vector2Int> doorCells,
@@ -130,7 +128,7 @@ public class WallDecorationSpawner
 
             WallDecoration deco = PickDecoration();
             if (deco == null || deco.prefab == null) continue;
-            float decoHeight = deco.heightOverride >= 0f ? deco.heightOverride : height;
+            float decoHeight = Mathf.Max(0f, deco.height);
 
             float zPos = isBottomEdge ? zRow : zRow + 1f;
             Vector3 pos = new Vector3(xCell + 0.5f, decoHeight, zPos) + offset;
@@ -153,7 +151,6 @@ public class WallDecorationSpawner
         int zMin,
         int zMax,
         int spacing,
-        float height,
         float inward,
         HashSet<Vector2Int> doorCells)
     {
@@ -170,7 +167,7 @@ public class WallDecorationSpawner
             {
                 int runEnd = needsWall && z == zMax ? z : z - 1;
                 int length = runEnd - runStart + 1;
-                PlaceAlongVerticalRun(parent, offset, xCol, isLeftEdge, runStart, length, spacing, height, inward, cells, doorCells, corners);
+                PlaceAlongVerticalRun(parent, offset, xCol, isLeftEdge, runStart, length, spacing, inward, cells, doorCells, corners);
                 runStart = -1;
             }
         }
@@ -184,7 +181,6 @@ public class WallDecorationSpawner
         int runStart,
         int length,
         int spacing,
-        float height,
         float inward,
         Dictionary<Vector2Int, GridCell> cells,
         HashSet<Vector2Int> doorCells,
@@ -200,7 +196,7 @@ public class WallDecorationSpawner
 
             WallDecoration deco = PickDecoration();
             if (deco == null || deco.prefab == null) continue;
-            float decoHeight = deco.heightOverride >= 0f ? deco.heightOverride : height;
+            float decoHeight = Mathf.Max(0f, deco.height);
 
             float xPos = isLeftEdge ? xCol : xCol + 1f;
             Vector3 pos = new Vector3(xPos, decoHeight, zCell + 0.5f) + offset;

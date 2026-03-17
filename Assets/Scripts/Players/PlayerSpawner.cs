@@ -12,7 +12,6 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
     [Header("Character Prefabs")]
     public NetworkObject BossPrefab;      //prefab del Boss
-    public NetworkObject SurvivorPrefab;  // prefab del Superviviente
 
     [Header("Dungeon Runner")]
     public NetworkObject dungeonNetworkRunnerPrefab;
@@ -22,6 +21,13 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
     [SerializeField] private Vector3 fallbackGameCenterSpawn = new Vector3(0f, 1f, 0f);
     [SerializeField] private float gameSpawnRingRadius = 2.5f;
     [SerializeField] private float gameSpawnY = 1f;
+    [SerializeField] private bool randomizeSafeSpawns = true;
+    [SerializeField] private float minSpawnDistanceBetweenPlayers = 1.5f;
+    [SerializeField] private float minDistanceFromBossCenter = 5f;
+    [SerializeField] private float spawnCollisionRadius = 0.35f;
+    [SerializeField] private float spawnCollisionHeight = 1.8f;
+    [SerializeField] private float groundRayStartHeight = 10f;
+    [SerializeField] private float groundSnapOffset = 0.05f;
 
     [Header("Boss System")]
     [SerializeField] private string menuSceneName = "LobbyList";
@@ -83,7 +89,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
         if (SceneManager.GetActiveScene().name == "Game")
         {
-            spawnPos = GetGameCentralSpawnForPlayer(runner, player);
+            spawnPos = GetSafeGameSpawnForPlayer(runner, player);
         }
 
         NetworkObject playerObj = runner.Spawn(PlayerPrefab, spawnPos, spawnRot, player);
@@ -145,8 +151,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
         if (Runner.TryGetPlayerObject(bossPlayer, out NetworkObject oldObj))
         {
-            Vector3 centerSpawn = GetDungeonCentralPosition();
-            centerSpawn.y = gameSpawnY;
+            Vector3 centerSpawn = GetSafeBossSpawnPosition();
             Quaternion rot = oldObj.transform.rotation;
 
             Debug.Log($"[SPAWNER] Despawning old player object at {centerSpawn}");
@@ -212,7 +217,16 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
         if (matchFlowStarted) return;
 
         var dungeonRunner = DungeonNetworkRunner.Instance;
-        if (dungeonRunner == null) return;
+        if (dungeonRunner == null)
+        {
+            dungeonRunner = FindFirstObjectByType<DungeonNetworkRunner>();
+        }
+
+        if (dungeonRunner == null)
+        {
+            Debug.LogWarning("[SPAWNER] No se encontro DungeonNetworkRunner para iniciar match flow.");
+            return;
+        }
 
         dungeonRunner.StartMatchFlow();
         if (dungeonRunner.MatchInProgress)
@@ -221,23 +235,104 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
         }
     }
 
-    private Vector3 GetGameCentralSpawnForPlayer(NetworkRunner runner, PlayerRef player)
+    private Vector3 GetSafeGameSpawnForPlayer(NetworkRunner runner, PlayerRef player)
+    {
+        var dungeonCreator = FindFirstObjectByType<DungeonCreator>();
+        if (dungeonCreator == null)
+        {
+            return GetFallbackRingSpawn(runner, player);
+        }
+
+        DungeonGrid grid = dungeonCreator.GetGrid();
+        RoomNode centralRoom = dungeonCreator.GetCentralRoom();
+        if (grid == null || centralRoom == null)
+        {
+            return GetFallbackRingSpawn(runner, player);
+        }
+
+        List<Vector2Int> candidateCells = grid.GetAvailableCellsInRoom(centralRoom);
+        if (candidateCells == null || candidateCells.Count == 0)
+        {
+            return GetFallbackRingSpawn(runner, player);
+        }
+
+        if (randomizeSafeSpawns)
+        {
+            for (int i = 0; i < candidateCells.Count; i++)
+            {
+                int randomIndex = UnityEngine.Random.Range(i, candidateCells.Count);
+                Vector2Int temp = candidateCells[i];
+                candidateCells[i] = candidateCells[randomIndex];
+                candidateCells[randomIndex] = temp;
+            }
+        }
+
+        Vector3 bossCenter = GetDungeonCentralPosition();
+        bossCenter.y = gameSpawnY;
+
+        var existingPositions = new List<Vector3>();
+        foreach (var p in runner.ActivePlayers)
+        {
+            if (p == player) continue;
+            if (!runner.TryGetPlayerObject(p, out NetworkObject obj) || obj == null) continue;
+            existingPositions.Add(obj.transform.position);
+        }
+
+        for (int i = 0; i < candidateCells.Count; i++)
+        {
+            Vector3 candidate = dungeonCreator.GridToWorld(candidateCells[i], gameSpawnY);
+            if (Vector3.Distance(candidate, bossCenter) < Mathf.Max(0f, minDistanceFromBossCenter)) continue;
+            if (!HasDistanceFromPlayers(candidate, existingPositions)) continue;
+
+            candidate = SnapToGround(candidate);
+            if (!HasCollisionClearance(candidate)) continue;
+
+            return candidate;
+        }
+
+        return GetFallbackRingSpawn(runner, player);
+    }
+
+    private Vector3 GetSafeBossSpawnPosition()
     {
         Vector3 center = GetDungeonCentralPosition();
         center.y = gameSpawnY;
 
-        var orderedPlayers = runner.ActivePlayers.OrderBy(p => p.PlayerId).ToList();
-        int totalPlayers = orderedPlayers.Count;
-        int index = orderedPlayers.FindIndex(p => p == player);
-
-        if (totalPlayers <= 1 || index < 0 || gameSpawnRingRadius <= 0.01f)
+        var dungeonCreator = FindFirstObjectByType<DungeonCreator>();
+        if (dungeonCreator == null)
         {
-            return center;
+            return SnapToGround(center);
         }
 
-        float angle = (Mathf.PI * 2f * index) / totalPlayers;
-        Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * gameSpawnRingRadius;
-        return center + offset;
+        DungeonGrid grid = dungeonCreator.GetGrid();
+        RoomNode centralRoom = dungeonCreator.GetCentralRoom();
+        if (grid == null || centralRoom == null)
+        {
+            return SnapToGround(center);
+        }
+
+        List<Vector2Int> candidateCells = grid.GetAvailableCellsInRoom(centralRoom);
+        if (candidateCells == null || candidateCells.Count == 0)
+        {
+            return SnapToGround(center);
+        }
+
+        candidateCells.Sort((a, b) =>
+        {
+            Vector3 wa = dungeonCreator.GridToWorld(a, gameSpawnY);
+            Vector3 wb = dungeonCreator.GridToWorld(b, gameSpawnY);
+            return (wa - center).sqrMagnitude.CompareTo((wb - center).sqrMagnitude);
+        });
+
+        for (int i = 0; i < candidateCells.Count; i++)
+        {
+            Vector3 candidate = dungeonCreator.GridToWorld(candidateCells[i], gameSpawnY);
+            candidate = SnapToGround(candidate);
+            if (!HasCollisionClearance(candidate)) continue;
+            return candidate;
+        }
+
+        return SnapToGround(center);
     }
 
     private Vector3 GetDungeonCentralPosition()
@@ -249,6 +344,65 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
         }
 
         return fallbackGameCenterSpawn;
+    }
+
+    private Vector3 GetFallbackRingSpawn(NetworkRunner runner, PlayerRef player)
+    {
+        Vector3 center = GetDungeonCentralPosition();
+        center.y = gameSpawnY;
+
+        var orderedPlayers = runner.ActivePlayers.OrderBy(p => p.PlayerId).ToList();
+        int totalPlayers = orderedPlayers.Count;
+        int index = orderedPlayers.FindIndex(p => p == player);
+
+        if (totalPlayers <= 1 || index < 0 || gameSpawnRingRadius <= 0.01f)
+        {
+            return SnapToGround(center);
+        }
+
+        float angle = (Mathf.PI * 2f * index) / totalPlayers;
+        Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * gameSpawnRingRadius;
+        return SnapToGround(center + offset);
+    }
+
+    private bool HasDistanceFromPlayers(Vector3 candidate, List<Vector3> existingPositions)
+    {
+        float minDist = Mathf.Max(0.1f, minSpawnDistanceBetweenPlayers);
+        float minDistSqr = minDist * minDist;
+
+        for (int i = 0; i < existingPositions.Count; i++)
+        {
+            if ((existingPositions[i] - candidate).sqrMagnitude < minDistSqr)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private Vector3 SnapToGround(Vector3 position)
+    {
+        float rayHeight = Mathf.Max(1f, groundRayStartHeight);
+        Vector3 rayOrigin = new Vector3(position.x, position.y + rayHeight, position.z);
+
+        if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, rayHeight * 2f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+        {
+            position.y = hit.point.y + groundSnapOffset;
+        }
+
+        return position;
+    }
+
+    private bool HasCollisionClearance(Vector3 position)
+    {
+        float radius = Mathf.Max(0.1f, spawnCollisionRadius);
+        float height = Mathf.Max(radius * 2f + 0.1f, spawnCollisionHeight);
+
+        Vector3 bottom = position + Vector3.up * radius;
+        Vector3 top = position + Vector3.up * (height - radius);
+
+        return !Physics.CheckCapsule(bottom, top, radius, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
     }
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)

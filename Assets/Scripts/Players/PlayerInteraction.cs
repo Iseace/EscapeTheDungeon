@@ -1,6 +1,8 @@
 using Fusion;
 using UnityEngine;
 using TMPro;
+using System;
+using System.Collections.Generic;
 
 public class PlayerInteraction : NetworkBehaviour
 {
@@ -8,6 +10,8 @@ public class PlayerInteraction : NetworkBehaviour
     public LayerMask interactLayer;
     public GameObject signUI;
     public TextMeshProUGUI signText;
+
+    private readonly RaycastHit[] raycastHits = new RaycastHit[48];
 
     // 1. ESTO VA EN FIXEDUPDATENETWORK (Solo para Input y Red)
     public override void FixedUpdateNetwork()
@@ -41,26 +45,12 @@ public class PlayerInteraction : NetworkBehaviour
     {
         Ray ray = Camera.main.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
 
-        if (Physics.Raycast(ray, out RaycastHit hit, range, interactLayer))
+        if (TryGetBestInteractableHit(ray, true, out _, out _, out IInteractable target) ||
+            TryGetBestInteractableHit(ray, false, out _, out _, out target))
         {
-            IInteractable target = hit.collider.GetComponentInParent<IInteractable>();
-            if (target != null)
-            {
-                signUI.SetActive(true);
-                signText.text = target.GetInteractText();
-                return;
-            }
-        }
-
-        if (Physics.Raycast(ray, out hit, range))
-        {
-            IInteractable target = hit.collider.GetComponentInParent<IInteractable>();
-            if (target != null)
-            {
-                signUI.SetActive(true);
-                signText.text = target.GetInteractText();
-                return;
-            }
+            signUI.SetActive(true);
+            signText.text = target.GetInteractText();
+            return;
         }
 
         signUI.SetActive(false);
@@ -71,53 +61,129 @@ public class PlayerInteraction : NetworkBehaviour
     {
         // El servidor valida la física basándose en lo que el cliente mandó
         Ray ray = new Ray(origin, direction);
-        bool didInteract = false;
 
-        if (Physics.Raycast(ray, out RaycastHit hit, range, interactLayer))
+        if (TryGetBestInteractableHit(ray, true, out _, out InteractableItem itemInMask, out IInteractable interactableInMask))
         {
-            InteractableItem target = hit.collider.GetComponentInParent<InteractableItem>();
-            if (target != null)
+            if (itemInMask != null)
             {
-                PlayerInventory inv = GetComponent<PlayerInventory>();
-
-                // Soltar arma actual si existe
-                if (inv.CurrentWeaponID > 0)
-                {
-                    Vector3 dropPos = transform.position + transform.forward * 1.2f + Vector3.up;
-                    Runner.Spawn(inv.staffPrefabs[inv.CurrentWeaponID - 1], dropPos, Quaternion.identity);
-                }
-
-                // Equipar nueva y borrar del suelo
-                inv.CurrentWeaponID = target.itemID;
-                Runner.Despawn(target.Object);
+                TryPickupItem(itemInMask);
                 return;
             }
 
-            IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
-            if (interactable != null)
+            if (interactableInMask != null)
             {
                 PlayerSetup player = GetComponent<PlayerSetup>();
                 if (player != null)
                 {
-                    interactable.Interact(player);
-                    didInteract = true;
+                    interactableInMask.Interact(player);
                 }
+
+                return;
             }
         }
 
-        if (didInteract) return;
-
-        if (Physics.Raycast(ray, out hit, range))
+        if (TryGetBestInteractableHit(ray, false, out _, out InteractableItem itemAnyLayer, out IInteractable interactableAnyLayer))
         {
-            IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
-            if (interactable != null)
+            if (itemAnyLayer != null)
+            {
+                TryPickupItem(itemAnyLayer);
+                return;
+            }
+
+            if (interactableAnyLayer != null)
             {
                 PlayerSetup player = GetComponent<PlayerSetup>();
                 if (player != null)
                 {
-                    interactable.Interact(player);
+                    interactableAnyLayer.Interact(player);
                 }
             }
         }
+    }
+
+    private bool TryGetBestInteractableHit(
+        Ray ray,
+        bool onlyInteractLayer,
+        out RaycastHit bestHit,
+        out InteractableItem bestItem,
+        out IInteractable bestInteractable)
+    {
+        bestHit = default;
+        bestItem = null;
+        bestInteractable = null;
+
+        int hitCount = Physics.RaycastNonAlloc(ray, raycastHits, range, ~0, QueryTriggerInteraction.Collide);
+        if (hitCount <= 0) return false;
+
+        Array.Sort(raycastHits, 0, hitCount, RaycastHitDistanceComparer.Instance);
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            RaycastHit hit = raycastHits[i];
+            Collider col = hit.collider;
+            if (col == null) continue;
+
+            if (col.transform.IsChildOf(transform)) continue;
+
+            if (onlyInteractLayer)
+            {
+                int mask = 1 << col.gameObject.layer;
+                if ((mask & interactLayer.value) == 0)
+                    continue;
+            }
+
+            InteractableItem item = col.GetComponentInParent<InteractableItem>();
+            if (item != null)
+            {
+                bestHit = hit;
+                bestItem = item;
+                bestInteractable = item;
+                return true;
+            }
+
+            IInteractable interactable = col.GetComponentInParent<IInteractable>();
+            if (interactable != null)
+            {
+                bestHit = hit;
+                bestItem = null;
+                bestInteractable = interactable;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private sealed class RaycastHitDistanceComparer : IComparer<RaycastHit>
+    {
+        public static readonly RaycastHitDistanceComparer Instance = new RaycastHitDistanceComparer();
+
+        public int Compare(RaycastHit a, RaycastHit b)
+        {
+            return a.distance.CompareTo(b.distance);
+        }
+    }
+
+    private void TryPickupItem(InteractableItem target)
+    {
+        if (target == null || target.Object == null) return;
+
+        PlayerInventory inv = GetComponent<PlayerInventory>();
+        if (inv == null) return;
+
+        // Soltar arma actual si existe y el indice es valido
+        if (inv.CurrentWeaponID > 0)
+        {
+            int oldIndex = inv.CurrentWeaponID - 1;
+            if (inv.staffPrefabs != null && oldIndex >= 0 && oldIndex < inv.staffPrefabs.Length)
+            {
+                Vector3 dropPos = transform.position + transform.forward * 1.2f + Vector3.up;
+                Runner.Spawn(inv.staffPrefabs[oldIndex], dropPos, Quaternion.identity);
+            }
+        }
+
+        // Equipar nueva y borrar del suelo
+        inv.CurrentWeaponID = target.itemID;
+        Runner.Despawn(target.Object);
     }
 }

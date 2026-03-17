@@ -1,6 +1,8 @@
 using UnityEngine;
 using Fusion;
 using UnityEngine.SceneManagement; 
+using System;
+using System.Collections.Generic;
 
 public class DungeonNetworkRunner : NetworkBehaviour
 {
@@ -11,6 +13,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
     [Networked] public int SharedSeed { get; set; }
     [SerializeField] private float pylonProgressSyncInterval = 0.1f;
     [SerializeField] private float pylonSyncMaxDistance = 0.5f;
+    [SerializeField] private bool debugPickupSpawnVerbose = true;
 
     [Header("Match Flow")]
     [Tooltip("Fallback: usado si no se encuentra DungeonCreator o no tiene config")]
@@ -33,6 +36,8 @@ public class DungeonNetworkRunner : NetworkBehaviour
     private bool localBossReleasedLogged;
     private bool localMatchEndedLogged;
     private bool isEndingMatch;
+    private bool pickupItemsSpawned;
+    private int lastPickupGeneration = -1;
 
     public float RemainingMatchTimeSeconds
     {
@@ -87,6 +92,8 @@ public class DungeonNetworkRunner : NetworkBehaviour
         localBossReleasedLogged = false;
         localMatchEndedLogged = false;
         isEndingMatch = false;
+        pickupItemsSpawned = false;
+        lastPickupGeneration = -1;
 
         // Find the DungeonCreator in the scene
         dungeonCreator = FindFirstObjectByType<DungeonCreator>();
@@ -106,10 +113,25 @@ public class DungeonNetworkRunner : NetworkBehaviour
 
         if (shouldGenerateSeed && SharedSeed == 0)
         {
-            int newSeed = Random.Range(1, int.MaxValue);
+            int newSeed = GenerateSessionSeed();
             SharedSeed = newSeed;
 
             Debug.Log($"[MASTER CLIENT] Generated seed: {SharedSeed}");
+        }
+    }
+
+    private static int GenerateSessionSeed()
+    {
+        unchecked
+        {
+            int guidPart = Guid.NewGuid().GetHashCode();
+            int ticksPart = (int)DateTime.UtcNow.Ticks;
+            int envPart = Environment.TickCount;
+
+            int seed = guidPart ^ ticksPart ^ envPart;
+            if (seed == 0) seed = 1;
+            if (seed < 0) seed = -seed;
+            return seed;
         }
     }
 
@@ -129,6 +151,11 @@ public class DungeonNetworkRunner : NetworkBehaviour
             Debug.Log($"[Player {Runner.LocalPlayer}] Generating dungeon in Game Scene with seed: {SharedSeed}");
             dungeonCreator.CreateDungeonWithSeed(SharedSeed);
             hasGeneratedLocally = true;
+            if (Object != null && Object.HasStateAuthority)
+            {
+                TrySpawnNetworkPickupItems();
+                dungeonCreator.SpawnDeferredGenericObjectsLocal();
+            }
             TryHookMissionSync();
         }
 
@@ -147,6 +174,12 @@ public class DungeonNetworkRunner : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
+        if (Object && Object.HasStateAuthority && hasGeneratedLocally)
+        {
+            TrySpawnNetworkPickupItems();
+            dungeonCreator?.SpawnDeferredGenericObjectsLocal();
+        }
+
         if (!Object || !Object.HasStateAuthority) return;
         if (!MatchInProgress || MatchEnded) return;
 
@@ -232,6 +265,296 @@ public class DungeonNetworkRunner : NetworkBehaviour
         missionObjectiveManager.PylonActivated += OnLocalPylonActivated;
         missionObjectiveManager.PortalSpawned += OnLocalPortalSpawned;
         missionSyncHooked = true;
+    }
+
+    private void TrySpawnNetworkPickupItems()
+    {
+        if (!Object || !Object.HasStateAuthority) return;
+
+        if (dungeonCreator == null)
+        {
+            dungeonCreator = FindAnyObjectByType<DungeonCreator>();
+            if (dungeonCreator == null) return;
+        }
+
+        int generation = dungeonCreator.GetGenerationCounter();
+        if (generation != lastPickupGeneration)
+        {
+            pickupItemsSpawned = false;
+            lastPickupGeneration = generation;
+        }
+
+        if (pickupItemsSpawned) return;
+
+        if (!dungeonCreator.ShouldSpawnPickupItems())
+        {
+            pickupItemsSpawned = true;
+            return;
+        }
+
+        DungeonGrid grid = dungeonCreator.GetGrid();
+        List<RoomNode> rooms = dungeonCreator.GetAllRooms();
+        List<SpawnablePickupItem> pickupConfigs = dungeonCreator.GetPickupItems();
+
+        if (grid == null || rooms == null || pickupConfigs == null || pickupConfigs.Count == 0)
+        {
+            Debug.LogWarning("[DungeonNetworkRunner] Pickup items enabled, pero no hay grid/rooms/config validos.");
+            return;
+        }
+
+        int minPerRoom = dungeonCreator.GetMinPickupItemsPerRoom();
+        int maxPerRoom = dungeonCreator.GetMaxPickupItemsPerRoom();
+        Vector3 centerOffset = dungeonCreator.GetCenterOffset();
+        int validConfigs = CountValidPickupConfigs(pickupConfigs);
+
+        Debug.Log($"[DungeonNetworkRunner] Pickup config: rooms={rooms.Count}, min={minPerRoom}, max={maxPerRoom}, configs={pickupConfigs.Count}, validConfigs={validConfigs}");
+
+        if (validConfigs == 0)
+        {
+            pickupItemsSpawned = true;
+            Debug.LogWarning("[DungeonNetworkRunner] Todos los pickupItems tienen prefab vacio/invalido. No se puede spawnear nada.");
+            return;
+        }
+
+        int totalSpawned = 0;
+        foreach (RoomNode room in rooms)
+        {
+            totalSpawned += SpawnPickupItemsInRoom(grid, room, pickupConfigs, minPerRoom, maxPerRoom, centerOffset);
+        }
+
+        pickupItemsSpawned = true;
+
+        Debug.Log($"[DungeonNetworkRunner] Pickup items spawneados por red: {totalSpawned}");
+        if (totalSpawned == 0)
+        {
+            Debug.LogWarning("[DungeonNetworkRunner] No se spawneo ningun pickup. Revisa: NetworkPrefabRef en pickupItems, prefabs registrados en Fusion y restricciones de clearance/chance.");
+        }
+    }
+
+    private int SpawnPickupItemsInRoom(
+        DungeonGrid grid,
+        RoomNode room,
+        List<SpawnablePickupItem> pickupConfigs,
+        int minPerRoom,
+        int maxPerRoom,
+        Vector3 centerOffset)
+    {
+        if (room == null || pickupConfigs == null || pickupConfigs.Count == 0)
+            return 0;
+
+        List<Vector2Int> availableCells = grid.GetAvailableCellsInRoom(room);
+        if (availableCells == null || availableCells.Count == 0)
+        {
+            Debug.LogWarning($"[DungeonNetworkRunner] Sala {room.RoomID}: 0 celdas disponibles para pickups.");
+            return 0;
+        }
+
+        int targetCount = UnityEngine.Random.Range(minPerRoom, maxPerRoom + 1);
+        int spawned = 0;
+        int attempts = 0;
+        int maxAttempts = Mathf.Max(8, targetCount * 6);
+
+        while (spawned < targetCount && attempts < maxAttempts)
+        {
+            attempts++;
+            if (availableCells.Count == 0) break;
+
+            SpawnablePickupItem config = pickupConfigs[UnityEngine.Random.Range(0, pickupConfigs.Count)];
+            if (config == null) continue;
+
+            if (config.prefab.Equals(default(NetworkPrefabRef)))
+                continue;
+
+            // El minimo por sala ignora chance para que sea realmente minimo garantizado si hay posiciones validas.
+            bool canApplyChance = spawned >= minPerRoom;
+            if (canApplyChance && UnityEngine.Random.Range(0f, 100f) > config.spawnChance)
+                continue;
+
+            if (!TryFindPickupPosition(grid, room, availableCells, config, out Vector2Int spawnPos))
+                continue;
+
+            Quaternion spawnRot = BuildPickupRotation(config);
+            Vector3 worldPos = new Vector3(spawnPos.x + 0.5f, 0f, spawnPos.y + 0.5f) + centerOffset;
+
+            NetworkObject spawnedObject = Runner.Spawn(config.prefab, worldPos, spawnRot);
+            if (spawnedObject == null)
+            {
+                if (debugPickupSpawnVerbose)
+                {
+                    Debug.LogWarning($"[DungeonNetworkRunner] Runner.Spawn devolvio null para pickup '{config.itemName}' en {worldPos}.");
+                }
+                continue;
+            }
+
+            if (debugPickupSpawnVerbose)
+            {
+                Debug.Log($"[DungeonNetworkRunner] Pickup spawned: name={spawnedObject.name}, room={room.RoomID}, pos={spawnedObject.transform.position}");
+            }
+
+            StabilizeSpawnedPickup(spawnedObject, worldPos, spawnRot);
+
+            grid.OccupyCell(spawnPos, spawnedObject.gameObject);
+            availableCells.Remove(spawnPos);
+            spawned++;
+        }
+
+        if (spawned < minPerRoom)
+        {
+            Debug.LogWarning($"[DungeonNetworkRunner] Sala {room.RoomID}: minimo pickups no alcanzado ({spawned}/{minPerRoom}). Posibles causas: pocos floors libres, clearance alto o prefabs no validos.");
+        }
+
+        return spawned;
+    }
+
+    private bool TryFindPickupPosition(
+        DungeonGrid grid,
+        RoomNode room,
+        List<Vector2Int> availableCells,
+        SpawnablePickupItem config,
+        out Vector2Int position)
+    {
+        position = default;
+
+        List<Vector2Int> shuffled = new List<Vector2Int>(availableCells);
+        for (int i = 0; i < shuffled.Count; i++)
+        {
+            int randomIndex = UnityEngine.Random.Range(i, shuffled.Count);
+            Vector2Int temp = shuffled[i];
+            shuffled[i] = shuffled[randomIndex];
+            shuffled[randomIndex] = temp;
+        }
+
+        foreach (Vector2Int candidate in shuffled)
+        {
+            if (config.needsClearSpace && !HasPickupClearSpace(grid, candidate, config.clearanceRadius))
+                continue;
+
+            if (config.avoidWalls && !HasPickupWallClearance(grid, room, candidate, config.wallClearanceRadius))
+                continue;
+
+            position = candidate;
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool HasPickupClearSpace(DungeonGrid grid, Vector2Int center, int radius)
+    {
+        int clampedRadius = Mathf.Max(0, radius);
+
+        for (int x = -clampedRadius; x <= clampedRadius; x++)
+        {
+            for (int y = -clampedRadius; y <= clampedRadius; y++)
+            {
+                Vector2Int checkPos = center + new Vector2Int(x, y);
+                GridCell cell = grid.GetCell(checkPos);
+
+                if (cell == null || cell.IsOccupied || cell.Type != CellType.Floor)
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool HasPickupWallClearance(DungeonGrid grid, RoomNode room, Vector2Int center, int radius)
+    {
+        int clampedRadius = Mathf.Max(0, radius);
+
+        for (int x = -clampedRadius; x <= clampedRadius; x++)
+        {
+            for (int y = -clampedRadius; y <= clampedRadius; y++)
+            {
+                Vector2Int checkPos = center + new Vector2Int(x, y);
+                GridCell cell = grid.GetCell(checkPos);
+
+                if (cell == null || cell.Type != CellType.Floor)
+                    return false;
+
+                if (!ReferenceEquals(cell.ParentRoom, room))
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    private Quaternion BuildPickupRotation(SpawnablePickupItem config)
+    {
+        float y = 0f;
+        if (config.randomizeRotationY)
+        {
+            float minY = Mathf.Min(config.rotationRangeY.x, config.rotationRangeY.y);
+            float maxY = Mathf.Max(config.rotationRangeY.x, config.rotationRangeY.y);
+            y = UnityEngine.Random.Range(minY, maxY);
+        }
+
+        return Quaternion.Euler(0f, y, 0f);
+    }
+
+    private int CountValidPickupConfigs(List<SpawnablePickupItem> pickupConfigs)
+    {
+        int count = 0;
+        if (pickupConfigs == null) return count;
+
+        for (int i = 0; i < pickupConfigs.Count; i++)
+        {
+            SpawnablePickupItem config = pickupConfigs[i];
+            if (config == null) continue;
+            if (config.prefab.Equals(default(NetworkPrefabRef))) continue;
+            count++;
+        }
+
+        return count;
+    }
+
+    private void StabilizeSpawnedPickup(NetworkObject spawnedObject, Vector3 worldPos, Quaternion worldRot)
+    {
+        if (spawnedObject == null) return;
+
+        // Keep pickups static on the ground to avoid physics drift/tunneling on FBX variants.
+        spawnedObject.transform.SetPositionAndRotation(worldPos, worldRot);
+
+        float groundY = worldPos.y;
+        float raise = 0f;
+
+        Collider col = spawnedObject.GetComponentInChildren<Collider>();
+        if (col != null)
+        {
+            float minY = col.bounds.min.y;
+            if (minY < groundY)
+            {
+                raise = (groundY - minY) + 0.005f;
+            }
+        }
+        else
+        {
+            Renderer r = spawnedObject.GetComponentInChildren<Renderer>();
+            if (r != null)
+            {
+                float minY = r.bounds.min.y;
+                if (minY < groundY)
+                {
+                    raise = (groundY - minY) + 0.005f;
+                }
+            }
+        }
+
+        if (raise > 0f)
+        {
+            spawnedObject.transform.position += Vector3.up * raise;
+        }
+
+        Rigidbody rb = spawnedObject.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.useGravity = false;
+            rb.isKinematic = true;
+            rb.constraints = RigidbodyConstraints.FreezeAll;
+        }
     }
 
     private void OnDestroy()
