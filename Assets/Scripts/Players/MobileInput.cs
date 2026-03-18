@@ -21,6 +21,8 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
     [SerializeField] private GameObject jumpParent;
     [SerializeField] private GameObject pickupParent;
     [SerializeField] private GameObject specialParent;
+    [SerializeField] private GameObject interactParent;
+
 
     [Header("Camera Settings")]
     [SerializeField] private float cameraSensitivity = 0.5f;
@@ -49,14 +51,10 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
     private void Awake()
     {
     bool isMobile = Application.platform == RuntimePlatform.Android
-                 || Application.platform == RuntimePlatform.IPhonePlayer
-                  || Application.isEditor;
+                 || Application.platform == RuntimePlatform.IPhonePlayer;
+                 //|| Application.isEditor;
 
-        if (!isMobile)
-        {
-            enabled = false;
-            return;
-        }
+        if (!isMobile) { gameObject.SetActive(false); return; }
 
         // ── Auto-find scene widgets that can't be assigned on a network prefab ──
         if (joystickParent == null)
@@ -82,6 +80,7 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
         if (jumpParent   == null) jumpParent   = GameObject.Find("Jump");
         if (pickupParent == null) pickupParent = GameObject.Find("pickUp");
         if (specialParent == null) specialParent = GameObject.Find("Special");
+        if (interactParent == null) interactParent = GameObject.Find("Intereact");
 
         // ── Transparent full-screen image to receive pointer events ──────────
         // raycastTarget=true during gameplay so this image catches drag for camera look.
@@ -114,7 +113,10 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
         SetupButton(jumpParent,   "<Gamepad>/buttonSouth");
         SetupButton(pickupParent, "<Gamepad>/buttonNorth");
         SetupButton(specialParent, "<Gamepad>/buttonEast");
-if (specialParent != null) specialParent.SetActive(false);
+        SetupButton(interactParent, "<Gamepad>/buttonNorth");
+
+        if (specialParent != null) specialParent.SetActive(false);
+        if (interactParent != null) interactParent.SetActive(false);
     }
 
     private void Update()
@@ -184,6 +186,7 @@ if (specialParent != null) specialParent.SetActive(false);
         if (jumpParent != null)    jumpParent.SetActive(!spectating);
         if (pickupParent != null)  pickupParent.SetActive(!spectating);
         if (specialParent != null) specialParent.SetActive(!spectating);
+        if (interactParent != null) interactParent.SetActive(!spectating);
 
         // Cancel any in-progress drag so there is no sticky delta when switching modes
         if (spectating)
@@ -243,6 +246,7 @@ if (specialParent != null) specialParent.SetActive(false);
         if (jumpParent != null) jumpParent.SetActive(!isBoss);
         if (pickupParent != null) pickupParent.SetActive(!isBoss);
         if (specialParent != null) specialParent.SetActive(isBoss);
+        if (interactParent != null) interactParent.SetActive(isBoss);
 
     }
 

@@ -24,7 +24,7 @@ public class PlayerHealth : NetworkBehaviour
 
   [Tooltip("Reference to SpectatorMobileInput — enabled on death so it owns the touch area and nav buttons. " +
            "Auto-found if not assigned.")]
-  [SerializeField] private SpectatorMobileInput spectatorMobileInput;  // ← ADDED
+  [SerializeField] private SpectatorMobileInput spectatorMobileInput;
 
   [Networked, OnChangedRender(nameof(HealthChanged))]
   public float CurrentHealth { get; set; }
@@ -84,7 +84,7 @@ public class PlayerHealth : NetworkBehaviour
       if (mobileControls == null)
         mobileControls = FindFirstObjectByType<MobileControlsBridge>();
 
-      // Auto-find SpectatorMobileInput if not assigned in the Inspector   ← ADDED
+      // Auto-find SpectatorMobileInput if not assigned in the Inspector
       if (spectatorMobileInput == null)
         spectatorMobileInput = FindFirstObjectByType<SpectatorMobileInput>();
 
@@ -153,12 +153,20 @@ public class PlayerHealth : NetworkBehaviour
     // Tell MobileControlsBridge to show all gameplay widgets and reclaim its touch area
     if (mobileControls != null) mobileControls.SetSpectatorMode(false);
 
+    // Show the entire health bar canvas (includes health + keybinds) ONLY if not in lobby
+    if (healthBarObject != null && currentSceneName != "LobbyRoom")
+      healthBarObject.SetActive(true);
+
     // Disable spectator input first so its OnDisable hides nav buttons before
     // MobileControlsBridge re-enables its own Image raycast
-    if (spectatorMobileInput != null) spectatorMobileInput.enabled = false;  // ← ADDED
+    if (spectatorMobileInput != null) spectatorMobileInput.enabled = false;
 
     // Hide spectator overlay (also hides LastPlayer / NextPlayer as children)
     if (spectatorUI != null) spectatorUI.SetActive(false);
+
+   PCKeybindUI pcKeybindUI = FindFirstObjectByType<PCKeybindUI>();
+if (pcKeybindUI != null) pcKeybindUI.SetSpectatorMode(true);
+
   }
 
   /// <summary>
@@ -186,15 +194,19 @@ public class PlayerHealth : NetworkBehaviour
     // Hide all gameplay widgets and release the touch area
     if (mobileControls != null) mobileControls.SetSpectatorMode(true);
 
+    // Hide the entire health bar canvas (includes health + keybinds)
+    if (healthBarObject != null) healthBarObject.SetActive(false);
+
     // Show the "Spectator Controller" canvas parent so the nav buttons exist in the hierarchy
     if (spectatorUI != null) spectatorUI.SetActive(true);
 
-    // Enable SpectatorMobileInput: it owns camera drag and shows LastPlayer/NextPlayer  ← ADDED
+    // Enable SpectatorMobileInput: it owns camera drag and shows LastPlayer/NextPlayer
     if (spectatorMobileInput != null) spectatorMobileInput.enabled = true;
   }
 
   public void EnterSpectatorModeFromEscape()
   {
+    if (!HasInputAuthority) return;
     if (spectatorModeActive) return;
 
     spectatorModeActive = true;
@@ -206,13 +218,10 @@ public class PlayerHealth : NetworkBehaviour
     if (TryGetComponent<CharacterController>(out var cc))
       cc.enabled = false;
 
-    if (HasInputAuthority)
-    {
-      SetDeadUI();
+    SetDeadUI();
 
-      if (GetComponent<SpectatorSystem>() == null)
-        gameObject.AddComponent<SpectatorSystem>();
-    }
+    if (GetComponent<SpectatorSystem>() == null)
+      gameObject.AddComponent<SpectatorSystem>();
   }
 
   // ── Health Bar ──────────────────────────────────────────────────────────────
