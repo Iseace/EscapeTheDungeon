@@ -51,14 +51,10 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
     private void Awake()
     {
     bool isMobile = Application.platform == RuntimePlatform.Android
-                 || Application.platform == RuntimePlatform.IPhonePlayer
-                  || Application.isEditor;
+                 || Application.platform == RuntimePlatform.IPhonePlayer;
+                 //|| Application.isEditor;
 
-        if (!isMobile)
-        {
-            enabled = false;
-            return;
-        }
+        if (!isMobile) { gameObject.SetActive(false); return; }
 
         // ── Auto-find scene widgets that can't be assigned on a network prefab ──
         if (joystickParent == null)
