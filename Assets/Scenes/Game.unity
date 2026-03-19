@@ -595356,6 +595356,57 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1859931448}
   m_Mesh: {fileID: -7631008195387563993, guid: edcc86a903182d0429c0d7b2c727fec0, type: 3}
+--- !u!1 &1862441654
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1862441656}
+  - component: {fileID: 1862441655}
+  m_Layer: 0
+  m_Name: PortalDirectionControl
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1862441655
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1862441654}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6771e57a4777e4b4492874121f9143ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PortalDirectionHUD
+  showOnlyWhenEscapeWindowOpen: 1
+  restrictToSceneName: 0
+  requiredSceneName: Game
+  panelObjectName: EscapeAlert
+  textObjectName: PortalDistanceText
+  hidePanelWhenUnavailable: 1
+  distanceFormat: Exit {0}m
+--- !u!4 &1862441656
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1862441654}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1862495176
 GameObject:
   m_ObjectHideFlags: 0
@@ -677033,3 +677084,4 @@ SceneRoots:
   - {fileID: 525154141}
   - {fileID: 1142419275}
   - {fileID: 1115067061}
+  - {fileID: 1862441656}
