@@ -18,25 +18,43 @@ public class PlayerInventory : NetworkBehaviour
 
     public override void Render()
     {
+        var setup = GetComponent<PlayerSetup>();
+        if (setup != null && setup.HasEscaped)
+        {
+            SetAllVisualWandsActive(false);
+            _lastWeaponID = CurrentWeaponID;
+            return;
+        }
+
         // Solo ejecutamos el código si el ID cambió desde el último frame
         if (CurrentWeaponID != _lastWeaponID)
         {
-            for (int i = 0; i < visualWands.Length; i++)
+            SetAllVisualWandsActive(false);
+
+            if (CurrentWeaponID > 0)
             {
-                if (visualWands[i] == null) continue;
-
-                bool shouldBeActive = (i + 1) == CurrentWeaponID;
-                visualWands[i].SetActive(shouldBeActive);
-
-                // El log ahora solo saldrá una vez por cada báculo que recojas
-                if (shouldBeActive)
+                int index = CurrentWeaponID - 1;
+                if (index >= 0 && index < visualWands.Length && visualWands[index] != null)
                 {
-                    Debug.Log($"Inventario: Staff {i + 1} equipado.");
+                    visualWands[index].SetActive(true);
+                    Debug.Log($"Inventario: Staff {CurrentWeaponID} equipado.");
                 }
             }
 
             // Actualizamos el centinela para que no entre aquí en el siguiente frame
             _lastWeaponID = CurrentWeaponID;
+        }
+    }
+
+    private void SetAllVisualWandsActive(bool active)
+    {
+        if (visualWands == null || visualWands.Length == 0) return;
+
+        for (int i = 0; i < visualWands.Length; i++)
+        {
+            if (visualWands[i] == null) continue;
+            if (visualWands[i].activeSelf == active) continue;
+            visualWands[i].SetActive(active);
         }
     }
 

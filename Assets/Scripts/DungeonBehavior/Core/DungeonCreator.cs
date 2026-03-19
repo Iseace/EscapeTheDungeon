@@ -117,14 +117,8 @@ public class DungeonCreator : MonoBehaviour
     public float escapeTimeLimitSeconds = 90f;
     [Tooltip("Si esta activo, el portal aparece en una posicion aleatoria valida de la dungeon")]
     public bool randomPortalSpawnInDungeon = true;
-    [Tooltip("Offset vertical del portal para evitar que se incruste en el piso")]
+    [Tooltip("Offset vertical del portal para evitar que se incruste en el piso (fuente unica para MissionObjectiveManager)")]
     public float missionPortalHeightOffset = 3f;
-    [Tooltip("Area minima de sala para considerar spawn random del portal")]
-    public int missionPortalMinRoomArea = 120;
-    [Tooltip("Ancho/alto minimo de sala para considerar spawn random del portal")]
-    public int missionPortalMinRoomSpan = 8;
-    [Tooltip("Separacion minima del portal respecto a paredes (en tiles)")]
-    public int missionPortalClearanceFromWall = 5;
 
     [Header("Match Flow")]
     [Tooltip("Tiempo en segundos que el boss queda inmovil al iniciar la partida")]
@@ -276,12 +270,11 @@ public class DungeonCreator : MonoBehaviour
                 missionParent.transform.SetParent(runtimeRoot, false);
                 missionParent.transform.localPosition = Vector3.zero;
 
-                List<Vector3> portalCandidates = BuildPortalCandidates(currentGrid, currentRooms, currentCenterOffset, anchorGenerator != null ? anchorGenerator.CentralRoom : null);
                 missionObjectiveManager.Configure(
                     missionPortalPrefab,
                     escapeTimeLimitSeconds,
                     randomPortalSpawnInDungeon,
-                    portalCandidates,
+                    null,
                     missionPortalHeightOffset
                 );
 
@@ -322,6 +315,14 @@ public class DungeonCreator : MonoBehaviour
                         Debug.LogWarning("[DungeonCreator] Debug pylon enabled, pero no se encontró prefab para debug (ni debugCentralPylonPrefab ni entries en missionObjectives).");
                     }
                 }
+
+                List<Vector3> portalCandidates = BuildPortalCandidates(
+                    currentGrid,
+                    currentRooms,
+                    currentCenterOffset,
+                    anchorGenerator != null ? anchorGenerator.CentralRoom : null
+                );
+                missionObjectiveManager.SetPortalCandidates(portalCandidates);
             }
         }
 
@@ -572,90 +573,77 @@ public class DungeonCreator : MonoBehaviour
         List<Vector3> candidates = new List<Vector3>();
         if (grid == null || rooms == null) return candidates;
 
-        int minArea = Mathf.Max(1, missionPortalMinRoomArea);
-        int minSpan = Mathf.Max(1, missionPortalMinRoomSpan);
-        int clearance = Mathf.Max(0, missionPortalClearanceFromWall);
-
-        // First pass: strict filtering (room size + clearance).
+        // The portal only picks rooms that are fully free of occupied cells.
         foreach (var room in rooms)
         {
-            if (!IsPortalRoomEligible(room, excludedRoom, minArea, minSpan)) continue;
+            if (!IsPortalRoomEligible(room, excludedRoom)) continue;
+            if (!IsRoomFreeForPortal(grid, room)) continue;
 
-            var cells = grid.GetAvailableCellsInRoom(room);
-            for (int i = 0; i < cells.Count; i++)
+            if (TryGetRoomCenterCandidate(grid, room, offset, out Vector3 world))
             {
-                Vector2Int c = cells[i];
-                if (!HasPortalClearance(grid, c, room, clearance)) continue;
-
-                Vector3 world = new Vector3(c.x + 0.5f, 0f, c.y + 0.5f) + offset;
-                candidates.Add(world);
-            }
-        }
-
-        if (candidates.Count > 0) return candidates;
-
-        // Second pass fallback: keep room constraints but relax clearance.
-        foreach (var room in rooms)
-        {
-            if (!IsPortalRoomEligible(room, excludedRoom, minArea, minSpan)) continue;
-
-            var cells = grid.GetAvailableCellsInRoom(room);
-            for (int i = 0; i < cells.Count; i++)
-            {
-                Vector2Int c = cells[i];
-                Vector3 world = new Vector3(c.x + 0.5f, 0f, c.y + 0.5f) + offset;
-                candidates.Add(world);
-            }
-        }
-
-        if (candidates.Count > 0) return candidates;
-
-        // Last fallback: old behavior, any room/cell except central room.
-        foreach (var room in rooms)
-        {
-            if (excludedRoom != null && ReferenceEquals(room, excludedRoom)) continue;
-
-            var cells = grid.GetAvailableCellsInRoom(room);
-            for (int i = 0; i < cells.Count; i++)
-            {
-                Vector2Int c = cells[i];
-                Vector3 world = new Vector3(c.x + 0.5f, 0f, c.y + 0.5f) + offset;
                 candidates.Add(world);
             }
         }
 
         if (candidates.Count == 0)
         {
-            Debug.LogWarning("[DungeonCreator] No se encontraron candidatos para portal con filtros actuales.");
+            Debug.LogWarning("[DungeonCreator] No se encontraron salas libres para el portal (posibles objetivos/objetos ocupando rooms).");
         }
 
         return candidates;
     }
 
-    private bool IsPortalRoomEligible(RoomNode room, RoomNode excludedRoom, int minArea, int minSpan)
+    private bool TryGetRoomCenterCandidate(DungeonGrid grid, RoomNode room, Vector3 offset, out Vector3 world)
     {
-        if (room == null) return false;
-        if (excludedRoom != null && ReferenceEquals(room, excludedRoom)) return false;
+        world = Vector3.zero;
+        if (grid == null || room == null) return false;
 
-        int area = room.Width * room.Length;
-        if (area < minArea) return false;
-        if (room.Width < minSpan || room.Length < minSpan) return false;
+        List<Vector2Int> availableCells = grid.GetAvailableCellsInRoom(room);
+        if (availableCells == null || availableCells.Count == 0) return false;
+
+        Vector2Int roomCenter = room.GetCenterPosition();
+        Vector2Int bestCell = default;
+        int bestDistance = int.MaxValue;
+        bool found = false;
+
+        for (int i = 0; i < availableCells.Count; i++)
+        {
+            Vector2Int cell = availableCells[i];
+            int distance = (cell - roomCenter).sqrMagnitude;
+            if (distance >= bestDistance) continue;
+
+            bestDistance = distance;
+            bestCell = cell;
+            found = true;
+        }
+
+        if (!found) return false;
+
+        world = new Vector3(bestCell.x + 0.5f, 0f, bestCell.y + 0.5f) + offset;
         return true;
     }
 
-    private bool HasPortalClearance(DungeonGrid grid, Vector2Int pos, RoomNode room, int clearance)
+    private bool IsPortalRoomEligible(RoomNode room, RoomNode excludedRoom)
     {
-        if (clearance <= 0) return true;
+        if (room == null) return false;
+        if (excludedRoom != null && ReferenceEquals(room, excludedRoom)) return false;
+        return true;
+    }
 
-        for (int dx = -clearance; dx <= clearance; dx++)
+    private bool IsRoomFreeForPortal(DungeonGrid grid, RoomNode room)
+    {
+        if (grid == null || room == null) return false;
+
+        for (int x = room.BottomLeftAreaCorner.x; x < room.TopRightAreaCorner.x; x++)
         {
-            for (int dz = -clearance; dz <= clearance; dz++)
+            for (int z = room.BottomLeftAreaCorner.y; z < room.TopRightAreaCorner.y; z++)
             {
-                Vector2Int p = new Vector2Int(pos.x + dx, pos.y + dz);
+                Vector2Int p = new Vector2Int(x, z);
                 var cell = grid.GetCell(p);
                 if (cell == null) return false;
-                if (cell.Type != CellType.Floor) return false;
-                if (!ReferenceEquals(cell.ParentRoom, room)) return false;
+                if (cell.Type != CellType.Floor) continue;
+                if (!ReferenceEquals(cell.ParentRoom, room)) continue;
+                if (cell.IsOccupied) return false;
             }
         }
 

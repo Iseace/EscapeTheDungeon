@@ -72,6 +72,7 @@ public class MissionPortal : MonoBehaviour
         PlayerSetup player = other.GetComponentInParent<PlayerSetup>();
         if (player == null) return;
         if (player.Object == null) return;
+        if (player.IsBossPlayer()) return;
         if (player.HasEscaped) return;
 
         if (player.Object.HasStateAuthority)

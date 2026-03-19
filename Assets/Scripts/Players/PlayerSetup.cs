@@ -21,6 +21,7 @@ public class PlayerSetup : NetworkBehaviour
     public NetworkBool HasEscaped { get; set; }
     public ParentConstraint wandConstraint;
     private bool escapeHandledLocally;
+    private bool escapeCollisionDisabled;
 
     // The resolved eye-height pivot for this player, available on ALL instances
     // (not just the local one) so SpectatorSystem can read it on remote players.
@@ -30,6 +31,7 @@ public class PlayerSetup : NetworkBehaviour
     public override void Spawned()
     {
         escapeHandledLocally = false;
+        escapeCollisionDisabled = false;
 
         // Pivot creation runs on EVERY instance so remote players have it too
         EnsureCameraPivot();
@@ -67,8 +69,21 @@ public class PlayerSetup : NetworkBehaviour
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     public void Rpc_RequestEscapePortal()
     {
+        if (IsBossPlayer()) return;
         if (HasEscaped) return;
         HasEscaped = true;
+    }
+
+    public bool IsBossPlayer()
+    {
+        var role = GetComponent<PlayerRole>();
+        if (role != null && role.IsBoss) return true;
+
+        // Fallback for prefabs where role sync is late or missing.
+        if (GetComponent<BossSpecial>() != null) return true;
+        if (GetComponentInChildren<BossHitbox>(true) != null) return true;
+
+        return false;
     }
 
     public override void Render()
@@ -83,8 +98,7 @@ public class PlayerSetup : NetworkBehaviour
 
         if (graphicsContainer == null) return;
 
-        var role = GetComponent<PlayerRole>();
-        if (role != null && role.IsBoss)
+        if (IsBossPlayer())
         {
             // Si es el Boss, nos aseguramos de que todos sus modelos en el array estén ACTIVOS
             foreach (var model in characterModels)
@@ -137,6 +151,13 @@ public class PlayerSetup : NetworkBehaviour
     private void TryHandleEscapedState()
     {
         if (!HasEscaped) return;
+
+        if (!escapeCollisionDisabled)
+        {
+            DisableCollisionForEscape();
+            escapeCollisionDisabled = true;
+        }
+
         if (escapeHandledLocally) return;
 
         escapeHandledLocally = true;
@@ -151,6 +172,33 @@ public class PlayerSetup : NetworkBehaviour
         if (HasInputAuthority && GetComponent<SpectatorSystem>() == null)
         {
             gameObject.AddComponent<SpectatorSystem>();
+        }
+    }
+
+    private void DisableCollisionForEscape()
+    {
+        CharacterController cc = GetComponent<CharacterController>();
+        if (cc != null && cc.enabled)
+        {
+            cc.enabled = false;
+        }
+
+        Collider[] colliders = GetComponentsInChildren<Collider>(true);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Collider col = colliders[i];
+            if (col == null) continue;
+            if (!col.enabled) continue;
+            col.enabled = false;
+        }
+
+        Rigidbody[] rigidbodies = GetComponentsInChildren<Rigidbody>(true);
+        for (int i = 0; i < rigidbodies.Length; i++)
+        {
+            Rigidbody rb = rigidbodies[i];
+            if (rb == null) continue;
+            rb.detectCollisions = false;
+            rb.isKinematic = true;
         }
     }
 
