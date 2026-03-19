@@ -118,7 +118,7 @@ public class DungeonCreator : MonoBehaviour
     [Tooltip("Si esta activo, el portal aparece en una posicion aleatoria valida de la dungeon")]
     public bool randomPortalSpawnInDungeon = true;
     [Tooltip("Offset vertical del portal para evitar que se incruste en el piso (fuente unica para MissionObjectiveManager)")]
-    public float missionPortalHeightOffset = 3f;
+    public float missionPortalHeightOffset = 2f;
 
     [Header("Match Flow")]
     [Tooltip("Tiempo en segundos que el boss queda inmovil al iniciar la partida")]

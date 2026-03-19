@@ -44,6 +44,13 @@ public class SpellLogic : NetworkBehaviour
         var health = other.GetComponentInParent<PlayerHealth>();
         if (health != null)
         {
+            var setup = health.GetComponent<PlayerSetup>();
+            if (setup != null && setup.HasEscaped)
+            {
+                Runner.Despawn(Object);
+                return;
+            }
+
             health.DealDamage(damage);
         }
 

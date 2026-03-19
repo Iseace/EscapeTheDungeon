@@ -66,9 +66,10 @@ public class PlayerSetup : NetworkBehaviour
         SelectedCharacterIndex = index;
     }
 
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
     public void Rpc_RequestEscapePortal()
     {
+        if (Object == null || !Object.HasStateAuthority) return;
         if (IsBossPlayer()) return;
         if (HasEscaped) return;
         HasEscaped = true;
