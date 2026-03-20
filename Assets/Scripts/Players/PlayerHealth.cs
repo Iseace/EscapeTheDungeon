@@ -296,7 +296,9 @@ if (pcKeybindUI != null) pcKeybindUI.SetSpectatorMode(true);
     CurrentHealth = Mathf.Max(0, CurrentHealth - damage);
 
     if (CurrentHealth <= 0)
+    {
       IsDead = true; // Triggers OnIsDeadChanged on all clients
+    }
   }
 
   // ── Animation helpers ───────────────────────────────────────────────────────
@@ -343,14 +345,17 @@ if (pcKeybindUI != null) pcKeybindUI.SetSpectatorMode(true);
     if (anim != null)
       anim.SetBool("IsDead", true);
 
-    // 2. Disable physics / movement so the corpse freezes on all clients
+    // 2. Hide nameplate on death — runs on ALL clients for this player
+    GetComponent<PlayerSetup>()?.SetNameplateVisible(false);
+
+    // 3. Disable physics / movement so the corpse freezes on all clients
     if (TryGetComponent<CharacterController>(out var cc))
       cc.enabled = false;
 
     if (TryGetComponent<PlayerMovement>(out var pm))
       pm.enabled = false;
 
-    // 3. Local-only: switch UI and enable spectator camera
+    // 4. Local-only: switch UI and enable spectator camera
     if (HasInputAuthority)
     {
       if (TryGetComponent<PlayerInteraction>(out var pi)) pi.enabled = false;
