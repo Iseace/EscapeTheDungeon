@@ -63,7 +63,20 @@ public class PlayerSetup : NetworkBehaviour
             if (string.IsNullOrEmpty(nick))
                 nick = "Player" + Runner.LocalPlayer.PlayerId;
             Rpc_SetNickname(nick);
+
+            // Show own nickname in LobbyRoom, hide in Game scene
+            if (nameplateText != null)
+            {
+                bool isLobby = SceneManager.GetActiveScene().name == "LobbyRoom";
+                nameplateText.transform.parent.gameObject.SetActive(isLobby);
+            }
         }
+    }
+
+    public void SetNameplateVisible(bool visible)
+    {
+        if (nameplateText != null)
+            nameplateText.transform.parent.gameObject.SetActive(visible);
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
@@ -133,6 +146,13 @@ public class PlayerSetup : NetworkBehaviour
         {
             ApplyNickname();
             _nickApplied = true;
+
+            // After nickname syncs, re-apply own nameplate visibility rule
+            if (HasInputAuthority)
+            {
+                bool isLobby = SceneManager.GetActiveScene().name == "LobbyRoom";
+                nameplateText.transform.parent.gameObject.SetActive(isLobby);
+            }
         }
 
         TryHandleEscapedState();
