@@ -13,6 +13,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     [Header("UI References")]
     [SerializeField] private TMP_InputField hostRoomInput;
     [SerializeField] private Button hostBtn;
+    [SerializeField] private TMP_InputField nicknameInput;
 
     [Header("Network Settings")]
     [SerializeField] private string lobbySceneName = "LobbyRoom";
@@ -32,10 +33,39 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     {
         hostBtn.onClick.AddListener(OnHostRoom);
 
+        if (nicknameInput != null)
+        {
+            nicknameInput.text = PlayerPrefs.GetString("Nickname", "");
+            // Save nickname immediately when player finishes typing so it's always persisted
+            nicknameInput.onEndEdit.AddListener(OnNicknameEndEdit);
+        }
+
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
         OnJoinLobby();
+    }
+
+    // Saves nickname to disk the moment the player finishes typing
+    private void OnNicknameEndEdit(string value)
+    {
+        string nick = value.Trim();
+        if (!string.IsNullOrEmpty(nick))
+        {
+            PlayerPrefs.SetString("Nickname", nick);
+            PlayerPrefs.Save(); // Force immediate write to disk
+        }
+    }
+
+    private void SaveNickname()
+    {
+        if (nicknameInput == null) return;
+        string nick = nicknameInput.text.Trim();
+        if (!string.IsNullOrEmpty(nick))
+        {
+            PlayerPrefs.SetString("Nickname", nick);
+            PlayerPrefs.Save(); // Force immediate write to disk
+        }
     }
 
     public async void OnJoinLobby()
@@ -67,6 +97,8 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         if (string.IsNullOrEmpty(roomName))
             return;
 
+        SaveNickname();
+
         // If runner is running, shutdown first
         if (_runner != null && _runner.IsRunning)
         {
@@ -91,6 +123,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     public async void JoinGame(SessionInfo sessionInfo)
     {
         Debug.Log($"[NETWORK] Joining session: {sessionInfo.Name}");
+        SaveNickname();
 
         // If runner is running, shutdown first
         if (_runner != null && _runner.IsRunning)

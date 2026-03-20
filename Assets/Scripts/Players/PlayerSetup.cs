@@ -2,6 +2,7 @@ using UnityEngine;
 using Fusion;
 using UnityEngine.SceneManagement;
 using UnityEngine.Animations;
+using TMPro;
 
 public class PlayerSetup : NetworkBehaviour
 {
@@ -14,6 +15,9 @@ public class PlayerSetup : NetworkBehaviour
     [SerializeField] private GameObject[] characterModels;
     [SerializeField] private Avatar[] characterAvatars;
 
+    [Header("Nameplate")]
+    [SerializeField] private TMP_Text nameplateText;
+
     [Networked]
     public int SelectedCharacterIndex { get; set; }
 
@@ -22,6 +26,12 @@ public class PlayerSetup : NetworkBehaviour
     public ParentConstraint wandConstraint;
     private bool escapeHandledLocally;
     private bool escapeCollisionDisabled;
+
+    [Networked, OnChangedRender(nameof(OnNicknameChanged))]
+    public NetworkString<_32> Nickname { get; set; }
+
+    // Tracks whether the nickname has been successfully applied after scene sync
+    private bool _nickApplied = false;
 
     // The resolved eye-height pivot for this player, available on ALL instances
     // (not just the local one) so SpectatorSystem can read it on remote players.
@@ -32,6 +42,9 @@ public class PlayerSetup : NetworkBehaviour
     {
         escapeHandledLocally = false;
         escapeCollisionDisabled = false;
+
+        // Reset so Render() retries nickname sync on each spawn
+        _nickApplied = false;
 
         // Pivot creation runs on EVERY instance so remote players have it too
         EnsureCameraPivot();
@@ -44,7 +57,33 @@ public class PlayerSetup : NetworkBehaviour
 
             int idGuardado = PlayerPrefs.GetInt("SelectedCharacterID", 0);
             Rpc_RequestCharacterSelection(idGuardado);
+
+            // Set the nickname for the player
+            string nick = PlayerPrefs.GetString("Nickname", "").Trim();
+            if (string.IsNullOrEmpty(nick))
+                nick = "Player" + Runner.LocalPlayer.PlayerId;
+            Rpc_SetNickname(nick);
         }
+    }
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    public void Rpc_SetNickname(string nick)
+    {
+        Nickname = nick;
+    }
+
+    // Called when the nickname changes
+    private void OnNicknameChanged()
+    {
+        ApplyNickname();
+        _nickApplied = true;
+    }
+
+    // Apply the nickname to the nameplate
+    private void ApplyNickname()
+    {
+        if (nameplateText != null)
+            nameplateText.text = Nickname.ToString();
     }
 
     // Added Update to force cursor visibility if a camera script tries to lock it in the Lobby
@@ -89,6 +128,13 @@ public class PlayerSetup : NetworkBehaviour
 
     public override void Render()
     {
+        // Keep trying to apply nickname every frame until Nickname is synced and not empty
+        if (!_nickApplied && !string.IsNullOrEmpty(Nickname.ToString()))
+        {
+            ApplyNickname();
+            _nickApplied = true;
+        }
+
         TryHandleEscapedState();
 
         if (HasEscaped)

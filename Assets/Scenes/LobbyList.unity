@@ -1690,8 +1690,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerSpawner
   PlayerPrefab: {fileID: 6293013754538618073, guid: c71f20dc8891381488230ede61c54a8e, type: 3}
   BossPrefab: {fileID: 6293013754538618073, guid: 99c011a9858252845b73b6c8729c1244, type: 3}
-  SurvivorPrefab: {fileID: 6293013754538618073, guid: c71f20dc8891381488230ede61c54a8e, type: 3}
   dungeonNetworkRunnerPrefab: {fileID: 6750589672458909840, guid: c73683454a7eca7a088415433d0c5dbd, type: 3}
+  fallbackGameCenterSpawn: {x: 0, y: 1, z: 0}
+  gameSpawnRingRadius: 2.5
+  gameSpawnY: 1
+  randomizeSafeSpawns: 1
+  minSpawnDistanceBetweenPlayers: 1.5
+  minDistanceFromBossCenter: 5
+  spawnCollisionRadius: 0.35
+  spawnCollisionHeight: 1.8
+  groundRayStartHeight: 10
+  groundSnapOffset: 0.05
   menuSceneName: LobbyList
   menuSceneIndex: 0
 --- !u!4 &1626271135
@@ -1723,6 +1732,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   hostRoomInput: {fileID: 972363901}
   hostBtn: {fileID: 2109985793}
+  nicknameInput: {fileID: 344806545}
   lobbySceneName: LobbyRoom
   gameSceneName: Game
   maxPlayers: 5
