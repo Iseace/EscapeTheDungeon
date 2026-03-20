@@ -288,6 +288,11 @@ if (pcKeybindUI != null) pcKeybindUI.SetSpectatorMode(true);
   public void DealDamage(float damage)
   {
     if (!Object.HasStateAuthority || IsDead) return;
+
+    var setup = GetComponent<PlayerSetup>();
+    if (setup != null && setup.HasEscaped)
+      return;
+
     CurrentHealth = Mathf.Max(0, CurrentHealth - damage);
 
     if (CurrentHealth <= 0)

@@ -12,7 +12,8 @@ public class MissionObjectiveManager : MonoBehaviour
     [SerializeField] private GameObject portalPrefab;
     [SerializeField] private Transform portalSpawnPoint;
     [SerializeField] private bool useRandomSpawnFromDungeon = true;
-    [SerializeField] private float portalHeightOffset = 3f;
+    [SerializeField] private float portalSpawnBlockCheckRadius = 1.25f;
+    private float portalHeightOffset = 3f;
 
     [Header("Escape Timer")]
     [SerializeField] private bool enableEscapeTimeLimit = true;
@@ -26,6 +27,7 @@ public class MissionObjectiveManager : MonoBehaviour
     private bool escapeTimerRunning;
     private float remainingEscapeTime;
     private bool escapeWindowClosed;
+    private readonly Collider[] portalSpawnCheckHits = new Collider[48];
 
     public bool IsEscapeWindowOpen => portalSpawned && !escapeWindowClosed;
     public float RemainingEscapeTime => remainingEscapeTime;
@@ -75,6 +77,15 @@ public class MissionObjectiveManager : MonoBehaviour
         }
 
         ResetMissionState();
+    }
+
+    public void SetPortalCandidates(List<Vector3> randomCandidates)
+    {
+        portalCandidates.Clear();
+        if (randomCandidates != null && randomCandidates.Count > 0)
+        {
+            portalCandidates.AddRange(randomCandidates);
+        }
     }
 
     public void ResetMissionState()
@@ -146,8 +157,11 @@ public class MissionObjectiveManager : MonoBehaviour
 
         if (useRandomSpawnFromDungeon && portalCandidates.Count > 0)
         {
-            int index = Random.Range(0, portalCandidates.Count);
-            position = portalCandidates[index];
+            if (!TryPickRandomClearPortalCandidate(out position))
+            {
+                position = portalSpawnPoint != null ? portalSpawnPoint.position : Vector3.zero;
+                Debug.LogWarning("[MissionObjectiveManager] No hay candidatos libres para portal (objetivos/items bloqueando). Se usa portalSpawnPoint fallback.");
+            }
         }
 
         if (!Mathf.Approximately(portalHeightOffset, 0f))
@@ -156,6 +170,44 @@ public class MissionObjectiveManager : MonoBehaviour
         }
 
         SpawnPortalInternal(position, rotation, emitEvent: true);
+    }
+
+    private bool TryPickRandomClearPortalCandidate(out Vector3 position)
+    {
+        position = Vector3.zero;
+        if (portalCandidates == null || portalCandidates.Count == 0) return false;
+
+        int start = Random.Range(0, portalCandidates.Count);
+
+        for (int i = 0; i < portalCandidates.Count; i++)
+        {
+            int index = (start + i) % portalCandidates.Count;
+            Vector3 candidate = portalCandidates[index];
+            if (IsPortalPositionBlocked(candidate)) continue;
+
+            position = candidate;
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool IsPortalPositionBlocked(Vector3 position)
+    {
+        float radius = Mathf.Max(0.1f, portalSpawnBlockCheckRadius);
+        int hitCount = Physics.OverlapSphereNonAlloc(position, radius, portalSpawnCheckHits, ~0, QueryTriggerInteraction.Collide);
+        if (hitCount <= 0) return false;
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            Collider col = portalSpawnCheckHits[i];
+            if (col == null) continue;
+
+            if (col.GetComponentInParent<MissionObjectivePylon>() != null) return true;
+            if (col.GetComponentInParent<InteractableItem>() != null) return true;
+        }
+
+        return false;
     }
 
     public void SpawnPortalFromNetwork(Vector3 position, Quaternion rotation)
