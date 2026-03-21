@@ -10,18 +10,26 @@ public class BossHitbox : NetworkBehaviour
 
     [Header("Movement Penalty")]
     public float attackMoveSpeedMultiplier = 0.3f; // 30% of normal speed during attack
+    public float postAttackPenaltyDuration = 2f;
+
+    [Header("Knockback Settings")]
+    public float knockbackForce = 3f; // Force applied to the hit player
+    public float knockbackUpwardBonus = 2f; // Additional upward force for dramatic effect
 
     private Collider _myCollider;
     private Transform _bossRoot;
     private Animator _animator;
 
     [Networked] private TickTimer AttackCooldownTimer { get; set; }
+    [Networked] private TickTimer MovePenaltyTimer { get; set; }
     [Networked] public NetworkBool IsAttacking { get; set; } // Changed to public so PlayerMovement can access it
 
     // Local (non-networked) mirror of IsAttacking.  Set immediately on every
     // machine via the RPC / animation events so the InputAuthority client
     // doesn't have to wait for networked-state replication.
     private bool _isAttackingLocal;
+    private bool _isMovePenaltyLocal;
+    private float _movePenaltyEndTimeLocal;
 
     private bool _canAttack = true;
 
@@ -95,10 +103,18 @@ public class BossHitbox : NetworkBehaviour
             {
                 health.DealDamage(damage);
                 Debug.Log($"Boss hit {other.name}!");
+
+                // Apply knockback to the player
+                var playerMovement = other.GetComponentInParent<PlayerMovement>();
+                if (playerMovement != null)
+                {
+                    Vector3 knockbackDirection = (other.transform.position - _bossRoot.position).normalized;
+                    playerMovement.ApplyKnockback(knockbackDirection, knockbackForce, knockbackUpwardBonus);
+                }
             }
 
             // Disable after first hit to prevent multiple damage in one swing
-            _myCollider.enabled = false;
+            DisableCollider();
         }
     }
 
@@ -121,6 +137,7 @@ public class BossHitbox : NetworkBehaviour
     public void DisableCollider()
     {
         _myCollider.enabled = false;
+        StartMovePenalty();
     }
 
     public void AttackAnimationEnd()
@@ -137,7 +154,28 @@ public class BossHitbox : NetworkBehaviour
 
     // Public methods for external scripts
     public bool CanAttack() => _canAttack;
-    public float GetMoveSpeedMultiplier() => (IsAttacking || _isAttackingLocal) ? attackMoveSpeedMultiplier : 1f;
+    public float GetMoveSpeedMultiplier()
+    {
+        if (_isMovePenaltyLocal && Time.time >= _movePenaltyEndTimeLocal)
+        {
+            _isMovePenaltyLocal = false;
+        }
+
+        bool hasNetworkPenalty = MovePenaltyTimer.IsRunning && !MovePenaltyTimer.Expired(Runner);
+        bool hasLocalPenalty = _isMovePenaltyLocal;
+        return (hasNetworkPenalty || hasLocalPenalty) ? attackMoveSpeedMultiplier : 1f;
+    }
+
+    private void StartMovePenalty()
+    {
+        _isMovePenaltyLocal = true;
+        _movePenaltyEndTimeLocal = Time.time + postAttackPenaltyDuration;
+
+        if (Object.HasStateAuthority)
+        {
+            MovePenaltyTimer = TickTimer.CreateFromSeconds(Runner, postAttackPenaltyDuration);
+        }
+    }
 
     // Optional: Get current cooldown percentage for UI
     public float GetCooldownPercent()
