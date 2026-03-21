@@ -1627,6 +1627,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   hostRoomInput: {fileID: 972363901}
   hostBtn: {fileID: 2109985793}
+  nicknameInput: {fileID: 344806545}
   lobbySceneName: LobbyRoom
   gameSceneName: Game
   maxPlayers: 5

@@ -101,6 +101,13 @@ public class BossHitbox : NetworkBehaviour
             // Only the server/host deals damage
             if (Object.HasStateAuthority)
             {
+                var setup = health.GetComponent<PlayerSetup>();
+                if (setup != null && setup.HasEscaped)
+                {
+                    _myCollider.enabled = false;
+                    return;
+                }
+
                 health.DealDamage(damage);
                 Debug.Log($"Boss hit {other.name}!");
 
