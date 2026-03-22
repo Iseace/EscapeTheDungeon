@@ -42,10 +42,9 @@ public class LobbyListUIHandler : MonoBehaviour
 
         // Check if game has started
         bool isGameStarted = false;
-        if (_sessionInfo.Properties != null && _sessionInfo.Properties.TryGetValue("GameStarted", out var gameStartedProp))
-        {
-            isGameStarted = System.Convert.ToInt32(gameStartedProp.PropertyValue) != 0;
-        }
+        if (_sessionInfo.Properties != null &&
+            _sessionInfo.Properties.TryGetValue("GameStarted", out var prop))
+            isGameStarted = Convert.ToInt32(prop.PropertyValue) != 0;
 
         // Determine session status
         bool isFull = _sessionInfo.PlayerCount >= _sessionInfo.MaxPlayers;
@@ -103,16 +102,19 @@ public class LobbyListUIHandler : MonoBehaviour
     }
 
     public void OnJoinButtonClicked()
-    {
-        Debug.Log("[SESSION ITEM] JOIN BUTTON CLICKED!");
-        if (_sessionInfo != null)
         {
-            Debug.Log($"[SESSION ITEM] Invoking join for session: {_sessionInfo.Name}");
-            OnJoinSession?.Invoke(_sessionInfo);
+        if (_sessionInfo == null)
+        {
+            Debug.LogError("[LobbyItem] SessionInfo is null — cannot join.");
+            return;
         }
+ 
+        SceneLoader sceneLoader = FindAnyObjectByType<SceneLoader>();
+        if (sceneLoader != null)
+            sceneLoader.ShowLoadingScreen();
         else
-        {
-            Debug.LogError("[SESSION ITEM] SessionInfo is null! Cannot join.");
-        }
+            Debug.LogWarning("[LobbyItem] SceneLoader not found in scene.");
+ 
+        OnJoinSession?.Invoke(_sessionInfo);
     }
 }
