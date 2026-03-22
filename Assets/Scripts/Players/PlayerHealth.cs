@@ -164,8 +164,8 @@ public class PlayerHealth : NetworkBehaviour
     // Hide spectator overlay (also hides LastPlayer / NextPlayer as children)
     if (spectatorUI != null) spectatorUI.SetActive(false);
 
-   PCKeybindUI pcKeybindUI = FindFirstObjectByType<PCKeybindUI>();
-if (pcKeybindUI != null) pcKeybindUI.SetSpectatorMode(true);
+    PCKeybindUI pcKeybindUI = FindFirstObjectByType<PCKeybindUI>();
+    if (pcKeybindUI != null) pcKeybindUI.SetSpectatorMode(true);
 
   }
 

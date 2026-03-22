@@ -34,6 +34,10 @@ public class BossCombat : NetworkBehaviour
             if (Time.time < _nextAttackTime) return;
             _nextAttackTime = Time.time + attackCooldown;
 
+            // LOCAL PREDICTION: Play animation immediately on InputAuthority before RPC
+            // This eliminates input lag for the attacking player
+            PlayAttackAnimation();
+
             // Only send the RPC on the forward tick, never during resimulation
             if (Runner.IsForward)
                 Rpc_PlayMeleeAttack();
@@ -42,6 +46,11 @@ public class BossCombat : NetworkBehaviour
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
     private void Rpc_PlayMeleeAttack()
+    {
+        PlayAttackAnimation();
+    }
+
+    private void PlayAttackAnimation()
     {
         var animator = GetComponentInChildren<Animator>();
         if (animator != null)

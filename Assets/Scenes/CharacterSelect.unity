@@ -288,6 +288,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Druid
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 677d58e5a6590a74886e223df39d23a5, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: 677d58e5a6590a74886e223df39d23a5, type: 3}
       propertyPath: m_Controller
       value: 
@@ -485,6 +489,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 20d32357f0d199c4a8e04c4615b80681, type: 3}
       propertyPath: m_Name
       value: Gunslinger
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 20d32357f0d199c4a8e04c4615b80681, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: 20d32357f0d199c4a8e04c4615b80681, type: 3}
       propertyPath: m_Controller
@@ -6003,6 +6011,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: witch
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 6251fa966eab702488ce0258529d9fa7, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: 6251fa966eab702488ce0258529d9fa7, type: 3}
       propertyPath: m_Controller
       value: 
@@ -6063,6 +6075,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 4f077ee5fddc0de45839c42ea9830408, type: 3}
       propertyPath: m_Name
       value: Warrior
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 4f077ee5fddc0de45839c42ea9830408, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: 4f077ee5fddc0de45839c42ea9830408, type: 3}
       propertyPath: m_Controller
@@ -6193,6 +6209,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 18924469f12b6b249b18eb154b76fbfb, type: 3}
       propertyPath: m_Name
       value: FemaleWarrior
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 18924469f12b6b249b18eb154b76fbfb, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: 18924469f12b6b249b18eb154b76fbfb, type: 3}
       propertyPath: m_Controller
@@ -6586,6 +6606,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Mage
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: f03c8e56d32e1ae4681b3dc9cabfbfee, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: f03c8e56d32e1ae4681b3dc9cabfbfee, type: 3}
       propertyPath: m_Controller
       value: 
@@ -6748,6 +6772,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 0521e892e62c2e4438a03eb365ca50ef, type: 3}
       propertyPath: m_Name
       value: Necromancer
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 0521e892e62c2e4438a03eb365ca50ef, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: 0521e892e62c2e4438a03eb365ca50ef, type: 3}
       propertyPath: m_Controller

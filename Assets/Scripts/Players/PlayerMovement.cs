@@ -201,4 +201,25 @@ public class PlayerMovement : NetworkBehaviour
             SetLayerRecursively(child.gameObject, newLayer);
         }
     }
+
+    /// <summary>
+    /// Apply a knockback force to the player, pushing them away from the boss.
+    /// </summary>
+    public void ApplyKnockback(Vector3 direction, float force, float upwardBonus = 0f)
+    {
+        // Ensure direction is normalized
+        direction = direction.normalized;
+
+        // Apply knockback - horizontal component carries the main force
+        Vector3 knockback = direction * force;
+
+        // Add upward component if specified (for more dramatic effect)
+        if (upwardBonus > 0)
+        {
+            knockback.y = upwardBonus;
+        }
+
+        // Add to current velocity (doesn't replace it, adds to existing momentum)
+        _velocity += knockback;
+    }
 }
