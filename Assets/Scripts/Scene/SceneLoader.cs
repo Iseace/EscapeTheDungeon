@@ -3,199 +3,125 @@ using UnityEngine.UI;
 using System.Collections;
 
 /// <summary>
-/// Hides the LobbyList panel, reveals the Loading-Screen,
-/// and animates the ProgressionBar slider from 0 → 1.
-/// All scene references are resolved automatically at runtime,
-/// so this script works inside a prefab with no manual Inspector wiring.
-/// Wire SceneLoader.ShowLoadingScreen() to the JoinBtn's second OnClick slot.
+/// Attach to a dedicated always-active GameObject in the LobbyList scene
+/// (NOT inside the LobbyListItem prefab).
+/// LobbyListUIHandler finds it via FindAnyObjectByType at runtime.
 /// </summary>
 public class SceneLoader : MonoBehaviour
 {
     [Header("Loading Bar")]
-    [Tooltip("Seconds it takes for the bar to fill completely.")]
+    [Tooltip("Seconds to fill the bar.")]
     [SerializeField] private float fillDuration = 2.5f;
 
-    // ── Runtime-resolved references ───────────────────────────────────────────
-    private GameObject _lobbyListPanel;   // Canvas → LobbyList
-    private GameObject _loadingScreen;    // Canvas → Loading-Screen
-    private Slider     _progressionBar;   // Canvas → Loading-Screen → ... → ProgressionBar
+    private GameObject _lobbyListPanel;
+    private GameObject _loadingScreen;
+    private Slider     _progressionBar;
+    private bool       _isLoading;
 
-    // Prevents double-triggering if the button is clicked more than once
-    private bool _isLoading = false;
-
-    // ── Names to search ───────────────────────────────────────────────────────
     private const string LOBBY_LIST_NAME      = "LobbyList";
     private const string LOADING_SCREEN_NAME  = "Loading-Screen";
     private const string PROGRESSION_BAR_NAME = "ProgressionBar";
 
     private void Awake()
     {
-        ResolveSceneReferences();
+        ResolvePanels();
 
-        // Keep loading screen hidden until needed
-        if (_loadingScreen != null)
-            _loadingScreen.SetActive(false);
-
-        // Make sure the lobby list is visible at the start
-        if (_lobbyListPanel != null)
-            _lobbyListPanel.SetActive(true);
-
-        // Reset bar
-        if (_progressionBar != null)
-            _progressionBar.value = 0f;
+        if (_loadingScreen != null) _loadingScreen.SetActive(false);
+        if (_lobbyListPanel != null) _lobbyListPanel.SetActive(true);
     }
 
-    /// <summary>
-    /// Searches the active scene for the required UI objects by name.
-    /// Called once in Awake and again in ShowLoadingScreen as a safety fallback.
-    /// </summary>
-    private void ResolveSceneReferences()
+    // ── Reference resolution ──────────────────────────────────────────────────
+
+    private void ResolvePanels()
     {
-        // ── LobbyList panel ───────────────────────────────────────────────────
         if (_lobbyListPanel == null)
-        {
-            GameObject found = FindInScene(LOBBY_LIST_NAME);
-            if (found != null)
-            {
-                _lobbyListPanel = found;
-                Debug.Log($"[SCENE LOADER] Found '{LOBBY_LIST_NAME}'.");
-            }
-            else
-            {
-                Debug.LogWarning($"[SCENE LOADER] Could not find '{LOBBY_LIST_NAME}' in the scene. " +
-                                 "Make sure the GameObject name matches exactly.");
-            }
-        }
+            _lobbyListPanel = FindInScene(LOBBY_LIST_NAME);
 
-        // ── Loading-Screen panel ──────────────────────────────────────────────
         if (_loadingScreen == null)
+            _loadingScreen = FindInScene(LOADING_SCREEN_NAME);
+    }
+
+    private void ResolveSlider()
+    {
+        if (_progressionBar != null || _loadingScreen == null) return;
+
+        // Search all sliders including inactive children
+        foreach (Slider s in _loadingScreen.GetComponentsInChildren<Slider>(true))
         {
-            GameObject found = FindInScene(LOADING_SCREEN_NAME);
-            if (found != null)
+            if (s.gameObject.name == PROGRESSION_BAR_NAME)
             {
-                _loadingScreen = found;
-                Debug.Log($"[SCENE LOADER] Found '{LOADING_SCREEN_NAME}'.");
-            }
-            else
-            {
-                Debug.LogWarning($"[SCENE LOADER] Could not find '{LOADING_SCREEN_NAME}' in the scene. " +
-                                 "Make sure the GameObject name matches exactly.");
+                _progressionBar = s;
+                return;
             }
         }
 
-        // ── ProgressionBar slider ─────────────────────────────────────────────
-        if (_progressionBar == null)
+        // Fallback: first slider found
+        Slider[] all = _loadingScreen.GetComponentsInChildren<Slider>(true);
+        if (all.Length > 0)
         {
-            // Search all Sliders in the scene and match by GameObject name
-            Slider[] allSliders = FindObjectsByType<Slider>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            foreach (Slider s in allSliders)
-            {
-                if (s.gameObject.name == PROGRESSION_BAR_NAME)
-                {
-                    _progressionBar = s;
-                    Debug.Log($"[SCENE LOADER] Found '{PROGRESSION_BAR_NAME}' slider.");
-                    break;
-                }
-            }
-
-            if (_progressionBar == null)
-            {
-                Debug.LogWarning($"[SCENE LOADER] Could not find a Slider named '{PROGRESSION_BAR_NAME}' in the scene.");
-            }
+            _progressionBar = all[0];
+            Debug.LogWarning($"[SceneLoader] '{PROGRESSION_BAR_NAME}' not found by name — using '{_progressionBar.gameObject.name}'.");
+        }
+        else
+        {
+            Debug.LogError("[SceneLoader] No Slider found inside Loading-Screen.");
         }
     }
 
-    /// <summary>
-    /// Searches the entire scene hierarchy for a GameObject with the given name,
-    /// including inactive objects.
-    /// </summary>
     private static GameObject FindInScene(string objectName)
     {
-        Transform[] allTransforms = FindObjectsByType<Transform>(
-            FindObjectsInactive.Include,
-            FindObjectsSortMode.None
-        );
-
-        foreach (Transform t in allTransforms)
-        {
-            if (t.gameObject.name == objectName)
-                return t.gameObject;
-        }
-
+        foreach (Transform t in FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            if (t.gameObject.name == objectName) return t.gameObject;
         return null;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Public API
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Public API ────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Call this from the JoinBtn's OnClick (second slot).
-    /// Hides the lobby list, shows the loading screen, and animates the bar.
-    /// Fusion handles the actual scene transition once the connection is ready.
-    /// </summary>
+    /// <summary>Called by LobbyListUIHandler when the player clicks Join.</summary>
     public void ShowLoadingScreen()
     {
         if (_isLoading) return;
-
-        // Safety: try to resolve again in case Awake ran before the scene was ready
-        ResolveSceneReferences();
-
         _isLoading = true;
-        Debug.Log("[SCENE LOADER] Showing loading screen.");
 
-        // Hide the lobby list
-        if (_lobbyListPanel != null)
-            _lobbyListPanel.SetActive(false);
-        else
-            Debug.LogWarning("[SCENE LOADER] LobbyList panel not found — skipping hide.");
+        ResolvePanels();
 
-        // Reveal the loading screen
+        if (_lobbyListPanel != null) _lobbyListPanel.SetActive(false);
+
         if (_loadingScreen != null)
+        {
             _loadingScreen.SetActive(true);
+            // Resolve slider AFTER activating so GetComponentsInChildren sees full hierarchy
+            ResolveSlider();
+        }
         else
-            Debug.LogWarning("[SCENE LOADER] Loading-Screen not found — skipping show.");
+        {
+            Debug.LogWarning("[SceneLoader] Loading-Screen not found.");
+        }
 
-        // Begin the visual fill animation
-        StartCoroutine(AnimateProgressBar());
+        if (_progressionBar != null) _progressionBar.value = 0f;
+
+        // Safe to call — this GameObject lives directly in the scene and is always active
+        StartCoroutine(AnimateBar());
     }
 
-    /// <summary>
-    /// Resets the loading screen back to its initial state.
-    /// Useful if the connection fails and the player returns to the lobby.
-    /// </summary>
+    /// <summary>Resets to lobby state (call on connection failure).</summary>
     public void HideLoadingScreen()
     {
         StopAllCoroutines();
-        _isLoading = false;
+        _isLoading      = false;
+        _progressionBar = null;
 
-        if (_progressionBar != null)
-            _progressionBar.value = 0f;
-
-        if (_loadingScreen != null)
-            _loadingScreen.SetActive(false);
-
-        if (_lobbyListPanel != null)
-            _lobbyListPanel.SetActive(true);
-
-        Debug.Log("[SCENE LOADER] Loading screen hidden, lobby restored.");
+        if (_loadingScreen  != null) _loadingScreen.SetActive(false);
+        if (_lobbyListPanel != null) _lobbyListPanel.SetActive(true);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Private helpers
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Bar animation ─────────────────────────────────────────────────────────
 
-    private IEnumerator AnimateProgressBar()
+    private IEnumerator AnimateBar()
     {
-        if (_progressionBar == null)
-        {
-            Debug.LogWarning("[SCENE LOADER] ProgressionBar reference is missing — bar animation skipped.");
-            yield break;
-        }
+        if (_progressionBar == null) yield break;
 
-        _progressionBar.value = 0f;
         float elapsed = 0f;
-
         while (elapsed < fillDuration)
         {
             elapsed += Time.deltaTime;
@@ -204,10 +130,6 @@ public class SceneLoader : MonoBehaviour
         }
 
         _progressionBar.value = 1f;
-        Debug.Log("[SCENE LOADER] Bar filled — waiting for Fusion to load the scene.");
-
-        // No manual scene load here.
-        // Fusion (NetworkRunnerHandler.JoinGame → StartGame) handles the
-        // scene transition and this scene will be replaced automatically.
+        // Fusion handles the actual scene transition — no manual load here.
     }
 }
