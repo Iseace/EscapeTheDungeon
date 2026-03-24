@@ -9,6 +9,7 @@ Ya estan listos estos scripts:
 - EndMatchSceneDirector.cs
 - EndMatchResultsHUD.cs
 - EndMatchSkinsPresenter.cs
+- EndMatchTimelineRouter.cs
 
 ## 2) Configuracion en escena Game
 
@@ -67,6 +68,44 @@ Opcional:
 
 - fallbackVariant: variante por defecto si no hay snapshot
 - clearSnapshotAfterApply: true solo si no necesitas usar snapshot despues
+
+## 4.1) Preparar timelines por root (recomendado)
+
+Objetivo: que cada variante tenga su timeline propia y se reproduzca automaticamente.
+
+1. En cada root agrega un PlayableDirector:
+  - BossWithKills_Root -> director BossWithKills
+  - BossWithoutKills_Root -> director BossWithoutKills
+  - SurvivorsEscaped_Root -> director SurvivorsEscaped
+
+2. En EndMatchDirector agrega EndMatchTimelineRouter.
+
+3. En EndMatchTimelineRouter asigna:
+  - sceneDirector -> EndMatchSceneDirector del mismo objeto
+  - globalDirector -> opcional (solo intro/outro/audio comun)
+  - bossWithKillsDirector -> director del root BossWithKills
+  - bossWithoutKillsDirector -> director del root BossWithoutKills
+  - survivorsEscapedDirector -> director del root SurvivorsEscaped
+
+4. UI resultados:
+  - resultsPanelRoot -> panel/canvas de resultados (se oculta durante cinematic)
+  - resultsHud -> EndMatchResultsHUD
+
+5. Recomendacion importante:
+  - desactiva Play On Awake en los directores de variante
+  - deja que EndMatchTimelineRouter los reproduzca
+
+6. Timing:
+  - variantStartDelaySeconds: delay antes de iniciar timeline de variante
+  - showResultsAfterSeconds:
+    - >= 0: tiempo fijo
+    - < 0: usa duracion de timeline de variante automaticamente
+
+Con esto, al entrar a EndMatch:
+
+1. EndMatchSceneDirector decide variante y activa root correcto
+2. EndMatchTimelineRouter reproduce timeline de esa variante
+3. Al terminar, muestra el panel de resultados
 
 ## 5) UI de resultados
 
