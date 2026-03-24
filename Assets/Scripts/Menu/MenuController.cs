@@ -69,6 +69,8 @@ public class MenuController : MonoBehaviour
     // ────────────────────────────────────────────────────────
     void OnEnable()
     {
+        ForceCursorVisible();
+
         // Add extra bindings so A/D, arrows, and gamepad all work
         SetupBindings();
 
@@ -86,6 +88,8 @@ public class MenuController : MonoBehaviour
 
     void Start()
     {
+        ForceCursorVisible();
+
         // wire up buttons (touch / click)
         if (playButton != null) playButton.onClick.AddListener(OnPlay);
         if (arrowLeft != null) arrowLeft.onClick.AddListener(OnArrowLeft);
@@ -103,6 +107,7 @@ public class MenuController : MonoBehaviour
 
     void Update()
     {
+        ForceCursorVisible();
         HandleKeyboardInput();
     }
 
@@ -282,6 +287,18 @@ public class MenuController : MonoBehaviour
 
         // ── Back extras ──
         backAction.AddBinding("<Gamepad>/buttonEast");
+    }
+
+    private static void ForceCursorVisible()
+    {
+        if (Application.isMobilePlatform)
+            return;
+
+        if (Cursor.lockState != CursorLockMode.None)
+            Cursor.lockState = CursorLockMode.None;
+
+        if (!Cursor.visible)
+            Cursor.visible = true;
     }
 }
 
