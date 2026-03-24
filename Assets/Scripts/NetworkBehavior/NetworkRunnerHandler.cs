@@ -326,6 +326,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     public void OnInput(NetworkRunner runner, NetworkInput input)
     {
         var myInput = new PlayerInputData();
+        bool optionsMenuOpen = OptionsDeploy.IsAnyOptionsMenuOpen;
 
         // ── Dead check ────────────────────────────────────────────────────────
         // Lazily find the local player's PlayerHealth once the player object exists.
@@ -347,7 +348,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
             }
         }
 
-        if (!isDead)
+        if (!isDead && !optionsMenuOpen)
         {
             // Movement
             if (moveAction != null)

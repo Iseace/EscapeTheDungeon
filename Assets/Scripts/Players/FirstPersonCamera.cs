@@ -48,6 +48,9 @@ public class FirstPersonCamera : MonoBehaviour
     {
         if (!Application.isMobilePlatform)
         {
+            if (OptionsDeploy.IsAnyOptionsMenuOpen)
+                return;
+
             Cursor.lockState = CursorLockMode.Locked;  // Locks cursor to center
             Cursor.visible = false;                    // Hides cursor
         }
@@ -61,6 +64,9 @@ public class FirstPersonCamera : MonoBehaviour
     {
         if (!Application.isMobilePlatform)
         {
+            if (OptionsDeploy.IsAnyOptionsMenuOpen)
+                return;
+
             if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
             {
                 Cursor.lockState = CursorLockMode.Locked;
@@ -109,6 +115,9 @@ public class FirstPersonCamera : MonoBehaviour
     private void LateUpdate()
     {
         if (Target == null || !isInitialized)
+            return;
+
+        if (OptionsDeploy.IsAnyOptionsMenuOpen)
             return;
 
         if (PlayerGraphics != null)
