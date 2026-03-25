@@ -36,6 +36,20 @@ public class EndMatchSkinsPresenter : MonoBehaviour
     [SerializeField] private string[] moveFloatParameters = { "Speed", "MoveSpeed", "Velocity" };
     [SerializeField] private float escapedMoveValue = 1f;
     [SerializeField] private float defeatedMoveValue = 0f;
+    [Header("Common Locomotion Params")]
+    [SerializeField] private string moveXParameter = "MoveX";
+    [SerializeField] private float escapedMoveXValue = 0f;
+    [SerializeField] private string moveZParameter = "MoveZ";
+    [SerializeField] private float escapedMoveZValue = 1f;
+    [SerializeField] private string isGroundedParameter = "IsGrounded";
+    [SerializeField] private bool escapedIsGroundedValue = true;
+
+    [Header("Escaped Runtime Movement")]
+    [SerializeField] private bool addRunnerControllerToLocalEscaped = false;
+    [SerializeField] private float escapedForwardSpeed = 4f;
+    [SerializeField] private float escapedLateralSpeed = 5f;
+    [SerializeField] private Vector2 escapedXBounds = new Vector2(-6f, 6f);
+    [SerializeField] private bool allowLocalForwardInput = false;
 
     private readonly List<GameObject> spawnedInstances = new List<GameObject>();
 
@@ -106,6 +120,16 @@ public class EndMatchSkinsPresenter : MonoBehaviour
             GameObject instance = Instantiate(prefab, slot.position, slot.rotation, slot);
             spawnedInstances.Add(instance);
 
+            bool isLocalPlayer = player.PlayerId == snapshot.LocalPlayerId;
+            if (wantEscaped && isLocalPlayer && addRunnerControllerToLocalEscaped)
+            {
+                EndMatchEscapeRunnerController mover = instance.GetComponent<EndMatchEscapeRunnerController>();
+                if (mover == null)
+                    mover = instance.AddComponent<EndMatchEscapeRunnerController>();
+
+                ConfigureEscapedRunnerController(mover);
+            }
+
             // Best effort: if prefab has controller, keep deterministic visuals for cinematic start.
             Animator anim = instance.GetComponentInChildren<Animator>();
             if (anim != null)
@@ -114,6 +138,7 @@ public class EndMatchSkinsPresenter : MonoBehaviour
                 {
                     anim.SetBool("IsDead", false);
                     ApplyAnimationMode(anim, escapedAnimationMode, escapedStateName, escapedMoveValue, "escaped");
+                    ApplyCommonEscapedLocomotion(anim);
                 }
                 else
                 {
@@ -122,6 +147,29 @@ public class EndMatchSkinsPresenter : MonoBehaviour
                 }
             }
         }
+    }
+
+    private void ApplyCommonEscapedLocomotion(Animator anim)
+    {
+        if (anim == null)
+            return;
+
+        if (HasFloatParameter(anim, moveXParameter))
+            anim.SetFloat(moveXParameter, escapedMoveXValue);
+
+        if (HasFloatParameter(anim, moveZParameter))
+            anim.SetFloat(moveZParameter, escapedMoveZValue);
+
+        if (HasBoolParameter(anim, isGroundedParameter))
+            anim.SetBool(isGroundedParameter, escapedIsGroundedValue);
+    }
+
+    private void ConfigureEscapedRunnerController(EndMatchEscapeRunnerController mover)
+    {
+        if (mover == null)
+            return;
+
+        mover.Configure(escapedForwardSpeed, escapedLateralSpeed, escapedXBounds, allowLocalForwardInput);
     }
 
     private void ApplyAnimationMode(Animator anim, SlotAnimationMode mode, string stateName, float moveValue, string groupLabel)
@@ -227,6 +275,21 @@ public class EndMatchSkinsPresenter : MonoBehaviour
         for (int i = 0; i < parameters.Length; i++)
         {
             if (parameters[i].type != AnimatorControllerParameterType.Float) continue;
+            if (parameters[i].name != parameterName) continue;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool HasBoolParameter(Animator anim, string parameterName)
+    {
+        if (anim == null || string.IsNullOrWhiteSpace(parameterName)) return false;
+
+        AnimatorControllerParameter[] parameters = anim.parameters;
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            if (parameters[i].type != AnimatorControllerParameterType.Bool) continue;
             if (parameters[i].name != parameterName) continue;
             return true;
         }
