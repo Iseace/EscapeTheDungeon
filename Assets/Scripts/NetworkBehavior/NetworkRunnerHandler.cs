@@ -14,10 +14,13 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private TMP_InputField hostRoomInput;
     [SerializeField] private Button hostBtn;
     [SerializeField] private TMP_InputField nicknameInput;
+    [SerializeField] private Button raceBtn;
+    [SerializeField] private TMP_InputField raceRoomInput;
 
     [Header("Network Settings")]
     [SerializeField] private string lobbySceneName = "LobbyRoom";
     [SerializeField] private string gameSceneName = "Game";
+    [SerializeField] private string raceSceneName = "Race";
     [SerializeField] private int maxPlayers = 5;
 
     [Header("Session List")]
@@ -32,6 +35,9 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     private void Start()
     {
         hostBtn.onClick.AddListener(OnHostRoom);
+
+        if (raceBtn != null)
+            raceBtn.onClick.AddListener(OnRaceButton);
 
         if (nicknameInput != null)
         {
@@ -118,6 +124,50 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         await System.Threading.Tasks.Task.Yield();
 
         await StartGame(GameMode.Host, roomName);
+    }
+
+    private async void OnRaceButton()
+    {
+        SaveNickname();
+
+        string raceName = (raceRoomInput != null && !string.IsNullOrEmpty(raceRoomInput.text.Trim()))
+            ? raceRoomInput.text.Trim()
+            : "RaceSession";
+
+        if (_runner != null && _runner.IsRunning)
+            await _runner.Shutdown();
+
+        var existingRunners = GetComponents<NetworkRunner>();
+        foreach (var r in existingRunners)
+            DestroyImmediate(r);
+
+        _runner = null;
+        await System.Threading.Tasks.Task.Yield();
+
+        await StartRaceGame(raceName);
+    }
+
+    private async System.Threading.Tasks.Task StartRaceGame(string roomName)
+    {
+        _runner = gameObject.AddComponent<NetworkRunner>();
+        _runner.AddCallbacks(this);
+        _runner.ProvideInput = true;
+
+        var result = await _runner.StartGame(new StartGameArgs
+        {
+            GameMode     = GameMode.AutoHostOrClient,
+            SessionName  = roomName,
+            Scene        = SceneRef.FromIndex(
+                SceneUtility.GetBuildIndexByScenePath("Scenes/" + raceSceneName)
+            ),
+            SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>(),
+            PlayerCount  = maxPlayers
+        });
+
+        if (result.Ok)
+            Debug.Log($"[RACE] Connected to race session: {roomName} | Mode: {_runner.GameMode}");
+        else
+            Debug.LogError($"[RACE] Failed to connect: {result.ShutdownReason}");
     }
 
     public async void JoinGame(SessionInfo sessionInfo)

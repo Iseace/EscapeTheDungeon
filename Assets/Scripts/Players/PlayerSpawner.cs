@@ -9,6 +9,7 @@ using System.Linq;
 public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 {
     public NetworkObject PlayerPrefab;
+    public NetworkObject broomPrefab;
 
     [Header("Character Prefabs")]
     public NetworkObject BossPrefab;      //prefab del Boss
@@ -95,7 +96,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             }
         }
 
-        // Default spawn position
+        // Default spawn position — must be declared before any scene-specific block overrides it
         Vector3 spawnPos = new Vector3(3f, 1f, 3f);
         Quaternion spawnRot = Quaternion.identity;
 
@@ -116,7 +117,16 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             spawnPos = GetSafeGameSpawnForPlayer(runner, player);
         }
 
-        NetworkObject playerObj = runner.Spawn(PlayerPrefab, spawnPos, spawnRot, player);
+        // RACE: Simple spawn
+        if (SceneManager.GetActiveScene().name == "Race")
+        {
+            var orderedPlayers = runner.ActivePlayers.OrderBy(p => p.PlayerId).ToList();
+            int idx = orderedPlayers.IndexOf(player);
+            spawnPos = new Vector3(idx * 2f, 1f, 0f);
+            spawnRot = Quaternion.identity;
+        }
+
+        NetworkObject playerObj = runner.Spawn(broomPrefab, spawnPos, spawnRot, player);
         runner.SetPlayerObject(player, playerObj);
 
         Debug.Log($"[SPAWNER] Player {player.PlayerId} spawned");
@@ -212,8 +222,8 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
         string currentScene = SceneManager.GetActiveScene().name;
 
-        // Re-spawning logic for transitions into Lobby or Game
-        if (currentScene == "Game" || currentScene == "LobbyRoom")
+        // Re-spawning logic for transitions into Lobby, Game, or Race
+        if (currentScene == "Game" || currentScene == "LobbyRoom" || currentScene == "Race")
         {
             Debug.Log($"[SPAWNER] Scene {currentScene} loaded, spawning players");
             dungeonRunnerSpawned = false;

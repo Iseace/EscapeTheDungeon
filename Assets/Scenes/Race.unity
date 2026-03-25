@@ -399,6 +399,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerSpawner
   PlayerPrefab: {fileID: 4445043330926483629, guid: adb843a03fa2f134680abf1d0c50df47, type: 3}
+  broomPrefab: {fileID: 4445043330926483629, guid: adb843a03fa2f134680abf1d0c50df47, type: 3}
   BossPrefab: {fileID: 0}
   dungeonNetworkRunnerPrefab: {fileID: 0}
   fallbackGameCenterSpawn: {x: 0, y: 1, z: 0}
