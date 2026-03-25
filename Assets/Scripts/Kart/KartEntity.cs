@@ -117,11 +117,32 @@ public class KartEntity : KartComponent
 			int selected = PlayerPrefs.GetInt(CharacterIdKey, 0);
 			Rpc_SetSelectedCharacter(selected);
 
-			// Create HUD
-			Hud = Instantiate(ResourceManager.Instance.hudPrefab);
-			Hud.Init(this);
+			var resourceManager = ResourceManager.Instance;
+			if (resourceManager == null)
+			{
+				Debug.LogError("[KART] ResourceManager.Instance is null. HUD and nickname UI will not spawn.");
+			}
+			else
+			{
+				if (resourceManager.hudPrefab != null)
+				{
+					Hud = Instantiate(resourceManager.hudPrefab);
+					Hud.Init(this);
+				}
+				else
+				{
+					Debug.LogWarning("[KART] ResourceManager.hudPrefab is not assigned.");
+				}
 
-			Instantiate(ResourceManager.Instance.nicknameCanvasPrefab);
+				if (resourceManager.nicknameCanvasPrefab != null)
+				{
+					Instantiate(resourceManager.nicknameCanvasPrefab);
+				}
+				else
+				{
+					Debug.LogWarning("[KART] ResourceManager.nicknameCanvasPrefab is not assigned.");
+				}
+			}
 		}
 
 		Karts.Add(this);

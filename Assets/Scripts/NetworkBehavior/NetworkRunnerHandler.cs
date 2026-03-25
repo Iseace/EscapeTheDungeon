@@ -149,19 +149,23 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 
     private async System.Threading.Tasks.Task StartRaceGame(string roomName)
     {
+        if (!TryGetSceneRefByName(raceSceneName, out SceneRef raceSceneRef))
+        {
+            Debug.LogError($"[RACE] Cannot start race. Scene '{raceSceneName}' is missing from Build Settings.");
+            return;
+        }
+
         _runner = gameObject.AddComponent<NetworkRunner>();
         _runner.AddCallbacks(this);
         _runner.ProvideInput = true;
 
         var result = await _runner.StartGame(new StartGameArgs
         {
-            GameMode     = GameMode.AutoHostOrClient,
-            SessionName  = roomName,
-            Scene        = SceneRef.FromIndex(
-                SceneUtility.GetBuildIndexByScenePath("Scenes/" + raceSceneName)
-            ),
+            GameMode = GameMode.AutoHostOrClient,
+            SessionName = roomName,
+            Scene = raceSceneRef,
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>(),
-            PlayerCount  = maxPlayers
+            PlayerCount = maxPlayers
         });
 
         if (result.Ok)
@@ -198,6 +202,12 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 
     private async System.Threading.Tasks.Task StartGame(GameMode mode, string roomName)
     {
+        if (!TryGetSceneRefByName(lobbySceneName, out SceneRef lobbySceneRef))
+        {
+            Debug.LogError($"[NETWORK] Cannot start session. Scene '{lobbySceneName}' is missing from Build Settings.");
+            return;
+        }
+
         _runner = gameObject.AddComponent<NetworkRunner>();
         _runner.AddCallbacks(this);
         _runner.ProvideInput = true;
@@ -206,9 +216,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         {
             GameMode = mode,
             SessionName = roomName,
-            Scene = SceneRef.FromIndex(
-                SceneUtility.GetBuildIndexByScenePath("Scenes/" + lobbySceneName)
-            ),
+            Scene = lobbySceneRef,
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>(),
             PlayerCount = maxPlayers
         });
@@ -240,13 +248,33 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 
         Debug.Log("[NETWORK] Starting game session...");
 
+        if (!TryGetSceneRefByName(gameSceneName, out SceneRef gameSceneRef))
+        {
+            Debug.LogError($"[NETWORK] Cannot start game session. Scene '{gameSceneName}' is missing from Build Settings.");
+            return;
+        }
+
         // Set session to closed so no one can join
         _runner.SessionInfo.IsOpen = false;
 
         // Load the game scene
-        await _runner.LoadScene(SceneRef.FromIndex(
-            SceneUtility.GetBuildIndexByScenePath("Scenes/" + gameSceneName)
-        ));
+        await _runner.LoadScene(gameSceneRef);
+    }
+
+    private bool TryGetSceneRefByName(string sceneName, out SceneRef sceneRef)
+    {
+        sceneRef = default;
+
+        // Build settings store scene paths like "Assets/Scenes/Name.unity".
+        string scenePath = $"Assets/Scenes/{sceneName}.unity";
+        int sceneIndex = SceneUtility.GetBuildIndexByScenePath(scenePath);
+        if (sceneIndex < 0)
+        {
+            return false;
+        }
+
+        sceneRef = SceneRef.FromIndex(sceneIndex);
+        return true;
     }
 
     // Used callbacks

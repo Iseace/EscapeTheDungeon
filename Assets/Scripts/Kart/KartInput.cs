@@ -120,7 +120,18 @@ public class KartInput : KartComponent, INetworkRunnerCallbacks
 	public bool IsLookBehindPressed => ReadBool(lookBehind);
 
 	private static bool ReadBool(InputAction action) => action.ReadValue<float>() != 0;
-	private static float ReadFloat(InputAction action) => action.ReadValue<float>();
+	private static float ReadSteer(InputAction action)
+	{
+		if (action == null)
+			return 0f;
+
+		if (action.activeControl != null && action.activeControl.valueType == typeof(Vector2))
+		{
+			return Mathf.Clamp(action.ReadValue<Vector2>().x, -1f, 1f);
+		}
+
+		return Mathf.Clamp(action.ReadValue<float>(), -1f, 1f);
+	}
 
 	public void OnInput(NetworkRunner runner, NetworkInput input)
 	{
@@ -136,7 +147,7 @@ public class KartInput : KartComponent, INetworkRunnerCallbacks
 		if (_driftPressed) userInput.OneShots |= NetworkInputData.ButtonDrift;
 		if (_useItemPressed) userInput.OneShots |= NetworkInputData.UseItem;
 
-		userInput.Steer = ReadFloat(steer);
+		userInput.Steer = ReadSteer(steer);
 
 		input.Set(userInput);
 

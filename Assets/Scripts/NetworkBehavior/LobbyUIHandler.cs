@@ -16,9 +16,9 @@ public class LobbyUIHandler : NetworkBehaviour
     [SerializeField] private string gameSceneName = "Game";
     [SerializeField] private float countdownDuration = 5f;
     [Networked] private TickTimer CountdownTimer { get; set; }
-    
+
     private Dictionary<PlayerRef, bool> _readyPlayers = new Dictionary<PlayerRef, bool>();
-    
+
     // LOCAL state
     private bool _isLocalPlayerReady = false;
 
@@ -26,10 +26,10 @@ public class LobbyUIHandler : NetworkBehaviour
     {
         if (countdownText != null) countdownText.text = "";
         if (readyBtn != null) readyBtn.onClick.AddListener(OnReadyClicked);
-        
+
         // Reset local state when spawning in the lobby
         _isLocalPlayerReady = false;
-        
+
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -38,7 +38,7 @@ public class LobbyUIHandler : NetworkBehaviour
     {
         // Toggle local visual state immediately for responsiveness
         _isLocalPlayerReady = !_isLocalPlayerReady;
-        
+
         // Update the Button Text immediately
         if (readyBtnText != null)
             readyBtnText.text = _isLocalPlayerReady ? "NOT READY" : "READY";
@@ -52,14 +52,14 @@ public class LobbyUIHandler : NetworkBehaviour
     {
         _readyPlayers[player] = isReady;
         Debug.Log($"[LOBBY] Player {player.PlayerId} is now {(isReady ? "READY" : "NOT READY")}");
-        
+
         CheckAllReady();
     }
 
     private void CheckAllReady()
     {
         if (!Runner.IsServer) return;
-        
+
         // Get all active players
         var activePlayers = Runner.ActivePlayers.ToList();
         if (activePlayers.Count == 0) return;
@@ -116,11 +116,16 @@ public class LobbyUIHandler : NetworkBehaviour
         {
             CountdownTimer = TickTimer.None;
             Debug.Log("[LOBBY] Countdown complete, loading Game scene");
-            
-            // Use the scene loading method
-            Runner.LoadScene(SceneRef.FromIndex(
-                UnityEngine.SceneManagement.SceneUtility.GetBuildIndexByScenePath("Scenes/" + gameSceneName)
-            ));
+
+            // Build settings store scene paths as "Assets/Scenes/Name.unity".
+            int gameSceneIndex = UnityEngine.SceneManagement.SceneUtility.GetBuildIndexByScenePath($"Assets/Scenes/{gameSceneName}.unity");
+            if (gameSceneIndex < 0)
+            {
+                Debug.LogError($"[LOBBY] Cannot load game scene '{gameSceneName}'. Add it to Build Settings.");
+                return;
+            }
+
+            Runner.LoadScene(SceneRef.FromIndex(gameSceneIndex));
         }
     }
 }
