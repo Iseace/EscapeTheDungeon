@@ -37,11 +37,35 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
     private PlayerRef bossPlayer;
     private bool isSwappingBoss = false;
     private bool matchFlowStarted = false;
+    private bool callbacksRegistered = false;
+    private NetworkRunner registeredRunner;
 
     private void Start()
     {
+        TryRegisterRunnerCallbacks();
+    }
+
+    private void Update()
+    {
+        if (!callbacksRegistered)
+        {
+            TryRegisterRunnerCallbacks();
+        }
+    }
+
+    private void TryRegisterRunnerCallbacks()
+    {
         var runner = FindFirstObjectByType<NetworkRunner>();
-        if (runner != null) runner.AddCallbacks(this);
+        if (runner == null)
+            return;
+
+        if (callbacksRegistered && registeredRunner == runner)
+            return;
+
+        runner.AddCallbacks(this);
+        registeredRunner = runner;
+        callbacksRegistered = true;
+        Debug.Log("[SPAWNER] Registered callbacks with NetworkRunner");
     }
 
     public void PlayerJoinedLogic(NetworkRunner runner, PlayerRef player)
@@ -82,7 +106,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             int totalPlayers = runner.ActivePlayers.Count();
             float totalWidth = (totalPlayers - 1) * spacing;
             float startOffset = -totalWidth / 2f;
-            
+
             spawnPos = new Vector3(startOffset + (totalPlayers - 1) * spacing, 0f, 0f);
             spawnRot = Quaternion.identity;
         }
@@ -106,12 +130,12 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             float spacing = 1.5f;
             var activePlayers = Runner.ActivePlayers.ToList();
             int totalPlayers = activePlayers.Count;
-            
+
             if (totalPlayers > 0)
             {
                 float totalWidth = (totalPlayers - 1) * spacing;
                 float startOffset = -totalWidth / 2f;
-                
+
                 int index = 0;
                 foreach (var p in activePlayers)
                 {
@@ -124,7 +148,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
                 }
             }
         }
-        
+
         if (!Runner.IsServer || SceneManager.GetActiveScene().name != "Game") return;
 
         if (bossSelected && !matchFlowStarted)
@@ -439,7 +463,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
         try
         {
             Debug.Log("[BOSS DISCONNECT] Loading menu scene...");
-            
+
             int sceneIndex = SceneUtility.GetBuildIndexByScenePath("Scenes/" + menuSceneName);
             if (sceneIndex >= 0)
             {
@@ -469,6 +493,14 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
     private void OnDestroy()
     {
         dungeonRunnerSpawned = false;
+
+        if (registeredRunner != null)
+        {
+            registeredRunner.RemoveCallbacks(this);
+        }
+
+        callbacksRegistered = false;
+        registeredRunner = null;
     }
 
     // Boilerplate Fusion callbacks
