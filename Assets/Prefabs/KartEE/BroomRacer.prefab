@@ -15403,10 +15403,7 @@ GameObject:
   - component: {fileID: 8188509914162312914}
   - component: {fileID: 2539907645035161265}
   - component: {fileID: 4225514056831661317}
-  - component: {fileID: 4700233666493941797}
-  - component: {fileID: 9106216000256242471}
-  - component: {fileID: 199154746331910002}
-  - component: {fileID: 3792261310708292711}
+  - component: {fileID: 7730455707243882626}
   m_Layer: 0
   m_Name: BroomRacer
   m_TagString: Untagged
@@ -15450,9 +15447,7 @@ MonoBehaviour:
   NestedObjects: []
   NetworkedBehaviours:
   - {fileID: 4225514056831661317}
-  - {fileID: 4700233666493941797}
-  - {fileID: 9106216000256242471}
-  - {fileID: 199154746331910002}
+  - {fileID: 7730455707243882626}
   ForceRemoteRenderTimeframe: 0
 --- !u!54 &8188509914162312914
 Rigidbody:
@@ -15476,11 +15471,11 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 0
-  m_CollisionDetection: 0
+  m_Constraints: 80
+  m_CollisionDetection: 1
 --- !u!135 &2539907645035161265
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -15525,7 +15520,7 @@ MonoBehaviour:
     Position: 0.01
     Rotation: 0.01
     Scale: 0.01
---- !u!114 &4700233666493941797
+--- !u!114 &7730455707243882626
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -15534,261 +15529,18 @@ MonoBehaviour:
   m_GameObject: {fileID: 7092673203643427425}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ef8efa54be197784698712454ca632c1, type: 3}
+  m_Script: {fileID: 11500000, guid: d49ceb1f2d3651945b4672fdb84cb131, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::KartEntity
-  _HeldItemIndex: -1
-  _CoinCount: 0
-  itemDropNode: {fileID: 0}
-  characterModels:
-  - {fileID: 6116050475343218334}
-  - {fileID: 9219166310911751812}
-  - {fileID: 2327371732612848863}
-  - {fileID: 2204919454328250546}
-  - {fileID: 7907367254259574895}
-  - {fileID: 5813729913864386854}
-  - {fileID: 4172576338715072877}
-  - {fileID: 7504559749320435011}
-  _SelectedCharacterIndex: 0
---- !u!114 &9106216000256242471
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7092673203643427425}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 75cfb8e44a1b38948b68b361a1dd5bc0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::KartController
-  collider: {fileID: 2539907645035161265}
-  driftTiers: []
-  tireYawAxis: 1
-  model: {fileID: 2556913243995340128}
-  tireFL: {fileID: 981711996941091500}
-  tireFR: {fileID: 981711996941091500}
-  tireYawFL: {fileID: 981711996941091500}
-  tireYawFR: {fileID: 981711996941091500}
-  tireBL: {fileID: 6991620993304553582}
-  tireBR: {fileID: 6991620993304553582}
-  maxSpeedNormal: 8
-  maxSpeedBoosting: 11
-  reverseSpeed: 3
-  acceleration: 6
-  deceleration: 5
-  steeringCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 1
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 1
-      inSlope: 1
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  maxSteerStrength: 35
-  steerAcceleration: 8
-  steerDeceleration: 10
-  driftInputRemap: {x: 0.5, y: 1}
-  hopSteerStrength: 20
-  speedToDrift: 3
-  driftRotationLerpFactor: 10
-  Rigidbody: {fileID: 8188509914162312914}
-  _MaxSpeed: 0
-  _BoostTierIndex: 0
-  _DriftTierIndex: -1
-  _IsGrounded:
-    _value: 0
-  _GroundResistance: 0
-  _BoostEndTick: -1
-  _IsSpinout:
-    _value: 0
-  _TireYaw: 0
-  _RoomUserHasFinished:
-    _value: 0
-  _IsDriftingLeft:
-    _value: 0
-  _IsDriftingRight:
-    _value: 0
-  _DriftStartTick: 0
-  _AppliedSpeed: 0
---- !u!114 &199154746331910002
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7092673203643427425}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5a93f691ce5d4c743b70b3ddc1e47ea5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::KartInput
-  accelerate:
-    m_Name: Accelerate
-    m_Type: 0
-    m_ExpectedControlType: 
-    m_Id: 6590243f-e316-4fa0-8571-e101bc17eee6
-    m_Processors: 
-    m_Interactions: 
-    m_SingletonActionBindings:
-    - m_Name: 
-      m_Id: 8012ca55-bdcd-4431-b5f6-540380fd585c
-      m_Path: <Keyboard>/w
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: Accelerate
-      m_Flags: 0
-    m_Flags: 0
-  reverse:
-    m_Name: Reverse
-    m_Type: 0
-    m_ExpectedControlType: 
-    m_Id: 67203ea9-a123-4413-b7c0-aecf2037ed41
-    m_Processors: 
-    m_Interactions: 
-    m_SingletonActionBindings:
-    - m_Name: 
-      m_Id: 9c38def2-fb90-4432-bf66-b7c865c0c4ed
-      m_Path: <Keyboard>/s
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: Reverse
-      m_Flags: 0
-    m_Flags: 0
-  drift:
-    m_Name: Drift
-    m_Type: 0
-    m_ExpectedControlType: 
-    m_Id: 1147d55b-ed19-4bf0-9290-f5066756b824
-    m_Processors: 
-    m_Interactions: 
-    m_SingletonActionBindings:
-    - m_Name: 
-      m_Id: f91cc059-5ea2-4281-8bf1-273875f1f049
-      m_Path: <Keyboard>/space
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: Drift
-      m_Flags: 0
-    m_Flags: 0
-  steer:
-    m_Name: Steer
-    m_Type: 0
-    m_ExpectedControlType: 
-    m_Id: 6765ac4e-ecc3-434d-9795-bcd2d16dedd1
-    m_Processors: 
-    m_Interactions: 
-    m_SingletonActionBindings:
-    - m_Name: 1D Axis
-      m_Id: 8b0a0194-c68c-4d23-8d8a-ffcc03b35637
-      m_Path: 1DAxis
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: Steer
-      m_Flags: 4
-    - m_Name: negative
-      m_Id: 8595f5ed-8f54-4ebb-9128-e2367eb0dd83
-      m_Path: <Keyboard>/a
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: Steer
-      m_Flags: 8
-    - m_Name: positive
-      m_Id: dc279c50-608e-4db3-a8ac-be8d6e522a0d
-      m_Path: <Keyboard>/d
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: Steer
-      m_Flags: 8
-    m_Flags: 0
-  lookBehind:
-    m_Name: Look Behind
-    m_Type: 0
-    m_ExpectedControlType: 
-    m_Id: 63aa4dfc-e355-45fb-a6fc-0d5889637609
-    m_Processors: 
-    m_Interactions: 
-    m_SingletonActionBindings:
-    - m_Name: 
-      m_Id: 8de6f824-80fa-49e3-a759-de5d52a58ff5
-      m_Path: <Keyboard>/q
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: Look Behind
-      m_Flags: 0
-    m_Flags: 0
-  useItem:
-    m_Name: Use Item
-    m_Type: 0
-    m_ExpectedControlType: 
-    m_Id: d923edb3-a8ea-4e92-aa40-a26426cad79a
-    m_Processors: 
-    m_Interactions: 
-    m_SingletonActionBindings:
-    - m_Name: 
-      m_Id: 3d9f36f2-5fd2-443b-8df0-86d331921835
-      m_Path: <Keyboard>/e
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: Use Item
-      m_Flags: 0
-    m_Flags: 0
-  pause:
-    m_Name: Pause
-    m_Type: 0
-    m_ExpectedControlType: 
-    m_Id: 0ea2d5bf-cca1-4ddc-b47e-f769cbe2dfdd
-    m_Processors: 
-    m_Interactions: 
-    m_SingletonActionBindings:
-    - m_Name: 
-      m_Id: 11b822be-6532-4fbe-a659-1c31f6b8df8d
-      m_Path: <Keyboard>/escape
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: Pause
-      m_Flags: 0
-    m_Flags: 0
---- !u!114 &3792261310708292711
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7092673203643427425}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1369b026daebbec4c96e693c00c0c1f0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::KartActiveModelAnimatorBridge
-  speedParameter: Speed
-  rideBoolParameter: IsRidingBroom
-  speedNormalization: 8
+  m_EditorClassIdentifier: Assembly-CSharp::BroomMove
+  moveAction: {fileID: 0}
+  acceleration: 20
+  reverseAcceleration: 12
+  maxForwardSpeed: 25
+  maxReverseSpeed: 10
+  idleDrag: 2.5
+  movingDrag: 0.2
+  steerStrength: 120
+  highSpeedSteerFactor: 0.35
 --- !u!1 &7098714450728896804
 GameObject:
   m_ObjectHideFlags: 0
