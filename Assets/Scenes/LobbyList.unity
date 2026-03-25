@@ -367,6 +367,7 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 35577072}
   m_CullTransparentMesh: 1
+<<<<<<< HEAD
 --- !u!1 &74502092
 GameObject:
   m_ObjectHideFlags: 0
@@ -439,6 +440,8 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 74502092}
   m_CullTransparentMesh: 1
+=======
+>>>>>>> 863a32e (fix screenLoader and style lobbyRoom)
 --- !u!1 &99536160
 GameObject:
   m_ObjectHideFlags: 0
@@ -3807,6 +3810,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
   m_Asset: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_ActionId: 6c2ab1b8-8984-453a-af3d-a3c78ae1679a
+<<<<<<< HEAD
 --- !u!1 &1449319579
 GameObject:
   m_ObjectHideFlags: 0
@@ -3859,6 +3863,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RectMask2D
   m_Padding: {x: -8, y: -5, z: -8, w: -5}
   m_Softness: {x: 0, y: 0}
+=======
+>>>>>>> 863a32e (fix screenLoader and style lobbyRoom)
 --- !u!1 &1538099887
 GameObject:
   m_ObjectHideFlags: 0
