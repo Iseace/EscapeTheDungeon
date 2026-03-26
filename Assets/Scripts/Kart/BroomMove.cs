@@ -15,16 +15,24 @@ public class BroomMove : NetworkBehaviour
     [SerializeField] private float movingDrag = 0.2f;
 
     [Header("Steering")]
-    [SerializeField] private float steerStrength = 120f;
+    [SerializeField] private float steerStrength = 90f;
     [SerializeField] private float highSpeedSteerFactor = 0.35f;
+    [SerializeField] private float lateralGrip = 6f;
+
+    [Header("Grip")]
+    [SerializeField] private float downforce = 4f;
 
     private Rigidbody rb;
 
     public override void Spawned()
     {
         rb = GetComponent<Rigidbody>();
+        rb.isKinematic = false;
+        rb.useGravity = true;
         rb.centerOfMass = new Vector3(0f, -0.4f, 0f);
-        rb.constraints  = RigidbodyConstraints.FreezeRotationX
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        rb.constraints = RigidbodyConstraints.FreezeRotationX
                         | RigidbodyConstraints.FreezeRotationZ;
     }
 
@@ -34,10 +42,11 @@ public class BroomMove : NetworkBehaviour
 
         if (GetInput(out PlayerInputData input))
         {
-            float steerInput    = Mathf.Clamp(input.MoveDirection.x, -1f, 1f);
+            float steerInput = Mathf.Clamp(input.MoveDirection.x, -1f, 1f);
             float throttleInput = Mathf.Clamp(input.MoveDirection.z, -1f, 1f);
 
             ApplyMovement(throttleInput);
+            ApplyLateralGrip();
             ApplySteering(steerInput);
             ApplyDrag(throttleInput);
         }
@@ -51,15 +60,31 @@ public class BroomMove : NetworkBehaviour
             rb.AddForce(transform.forward * (throttleInput * acceleration), ForceMode.Acceleration);
         else if (throttleInput < 0f && forwardSpeed > -maxReverseSpeed)
             rb.AddForce(transform.forward * (throttleInput * reverseAcceleration), ForceMode.Acceleration);
+
+        // Keeps the broom planted on slopes/bumps so it follows the track instead of floating.
+        rb.AddForce(Vector3.down * downforce, ForceMode.Acceleration);
     }
 
     private void ApplySteering(float steerInput)
     {
-        float speedPercent = Mathf.Clamp01(rb.linearVelocity.magnitude / Mathf.Max(0.01f, maxForwardSpeed));
-        float currentSteer = Mathf.Lerp(steerStrength, steerStrength * highSpeedSteerFactor, speedPercent);
-        float turnAmount   = steerInput * currentSteer * Runner.DeltaTime;
+        float speed = rb.linearVelocity.magnitude;
+        if (speed < 0.2f)
+        {
+            rb.angularVelocity = new Vector3(rb.angularVelocity.x, 0f, rb.angularVelocity.z);
+            return;
+        }
 
-        rb.MoveRotation(rb.rotation * Quaternion.Euler(0f, turnAmount, 0f));
+        float speedPercent = Mathf.Clamp01(speed / Mathf.Max(0.01f, maxForwardSpeed));
+        float currentSteer = Mathf.Lerp(steerStrength, steerStrength * highSpeedSteerFactor, speedPercent);
+        float targetYawRate = steerInput * currentSteer * Mathf.Deg2Rad;
+
+        rb.angularVelocity = new Vector3(rb.angularVelocity.x, targetYawRate, rb.angularVelocity.z);
+    }
+
+    private void ApplyLateralGrip()
+    {
+        Vector3 lateralVelocity = Vector3.Project(rb.linearVelocity, transform.right);
+        rb.AddForce(-lateralVelocity * lateralGrip, ForceMode.Acceleration);
     }
 
     private void ApplyDrag(float throttleInput)
