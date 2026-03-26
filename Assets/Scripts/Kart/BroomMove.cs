@@ -1,14 +1,9 @@
 using Fusion;
+using Fusion.Addons.Physics;
 using UnityEngine;
-// Note: We removed the Unity.InputSystem using here, as Fusion should handle passing the input.
-
-// 1. Define a Network Input struct for Fusion
-public struct BroomInput : INetworkInput
-{
-    public Vector2 move;
-}
 
 [RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(NetworkRigidbody3D))]
 public class BroomMove : NetworkBehaviour
 {
     [Header("Speed")]
@@ -29,18 +24,18 @@ public class BroomMove : NetworkBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.centerOfMass = new Vector3(0f, -0.4f, 0f);
-        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        rb.constraints  = RigidbodyConstraints.FreezeRotationX
+                        | RigidbodyConstraints.FreezeRotationZ;
     }
 
     public override void FixedUpdateNetwork()
     {
-        // 2. Remove the HasStateAuthority check! Both Client and Server need to run this.
+        if (!HasInputAuthority) return;
 
-        // 3. Use GetInput to securely read the networked input
-        if (GetInput(out BroomInput input))
+        if (GetInput(out PlayerInputData input))
         {
-            float steerInput = Mathf.Clamp(input.move.x, -1f, 1f);
-            float throttleInput = Mathf.Clamp(input.move.y, -1f, 1f);
+            float steerInput    = Mathf.Clamp(input.MoveDirection.x, -1f, 1f);
+            float throttleInput = Mathf.Clamp(input.MoveDirection.z, -1f, 1f);
 
             ApplyMovement(throttleInput);
             ApplySteering(steerInput);
@@ -62,10 +57,9 @@ public class BroomMove : NetworkBehaviour
     {
         float speedPercent = Mathf.Clamp01(rb.linearVelocity.magnitude / Mathf.Max(0.01f, maxForwardSpeed));
         float currentSteer = Mathf.Lerp(steerStrength, steerStrength * highSpeedSteerFactor, speedPercent);
+        float turnAmount   = steerInput * currentSteer * Runner.DeltaTime;
 
-        float turnAmount = steerInput * currentSteer * Runner.DeltaTime;
-        Quaternion turn = Quaternion.Euler(0f, turnAmount, 0f);
-        rb.MoveRotation(rb.rotation * turn);
+        rb.MoveRotation(rb.rotation * Quaternion.Euler(0f, turnAmount, 0f));
     }
 
     private void ApplyDrag(float throttleInput)
