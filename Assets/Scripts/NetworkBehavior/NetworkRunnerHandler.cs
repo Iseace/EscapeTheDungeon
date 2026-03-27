@@ -26,6 +26,11 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     [Header("Session List")]
     [SerializeField] private LobbyListManager LobbyListManager;
 
+    // NEW: session type constants — LobbyUIHandler reads these to decide which scene to load
+    public const string SESSION_TYPE_KEY    = "sessionType";
+    public const string SESSION_TYPE_NORMAL = "normal";
+    public const string SESSION_TYPE_RACE   = "race";
+
     private NetworkRunner _runner;
 
     // Cached reference to the local player's health so OnInput can check IsDead.
@@ -126,13 +131,15 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         await StartGame(GameMode.Host, roomName);
     }
 
+    // CHANGED: now goes to LobbyRoom first (same as normal), tagged as "race" via SessionProperties
+    // so LobbyUIHandler knows to load the Race scene when countdown ends instead of Game
     private async void OnRaceButton()
     {
         SaveNickname();
 
         string raceName = (raceRoomInput != null && !string.IsNullOrEmpty(raceRoomInput.text.Trim()))
             ? raceRoomInput.text.Trim()
-            : "RaceSession";
+            : "Race-" + UnityEngine.Random.Range(1000, 9999);
 
         if (_runner != null && _runner.IsRunning)
             await _runner.Shutdown();
@@ -147,11 +154,13 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         await StartRaceGame(raceName);
     }
 
+    // NEW: creates a race session that goes to LobbyRoom first, tagged so LobbyUIHandler
+    // loads Race scene instead of Game when the countdown expires
     private async System.Threading.Tasks.Task StartRaceGame(string roomName)
     {
-        if (!TryGetSceneRefByName(raceSceneName, out SceneRef raceSceneRef))
+        if (!TryGetSceneRefByName(lobbySceneName, out SceneRef lobbySceneRef))
         {
-            Debug.LogError($"[RACE] Cannot start race. Scene '{raceSceneName}' is missing from Build Settings.");
+            Debug.LogError($"[RACE] Scene '{lobbySceneName}' is missing from Build Settings.");
             return;
         }
 
@@ -159,19 +168,25 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         _runner.AddCallbacks(this);
         _runner.ProvideInput = true;
 
+        var props = new Dictionary<string, SessionProperty>
+        {
+            { SESSION_TYPE_KEY, SESSION_TYPE_RACE }
+        };
+
         var result = await _runner.StartGame(new StartGameArgs
         {
-            GameMode = GameMode.AutoHostOrClient,
-            SessionName = roomName,
-            Scene = raceSceneRef,
-            SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>(),
-            PlayerCount = maxPlayers
+            GameMode          = GameMode.Host,
+            SessionName       = roomName,
+            Scene             = lobbySceneRef,
+            SceneManager      = gameObject.AddComponent<NetworkSceneManagerDefault>(),
+            PlayerCount       = maxPlayers,
+            SessionProperties = props
         });
 
         if (result.Ok)
-            Debug.Log($"[RACE] Connected to race session: {roomName} | Mode: {_runner.GameMode}");
+            Debug.Log($"[RACE] Session created: {roomName} | going to LobbyRoom first");
         else
-            Debug.LogError($"[RACE] Failed to connect: {result.ShutdownReason}");
+            Debug.LogError($"[RACE] Failed to create session: {result.ShutdownReason}");
     }
 
     public async void JoinGame(SessionInfo sessionInfo)
@@ -212,13 +227,21 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         _runner.AddCallbacks(this);
         _runner.ProvideInput = true;
 
+        // Normal sessions are tagged as "normal" so LobbyUIHandler loads Game scene
+        var props = new Dictionary<string, SessionProperty>
+        {
+            { SESSION_TYPE_KEY, SESSION_TYPE_NORMAL }
+        };
+
         var result = await _runner.StartGame(new StartGameArgs
         {
-            GameMode = mode,
-            SessionName = roomName,
-            Scene = lobbySceneRef,
-            SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>(),
-            PlayerCount = maxPlayers
+            GameMode          = mode,
+            SessionName       = roomName,
+            Scene             = lobbySceneRef,
+            SceneManager      = gameObject.AddComponent<NetworkSceneManagerDefault>(),
+            PlayerCount       = maxPlayers,
+            // Only set props when hosting — clients inherit them from the session
+            SessionProperties = (mode == GameMode.Host) ? props : null
         });
 
         if (result.Ok)
@@ -259,6 +282,33 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 
         // Load the game scene
         await _runner.LoadScene(gameSceneRef);
+    }
+
+    // NEW: called by LobbyUIHandler when session type is "race"
+    public async void StartRaceSession()
+    {
+        if (_runner == null || !_runner.IsRunning)
+        {
+            Debug.LogError("[NETWORK] Cannot start race - runner not active");
+            return;
+        }
+
+        if (_runner.GameMode != GameMode.Host)
+        {
+            Debug.LogWarning("[NETWORK] Only the host can start the race");
+            return;
+        }
+
+        Debug.Log("[NETWORK] Starting race session...");
+
+        if (!TryGetSceneRefByName(raceSceneName, out SceneRef raceSceneRef))
+        {
+            Debug.LogError($"[NETWORK] Scene '{raceSceneName}' is missing from Build Settings.");
+            return;
+        }
+
+        _runner.SessionInfo.IsOpen = false;
+        await _runner.LoadScene(raceSceneRef);
     }
 
     private bool TryGetSceneRefByName(string sceneName, out SceneRef sceneRef)

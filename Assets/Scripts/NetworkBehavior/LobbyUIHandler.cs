@@ -12,9 +12,12 @@ public class LobbyUIHandler : NetworkBehaviour
     [SerializeField] private TextMeshProUGUI countdownText;
     [SerializeField] private Button readyBtn;
     [SerializeField] private TextMeshProUGUI readyBtnText;
+
     [Header("Settings")]
     [SerializeField] private string gameSceneName = "Game";
+    [SerializeField] private string raceSceneName = "Race"; // NEW: used when sessionType == "race"
     [SerializeField] private float countdownDuration = 5f;
+
     [Networked] private TickTimer CountdownTimer { get; set; }
 
     private Dictionary<PlayerRef, bool> _readyPlayers = new Dictionary<PlayerRef, bool>();
@@ -52,7 +55,6 @@ public class LobbyUIHandler : NetworkBehaviour
     {
         _readyPlayers[player] = isReady;
         Debug.Log($"[LOBBY] Player {player.PlayerId} is now {(isReady ? "READY" : "NOT READY")}");
-
         CheckAllReady();
     }
 
@@ -112,20 +114,38 @@ public class LobbyUIHandler : NetworkBehaviour
     public override void FixedUpdateNetwork()
     {
         // Only the Server/Host handles the scene transition
-        if (Runner.IsServer && CountdownTimer.Expired(Runner))
+        if (!Runner.IsServer || !CountdownTimer.Expired(Runner)) return;
+
+        CountdownTimer = TickTimer.None;
+
+        // NEW: read the session type set by the host to decide which scene to load
+        string targetScene = gameSceneName; // default — normal game
+
+        if (Runner.SessionInfo != null &&
+            Runner.SessionInfo.Properties != null &&
+            Runner.SessionInfo.Properties.TryGetValue(NetworkRunnerHandler.SESSION_TYPE_KEY, out SessionProperty prop))
         {
-            CountdownTimer = TickTimer.None;
-            Debug.Log("[LOBBY] Countdown complete, loading Game scene");
-
-            // Build settings store scene paths as "Assets/Scenes/Name.unity".
-            int gameSceneIndex = UnityEngine.SceneManagement.SceneUtility.GetBuildIndexByScenePath($"Assets/Scenes/{gameSceneName}.unity");
-            if (gameSceneIndex < 0)
+            if ((string)prop == NetworkRunnerHandler.SESSION_TYPE_RACE)
             {
-                Debug.LogError($"[LOBBY] Cannot load game scene '{gameSceneName}'. Add it to Build Settings.");
-                return;
+                targetScene = raceSceneName;
+                Debug.Log("[LOBBY] Race session detected — loading Race scene");
             }
-
-            Runner.LoadScene(SceneRef.FromIndex(gameSceneIndex));
+            else
+            {
+                Debug.Log("[LOBBY] Normal session — loading Game scene");
+            }
         }
+
+        int sceneIndex = UnityEngine.SceneManagement.SceneUtility
+            .GetBuildIndexByScenePath($"Assets/Scenes/{targetScene}.unity");
+
+        if (sceneIndex < 0)
+        {
+            Debug.LogError($"[LOBBY] Cannot load scene '{targetScene}'. Add it to Build Settings.");
+            return;
+        }
+
+        Debug.Log($"[LOBBY] Countdown complete, loading '{targetScene}'");
+        Runner.LoadScene(SceneRef.FromIndex(sceneIndex));
     }
 }
