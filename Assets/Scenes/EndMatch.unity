@@ -287,7 +287,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 68887728}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -320,23 +320,29 @@ MonoBehaviour:
   - {fileID: 8783306491908617939, guid: f02116c209ecd9e488fc4d2cd8996133, type: 3}
   - {fileID: 4385080170328260021, guid: ff62b58c5a9ea164fa8ddf8038e10cd1, type: 3}
   - {fileID: 1493958779012120596, guid: b9de24523a11d714db3851b5f0f9d527, type: 3}
-  spawnCount: 134
-  areaCenter: {fileID: 1407435975}
-  xRange: {x: -218, y: 160}
-  zRange: {x: 0, y: 160}
+  spawnCount: 200
+  areaCenter: {fileID: 1190761241}
+  xRange: {x: -20, y: 20}
+  zRange: {x: 10, y: 120}
   yOffset: 0
+  keepStableSpawnY: 1
   avoidRunnerLane: 1
-  laneHalfWidth: 9.03
+  laneHalfWidth: 5
+  laneExtraPadding: 2
   randomizeYaw: 1
-  uniformScaleRange: {x: 8.63, y: 1.25}
+  uniformScaleRange: {x: 3.5, y: 1.5}
   blockingMask:
     serializedVersion: 2
     m_Bits: 0
-  minDistanceBetweenObjects: 4.18
+  minDistanceBetweenObjects: 2.5
   enableEndlessRecycle: 1
-  recycleReference: {fileID: 1407435975}
-  recycleBehindDistance: 142.6
-  recycleAheadDistance: 120
+  simulateForwardMotion: 1
+  simulatedForwardSpeed: -1.6
+  autoRecycleFlowFromSimulatedSpeed: 1
+  recycleTowardNegativeZ: 1
+  recycleReference: {fileID: 657416156}
+  recycleBehindDistance: 120
+  recycleAheadDistance: 0
   useCustomSeed: 0
   customSeed: 12345
   clearGeneratedBeforeSpawn: 1
@@ -2142,11 +2148,13 @@ Transform:
   - {fileID: 1001233006}
   - {fileID: 1407435975}
   - {fileID: 68887729}
+  - {fileID: 1960866492}
   - {fileID: 657416156}
   - {fileID: 760696133}
   - {fileID: 1032456839}
   - {fileID: 939816471}
   - {fileID: 1297671505}
+  - {fileID: 1190761241}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &618127001
@@ -2305,7 +2313,6 @@ GameObject:
   - component: {fileID: 657416156}
   - component: {fileID: 657416159}
   - component: {fileID: 657416158}
-  - component: {fileID: 657416161}
   - component: {fileID: 657416157}
   - component: {fileID: 657416160}
   - component: {fileID: 657416162}
@@ -2324,8 +2331,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 657416155}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 0.12574586, z: -0, w: 0.9920625}
-  m_LocalPosition: {x: -4.24, y: 8.21, z: -10.86}
+  m_LocalRotation: {x: 0, y: 0.12574586, z: 0, w: 0.9920625}
+  m_LocalPosition: {x: -6.72, y: 8.21, z: -10.86}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2443,49 +2450,6 @@ Skybox:
   m_GameObject: {fileID: 657416155}
   m_Enabled: 1
   m_CustomSkybox: {fileID: 2100000, guid: 4ca28a68378865d439d01d4ad5140934, type: 2}
---- !u!114 &657416161
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 657416155}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f9dfa5b682dcd46bda6128250e975f58, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineCamera
-  Priority:
-    Enabled: 0
-    m_Value: 0
-  OutputChannel: 1
-  StandbyUpdate: 2
-  m_StreamingVersion: 20241001
-  m_LegacyPriority: 0
-  Target:
-    TrackingTarget: {fileID: 0}
-    LookAtTarget: {fileID: 0}
-    CustomLookAtTarget: 0
-  Lens:
-    FieldOfView: 50.3
-    OrthographicSize: 10
-    NearClipPlane: 0.1
-    FarClipPlane: 5000
-    Dutch: 0
-    ModeOverride: 0
-    PhysicalProperties:
-      GateFit: 2
-      SensorSize: {x: 21.946, y: 16.002}
-      LensShift: {x: 0, y: 0}
-      FocusDistance: 10
-      Iso: 200
-      ShutterSpeed: 0.005
-      Aperture: 16
-      BladeCount: 5
-      Curvature: {x: 2, y: 11}
-      BarrelClipping: 0.25
-      Anamorphism: 0
-  BlendHint: 0
 --- !u!95 &657416162
 Animator:
   serializedVersion: 7
@@ -3054,7 +3018,7 @@ Transform:
   m_GameObject: {fileID: 760696132}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -3.88}
+  m_LocalPosition: {x: -6.63, y: 0, z: -7.24}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -13404,7 +13368,7 @@ Transform:
   m_GameObject: {fileID: 939816470}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 5.19, y: 0, z: -2.08}
+  m_LocalPosition: {x: -1.44, y: 0, z: -5.4399996}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -14390,7 +14354,7 @@ Transform:
   m_GameObject: {fileID: 1032456838}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 2.07, y: 0, z: -3.16}
+  m_LocalPosition: {x: -4.5600004, y: 0, z: -6.5199995}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -14999,6 +14963,37 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1187815301}
   m_Mesh: {fileID: 1648318550784961951, guid: edcc86a903182d0429c0d7b2c727fec0, type: 3}
+--- !u!1 &1190761240
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1190761241}
+  m_Layer: 0
+  m_Name: GameObject
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1190761241
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1190761240}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -6.63, y: 0, z: -3.3599997}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 589720943}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1197540081
 GameObject:
   m_ObjectHideFlags: 0
@@ -15365,7 +15360,7 @@ Transform:
   m_GameObject: {fileID: 1297671504}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -1.7, y: 0, z: -1.76}
+  m_LocalPosition: {x: -8.33, y: 0, z: -5.12}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -21063,6 +21058,7 @@ GameObject:
   - component: {fileID: 1407435977}
   - component: {fileID: 1407435976}
   - component: {fileID: 1407435979}
+  - component: {fileID: 1407435980}
   m_Layer: 0
   m_Name: pasto
   m_TagString: Untagged
@@ -21079,8 +21075,8 @@ Transform:
   m_GameObject: {fileID: 1407435974}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 6.45872, y: 0, z: 10.085}
-  m_LocalScale: {x: 68.809456, y: 68.809456, z: 64.1737}
+  m_LocalPosition: {x: 6.4587, y: 0, z: 76}
+  m_LocalScale: {x: -16.732721, y: 68.809456, z: 19.167727}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 589720943}
@@ -21186,6 +21182,26 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1407435980
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1407435974}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75ae9fb69ae2d094a9fb6b9d50f41c6f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EndMatchScrollingMaterial
+  targetRenderer: {fileID: 1407435977}
+  materialIndex: 0
+  texturePropertyName: _BaseMap
+  scrollOnStart: 1
+  scrollSpeed: {x: 0, y: 1}
+  startOffset: {x: 0, y: 0}
+  useUnscaledTime: 0
+  debugLogs: 0
 --- !u!1 &1430336317
 GameObject:
   m_ObjectHideFlags: 0
@@ -33028,14 +33044,10 @@ PlayableDirector:
   m_SceneBindings:
   - key: {fileID: -7947763171225030319, guid: b589e158982587d4bb5df8c3fa0b5d3a, type: 2}
     value: {fileID: 2077598681}
-  - key: {fileID: 8324383785940981364, guid: b589e158982587d4bb5df8c3fa0b5d3a, type: 2}
-    value: {fileID: 1407435979}
   - key: {fileID: -4662745265509770435, guid: b589e158982587d4bb5df8c3fa0b5d3a, type: 2}
     value: {fileID: 657416162}
   - key: {fileID: -865072155457641601, guid: b589e158982587d4bb5df8c3fa0b5d3a, type: 2}
     value: {fileID: 2077598681}
-  - key: {fileID: 7322847383384784512, guid: b589e158982587d4bb5df8c3fa0b5d3a, type: 2}
-    value: {fileID: 0}
   m_ExposedReferences:
     m_References: []
 --- !u!1001 &1847223219
@@ -33602,6 +33614,86 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1893866050}
   m_Mesh: {fileID: -8642438158314901855, guid: edcc86a903182d0429c0d7b2c727fec0, type: 3}
+--- !u!1 &1960866491
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1960866492}
+  - component: {fileID: 1960866493}
+  m_Layer: 0
+  m_Name: EndMatchEscapeMountGenerator
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1960866492
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1960866491}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 589720943}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1960866493
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1960866491}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c55d833cfe4b154c889f311e6458888, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EndMatchEscapeVegetationGenerator
+  generateOnStart: 1
+  generateOnlyWhenSurvivorsEscaped: 0
+  allowGenerationWithoutSnapshot: 1
+  vegetationPrefabs:
+  - {fileID: 7405846476849542632, guid: c6308cb7062fac34e8e50600086b12a1, type: 3}
+  - {fileID: 5202732821079448320, guid: cebfacc247a640945a2c30b442202fca, type: 3}
+  - {fileID: 4680757731160225450, guid: 0fde05fa0f3321942a21896ff4f0856f, type: 3}
+  - {fileID: 8783306491908617939, guid: f02116c209ecd9e488fc4d2cd8996133, type: 3}
+  - {fileID: 1576488453971893466, guid: a778b631c6253a04899cb31bad047c81, type: 3}
+  spawnCount: 120
+  areaCenter: {fileID: 1190761241}
+  xRange: {x: -60, y: 60}
+  zRange: {x: 20, y: 120}
+  yOffset: 0
+  keepStableSpawnY: 1
+  avoidRunnerLane: 1
+  laneHalfWidth: 25
+  laneExtraPadding: 5
+  randomizeYaw: 1
+  uniformScaleRange: {x: 15, y: 15}
+  blockingMask:
+    serializedVersion: 2
+    m_Bits: 0
+  minDistanceBetweenObjects: 5
+  enableEndlessRecycle: 1
+  simulateForwardMotion: 1
+  simulatedForwardSpeed: -1.6
+  autoRecycleFlowFromSimulatedSpeed: 1
+  recycleTowardNegativeZ: 1
+  recycleReference: {fileID: 657416156}
+  recycleBehindDistance: 120
+  recycleAheadDistance: 0
+  useCustomSeed: 0
+  customSeed: 12345
+  clearGeneratedBeforeSpawn: 1
+  debugLogs: 1
 --- !u!1 &1971516917
 GameObject:
   m_ObjectHideFlags: 0
