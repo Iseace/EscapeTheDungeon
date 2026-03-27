@@ -33,6 +33,7 @@ public class LobbyListManager : MonoBehaviour
             Debug.LogError("lobbyListItem is missing LobbyListUIHandler component!");
         }
     }
+
     // clean up method
     public void ClearList()
     {

@@ -30,6 +30,10 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
     [SerializeField] private float groundRayStartHeight = 10f;
     [SerializeField] private float groundSnapOffset = 0.05f;
 
+    [Header("Race Spawn")]
+    [SerializeField] private Vector3 raceSpawnOrigin = new Vector3(0f, 1f, 0f);
+    [SerializeField] private float raceSpawnLaneWidth = 2f;
+
     [Header("Boss System")]
     [SerializeField] private string menuSceneName = "LobbyList";
     [SerializeField] private int menuSceneIndex = 0;
@@ -67,6 +71,24 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
         registeredRunner = runner;
         callbacksRegistered = true;
         Debug.Log("[SPAWNER] Registered callbacks with NetworkRunner");
+    }
+
+    // Returns true when the current session is a Race session
+    private bool IsRaceSession(NetworkRunner runner)
+    {
+        if (runner.SessionInfo == null || runner.SessionInfo.Properties == null)
+            return false;
+
+        if (runner.SessionInfo.Properties.TryGetValue(NetworkRunnerHandler.SESSION_TYPE_KEY, out SessionProperty prop))
+            return (string)prop == NetworkRunnerHandler.SESSION_TYPE_RACE;
+
+        return false;
+    }
+
+    // Returns PlayerPrefab for normal sessions, broomPrefab for race sessions
+    private NetworkObject GetPrefabForSession(NetworkRunner runner)
+    {
+        return IsRaceSession(runner) ? broomPrefab : PlayerPrefab;
     }
 
     public void PlayerJoinedLogic(NetworkRunner runner, PlayerRef player)
@@ -110,6 +132,12 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
             spawnPos = new Vector3(startOffset + (totalPlayers - 1) * spacing, 0f, 0f);
             spawnRot = Quaternion.identity;
+
+            // Spawn PlayerPrefab or broomPrefab depending on session type
+            NetworkObject lobbyObj = runner.Spawn(GetPrefabForSession(runner), spawnPos, spawnRot, player);
+            runner.SetPlayerObject(player, lobbyObj);
+            Debug.Log($"[SPAWNER] Player {player.PlayerId} spawned in LobbyRoom as {GetPrefabForSession(runner).name}");
+            return;
         }
 
         if (SceneManager.GetActiveScene().name == "Game")
@@ -117,16 +145,21 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             spawnPos = GetSafeGameSpawnForPlayer(runner, player);
         }
 
-        // RACE: Simple spawn
         if (SceneManager.GetActiveScene().name == "Race")
         {
             var orderedPlayers = runner.ActivePlayers.OrderBy(p => p.PlayerId).ToList();
             int idx = orderedPlayers.IndexOf(player);
-            spawnPos = new Vector3(idx * 2f, 1f, 0f);
+            spawnPos = raceSpawnOrigin + new Vector3(idx * raceSpawnLaneWidth, 0f, 0f);
             spawnRot = Quaternion.identity;
+            Debug.Log($"[SPAWNER] Race spawn for player {player.PlayerId} at {spawnPos}");
+
+            NetworkObject raceObj = runner.Spawn(broomPrefab, spawnPos, spawnRot, inputAuthority: player);
+            runner.SetPlayerObject(player, raceObj);
+            return;
         }
 
-        NetworkObject playerObj = runner.Spawn(broomPrefab, spawnPos, spawnRot, player);
+        // Game scene — always PlayerPrefab
+        NetworkObject playerObj = runner.Spawn(PlayerPrefab, spawnPos, spawnRot, player);
         runner.SetPlayerObject(player, playerObj);
 
         Debug.Log($"[SPAWNER] Player {player.PlayerId} spawned");
