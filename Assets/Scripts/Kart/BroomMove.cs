@@ -23,6 +23,10 @@ public class BroomMove : NetworkBehaviour
     [SerializeField] private float downforce = 4f;
 
     private Rigidbody rb;
+    private EventManager eventManager;
+    private float gripMultiplier = 1f;
+    private float dragMultiplier = 1f;
+    private float steerMultiplier = 1f;
 
     public override void Spawned()
     {
@@ -35,7 +39,6 @@ public class BroomMove : NetworkBehaviour
         rb.constraints = RigidbodyConstraints.FreezeRotationX
                        | RigidbodyConstraints.FreezeRotationZ;
 
-     
         if (HasStateAuthority)
             Runner.SetIsSimulated(Object, true);
         else
@@ -44,8 +47,18 @@ public class BroomMove : NetworkBehaviour
         var simPhysics = Runner.GetComponent<RunnerSimulatePhysics3D>();
         if (simPhysics != null)
         {
-
             Runner.SetIsSimulated(Object, HasStateAuthority);
+        }
+
+        // Find the EventManager to get weather effects
+        if (eventManager == null)
+        {
+            eventManager = FindAnyObjectByType<EventManager>();
+        }
+
+        if (eventManager != null)
+        {
+            eventManager.RegisterKart(this);
         }
     }
 
@@ -56,7 +69,7 @@ public class BroomMove : NetworkBehaviour
 
         if (GetInput(out PlayerInputData input))
         {
-            float steerInput    = Mathf.Clamp(input.MoveDirection.x, -1f, 1f);
+            float steerInput = Mathf.Clamp(input.MoveDirection.x, -1f, 1f);
             float throttleInput = Mathf.Clamp(input.MoveDirection.z, -1f, 1f);
 
             ApplyMovement(throttleInput);
@@ -91,8 +104,8 @@ public class BroomMove : NetworkBehaviour
             return;
         }
 
-        float speedPercent  = Mathf.Clamp01(speed / Mathf.Max(0.01f, maxForwardSpeed));
-        float currentSteer  = Mathf.Lerp(steerStrength, steerStrength * highSpeedSteerFactor, speedPercent);
+        float speedPercent = Mathf.Clamp01(speed / Mathf.Max(0.01f, maxForwardSpeed));
+        float currentSteer = Mathf.Lerp(steerStrength, steerStrength * highSpeedSteerFactor, speedPercent) * steerMultiplier;
         float targetYawRate = steerInput * currentSteer * Mathf.Deg2Rad;
 
         rb.angularVelocity = new Vector3(rb.angularVelocity.x, targetYawRate, rb.angularVelocity.z);
@@ -101,11 +114,23 @@ public class BroomMove : NetworkBehaviour
     private void ApplyLateralGrip()
     {
         Vector3 lateralVelocity = Vector3.Project(rb.linearVelocity, transform.right);
-        rb.AddForce(-lateralVelocity * lateralGrip, ForceMode.Acceleration);
+        rb.AddForce(-lateralVelocity * (lateralGrip * gripMultiplier), ForceMode.Acceleration);
     }
 
     private void ApplyDrag(float throttleInput)
     {
-        rb.linearDamping = Mathf.Abs(throttleInput) < 0.01f ? idleDrag : movingDrag;
+        float baseDamping = Mathf.Abs(throttleInput) < 0.01f ? idleDrag : movingDrag;
+        rb.linearDamping = baseDamping * dragMultiplier;
+    }
+
+    /// <summary>
+    /// Called by EventManager to update weather-based effects
+    /// </summary>
+    public void SetWeather(WeatherType weather, EventManager manager)
+    {
+        eventManager = manager;
+        gripMultiplier = manager.GetGripMultiplier();
+        dragMultiplier = manager.GetDragMultiplier();
+        steerMultiplier = manager.GetSteerMultiplier();
     }
 }

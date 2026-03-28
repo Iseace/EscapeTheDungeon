@@ -11,6 +11,8 @@ public class LandmineBehaviour : NetworkBehaviour
     [Header("Lifetime")]
     [SerializeField] private bool despawnAfterTrigger = true;
     [SerializeField] private float despawnDelaySeconds = 0.1f;
+    [SerializeField] private bool respawnAfterTrigger = false;
+    [SerializeField] private float respawnDelaySeconds = 10f;
 
     [Header("Visuals")]
     [SerializeField] private GameObject explosionVfxPrefab;
@@ -20,6 +22,9 @@ public class LandmineBehaviour : NetworkBehaviour
 
     [Networked]
     private TickTimer DespawnTimer { get; set; }
+
+    [Networked]
+    private TickTimer RespawnTimer { get; set; }
 
     private Collider mineCollider;
     private Renderer[] mineRenderers;
@@ -50,7 +55,17 @@ public class LandmineBehaviour : NetworkBehaviour
         if (despawnAfterTrigger)
         {
             IsTriggered = true;
-            DespawnTimer = TickTimer.CreateFromSeconds(Runner, Mathf.Max(0f, despawnDelaySeconds));
+
+            if (respawnAfterTrigger)
+            {
+                RespawnTimer = TickTimer.CreateFromSeconds(Runner, Mathf.Max(0f, respawnDelaySeconds));
+                DespawnTimer = TickTimer.None;
+            }
+            else
+            {
+                DespawnTimer = TickTimer.CreateFromSeconds(Runner, Mathf.Max(0f, despawnDelaySeconds));
+                RespawnTimer = TickTimer.None;
+            }
         }
     }
 
@@ -84,6 +99,17 @@ public class LandmineBehaviour : NetworkBehaviour
     {
         if (!HasStateAuthority || !despawnAfterTrigger || !IsTriggered)
         {
+            return;
+        }
+
+        if (respawnAfterTrigger)
+        {
+            if (RespawnTimer.Expired(Runner))
+            {
+                IsTriggered = false;
+                RespawnTimer = TickTimer.None;
+            }
+
             return;
         }
 
