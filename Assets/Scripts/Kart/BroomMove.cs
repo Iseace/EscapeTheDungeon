@@ -24,9 +24,13 @@ public class BroomMove : NetworkBehaviour
 
     private Rigidbody rb;
     private EventManager eventManager;
-    private float gripMultiplier = 1f;
-    private float dragMultiplier = 1f;
-    private float steerMultiplier = 1f;
+    private float weatherGripMultiplier = 1f;
+    private float weatherDragMultiplier = 1f;
+    private float weatherSteerMultiplier = 1f;
+
+    private float trackSpeedMultiplier = 1f;
+    private bool trackInvertSteering;
+    private TickTimer trackModifierTimer;
 
     public override void Spawned()
     {
@@ -67,6 +71,11 @@ public class BroomMove : NetworkBehaviour
         if (!Object.IsValid) return;
         if (!HasStateAuthority) return;
 
+        if (trackModifierTimer.IsRunning && trackModifierTimer.Expired(Runner))
+        {
+            ClearTrackModifierInternal();
+        }
+
         if (GetInput(out PlayerInputData input))
         {
             float steerInput = Mathf.Clamp(input.MoveDirection.x, -1f, 1f);
@@ -86,11 +95,15 @@ public class BroomMove : NetworkBehaviour
     private void ApplyMovement(float throttleInput)
     {
         float forwardSpeed = Vector3.Dot(rb.linearVelocity, transform.forward);
+        float currentMaxForwardSpeed = maxForwardSpeed * trackSpeedMultiplier;
+        float currentMaxReverseSpeed = maxReverseSpeed * trackSpeedMultiplier;
+        float currentAcceleration = acceleration * trackSpeedMultiplier;
+        float currentReverseAcceleration = reverseAcceleration * trackSpeedMultiplier;
 
-        if (throttleInput > 0f && forwardSpeed < maxForwardSpeed)
-            rb.AddForce(transform.forward * (throttleInput * acceleration), ForceMode.Acceleration);
-        else if (throttleInput < 0f && forwardSpeed > -maxReverseSpeed)
-            rb.AddForce(transform.forward * (throttleInput * reverseAcceleration), ForceMode.Acceleration);
+        if (throttleInput > 0f && forwardSpeed < currentMaxForwardSpeed)
+            rb.AddForce(transform.forward * (throttleInput * currentAcceleration), ForceMode.Acceleration);
+        else if (throttleInput < 0f && forwardSpeed > -currentMaxReverseSpeed)
+            rb.AddForce(transform.forward * (throttleInput * currentReverseAcceleration), ForceMode.Acceleration);
 
         rb.AddForce(Vector3.down * downforce, ForceMode.Acceleration);
     }
@@ -104,8 +117,13 @@ public class BroomMove : NetworkBehaviour
             return;
         }
 
+        if (trackInvertSteering)
+        {
+            steerInput = -steerInput;
+        }
+
         float speedPercent = Mathf.Clamp01(speed / Mathf.Max(0.01f, maxForwardSpeed));
-        float currentSteer = Mathf.Lerp(steerStrength, steerStrength * highSpeedSteerFactor, speedPercent) * steerMultiplier;
+        float currentSteer = Mathf.Lerp(steerStrength, steerStrength * highSpeedSteerFactor, speedPercent) * weatherSteerMultiplier;
         float targetYawRate = steerInput * currentSteer * Mathf.Deg2Rad;
 
         rb.angularVelocity = new Vector3(rb.angularVelocity.x, targetYawRate, rb.angularVelocity.z);
@@ -114,13 +132,13 @@ public class BroomMove : NetworkBehaviour
     private void ApplyLateralGrip()
     {
         Vector3 lateralVelocity = Vector3.Project(rb.linearVelocity, transform.right);
-        rb.AddForce(-lateralVelocity * (lateralGrip * gripMultiplier), ForceMode.Acceleration);
+        rb.AddForce(-lateralVelocity * (lateralGrip * weatherGripMultiplier), ForceMode.Acceleration);
     }
 
     private void ApplyDrag(float throttleInput)
     {
         float baseDamping = Mathf.Abs(throttleInput) < 0.01f ? idleDrag : movingDrag;
-        rb.linearDamping = baseDamping * dragMultiplier;
+        rb.linearDamping = baseDamping * weatherDragMultiplier;
     }
 
     /// <summary>
@@ -129,8 +147,35 @@ public class BroomMove : NetworkBehaviour
     public void SetWeather(WeatherType weather, EventManager manager)
     {
         eventManager = manager;
-        gripMultiplier = manager.GetGripMultiplier();
-        dragMultiplier = manager.GetDragMultiplier();
-        steerMultiplier = manager.GetSteerMultiplier();
+        weatherGripMultiplier = manager.GetGripMultiplier();
+        weatherDragMultiplier = manager.GetDragMultiplier();
+        weatherSteerMultiplier = manager.GetSteerMultiplier();
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    public void RPC_RequestTrackModifier(float speedMultiplier, bool invertSteering, float durationSeconds)
+    {
+        ApplyTrackModifierInternal(speedMultiplier, invertSteering, durationSeconds);
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    public void RPC_RequestClearTrackModifier()
+    {
+        ClearTrackModifierInternal();
+    }
+
+    private void ApplyTrackModifierInternal(float speedMultiplier, bool invertSteering, float durationSeconds)
+    {
+        trackSpeedMultiplier = Mathf.Max(0.1f, speedMultiplier);
+        trackInvertSteering = invertSteering;
+        float safeDuration = Mathf.Max(0f, durationSeconds);
+        trackModifierTimer = safeDuration > 0f ? TickTimer.CreateFromSeconds(Runner, safeDuration) : TickTimer.None;
+    }
+
+    private void ClearTrackModifierInternal()
+    {
+        trackSpeedMultiplier = 1f;
+        trackInvertSteering = false;
+        trackModifierTimer = TickTimer.None;
     }
 }

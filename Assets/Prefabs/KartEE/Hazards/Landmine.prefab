@@ -147,8 +147,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1eb3c776c64ab2408448700475fb920, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LandmineBehaviour
+  isLandmine: 1
   knockbackForce: 35
   knockbackUpwardBoost: 20
   despawnAfterTrigger: 1
   despawnDelaySeconds: 0.1
+  respawnAfterTrigger: 0
+  respawnDelaySeconds: 10
   explosionVfxPrefab: {fileID: 0}

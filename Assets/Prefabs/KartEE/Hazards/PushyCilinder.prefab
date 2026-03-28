@@ -151,4 +151,6 @@ MonoBehaviour:
   knockbackUpwardBoost: 1
   despawnAfterTrigger: 0
   despawnDelaySeconds: 0
+  respawnAfterTrigger: 0
+  respawnDelaySeconds: 10
   explosionVfxPrefab: {fileID: 0}

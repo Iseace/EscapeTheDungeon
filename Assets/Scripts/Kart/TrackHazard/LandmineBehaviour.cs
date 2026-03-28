@@ -4,6 +4,9 @@ using UnityEngine;
 [RequireComponent(typeof(Collider))]
 public class LandmineBehaviour : NetworkBehaviour
 {
+    [Header("Classification")]
+    [SerializeField] private bool isLandmine = false;
+
     [Header("Knockback")]
     [SerializeField] private float knockbackForce = 12f;
     [SerializeField] private float knockbackUpwardBoost = 2f;
@@ -13,6 +16,8 @@ public class LandmineBehaviour : NetworkBehaviour
     [SerializeField] private float despawnDelaySeconds = 0.1f;
     [SerializeField] private bool respawnAfterTrigger = false;
     [SerializeField] private float respawnDelaySeconds = 10f;
+
+    private const float LandmineRespawnSeconds = 10f;
 
     [Header("Visuals")]
     [SerializeField] private GameObject explosionVfxPrefab;
@@ -79,13 +84,17 @@ public class LandmineBehaviour : NetworkBehaviour
         ApplyKnockbackToRacer(broomMove.transform);
         RPC_PlayExplosion(transform.position);
 
-        if (despawnAfterTrigger)
+        bool shouldDespawnAfterTrigger = despawnAfterTrigger || isLandmine;
+        bool shouldRespawnAfterTrigger = isLandmine || respawnAfterTrigger;
+        float currentRespawnDelaySeconds = isLandmine ? LandmineRespawnSeconds : respawnDelaySeconds;
+
+        if (shouldDespawnAfterTrigger)
         {
             IsTriggered = true;
 
-            if (respawnAfterTrigger)
+            if (shouldRespawnAfterTrigger)
             {
-                RespawnTimer = TickTimer.CreateFromSeconds(Runner, Mathf.Max(0f, respawnDelaySeconds));
+                RespawnTimer = TickTimer.CreateFromSeconds(Runner, Mathf.Max(0f, currentRespawnDelaySeconds));
                 DespawnTimer = TickTimer.None;
             }
             else
@@ -124,12 +133,15 @@ public class LandmineBehaviour : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
-        if (!HasStateAuthority || !despawnAfterTrigger || !IsTriggered)
+        bool shouldDespawnAfterTrigger = despawnAfterTrigger || isLandmine;
+        bool shouldRespawnAfterTrigger = isLandmine || respawnAfterTrigger;
+
+        if (!HasStateAuthority || !shouldDespawnAfterTrigger || !IsTriggered)
         {
             return;
         }
 
-        if (respawnAfterTrigger)
+        if (shouldRespawnAfterTrigger)
         {
             if (RespawnTimer.Expired(Runner))
             {
