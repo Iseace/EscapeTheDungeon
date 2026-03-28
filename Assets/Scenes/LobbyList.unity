@@ -3942,6 +3942,7 @@ GameObject:
   - component: {fileID: 1626271135}
   - component: {fileID: 1626271134}
   - component: {fileID: 1626271136}
+  - component: {fileID: 1626271137}
   m_Layer: 0
   m_Name: NetworkRunnerHandler
   m_TagString: Untagged
@@ -3975,6 +3976,8 @@ MonoBehaviour:
   spawnCollisionHeight: 1.8
   groundRayStartHeight: 10
   groundSnapOffset: 0.05
+  raceSpawnOrigin: {x: 0, y: 1, z: 0}
+  raceSpawnLaneWidth: 2
   menuSceneName: LobbyList
   menuSceneIndex: 0
 --- !u!4 &1626271135
@@ -4019,6 +4022,23 @@ MonoBehaviour:
   interactAction: {fileID: 457452605}
   specialAction: {fileID: 896565318}
   jumpAction: {fileID: 466668552}
+--- !u!114 &1626271137
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1626271133}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b5a1ff9dee264bfd829a39e6542dcbd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Addons.Physics::Fusion.Addons.Physics.RunnerSimulatePhysics3D
+  _physicsAuthority: 2
+  _physicsTiming: 3
+  ClientPhysicsSimulation: 0
+  DeltaTimeMultiplier: 1
+  SetUnityFixedTimestep: 0
 --- !u!1 &1659034652
 GameObject:
   m_ObjectHideFlags: 0

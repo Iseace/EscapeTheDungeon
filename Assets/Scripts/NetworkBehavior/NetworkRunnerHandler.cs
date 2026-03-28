@@ -168,6 +168,10 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         _runner.AddCallbacks(this);
         _runner.ProvideInput = true;
 
+        var simPhysicsRace = _runner.GetComponent<Fusion.Addons.Physics.RunnerSimulatePhysics3D>();
+        if (simPhysicsRace == null)
+            simPhysicsRace = _runner.gameObject.AddComponent<Fusion.Addons.Physics.RunnerSimulatePhysics3D>();
+
         var props = new Dictionary<string, SessionProperty>
         {
             { SESSION_TYPE_KEY, SESSION_TYPE_RACE }
@@ -226,6 +230,13 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         _runner = gameObject.AddComponent<NetworkRunner>();
         _runner.AddCallbacks(this);
         _runner.ProvideInput = true;
+
+        if (mode == GameMode.Host)
+        {
+            var simPhysics = _runner.GetComponent<Fusion.Addons.Physics.RunnerSimulatePhysics3D>();
+            if (simPhysics == null)
+                _runner.gameObject.AddComponent<Fusion.Addons.Physics.RunnerSimulatePhysics3D>();
+        }
 
         // Normal sessions are tagged as "normal" so LobbyUIHandler loads Game scene
         var props = new Dictionary<string, SessionProperty>

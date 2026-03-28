@@ -33,22 +33,40 @@ public class BroomMove : NetworkBehaviour
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         rb.constraints = RigidbodyConstraints.FreezeRotationX
-                        | RigidbodyConstraints.FreezeRotationZ;
+                       | RigidbodyConstraints.FreezeRotationZ;
+
+     
+        if (HasStateAuthority)
+            Runner.SetIsSimulated(Object, true);
+        else
+            Runner.SetIsSimulated(Object, false);
+
+        var simPhysics = Runner.GetComponent<RunnerSimulatePhysics3D>();
+        if (simPhysics != null)
+        {
+
+            Runner.SetIsSimulated(Object, HasStateAuthority);
+        }
     }
 
     public override void FixedUpdateNetwork()
     {
-        if (!HasInputAuthority) return;
+        if (!Object.IsValid) return;
+        if (!HasStateAuthority) return;
 
         if (GetInput(out PlayerInputData input))
         {
-            float steerInput = Mathf.Clamp(input.MoveDirection.x, -1f, 1f);
+            float steerInput    = Mathf.Clamp(input.MoveDirection.x, -1f, 1f);
             float throttleInput = Mathf.Clamp(input.MoveDirection.z, -1f, 1f);
 
             ApplyMovement(throttleInput);
             ApplyLateralGrip();
             ApplySteering(steerInput);
             ApplyDrag(throttleInput);
+        }
+        else
+        {
+            rb.linearDamping = idleDrag;
         }
     }
 
@@ -61,7 +79,6 @@ public class BroomMove : NetworkBehaviour
         else if (throttleInput < 0f && forwardSpeed > -maxReverseSpeed)
             rb.AddForce(transform.forward * (throttleInput * reverseAcceleration), ForceMode.Acceleration);
 
-        // Keeps the broom planted on slopes/bumps so it follows the track instead of floating.
         rb.AddForce(Vector3.down * downforce, ForceMode.Acceleration);
     }
 
@@ -74,8 +91,8 @@ public class BroomMove : NetworkBehaviour
             return;
         }
 
-        float speedPercent = Mathf.Clamp01(speed / Mathf.Max(0.01f, maxForwardSpeed));
-        float currentSteer = Mathf.Lerp(steerStrength, steerStrength * highSpeedSteerFactor, speedPercent);
+        float speedPercent  = Mathf.Clamp01(speed / Mathf.Max(0.01f, maxForwardSpeed));
+        float currentSteer  = Mathf.Lerp(steerStrength, steerStrength * highSpeedSteerFactor, speedPercent);
         float targetYawRate = steerInput * currentSteer * Mathf.Deg2Rad;
 
         rb.angularVelocity = new Vector3(rb.angularVelocity.x, targetYawRate, rb.angularVelocity.z);

@@ -213,8 +213,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 68645941698262321}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0.064}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 1, z: 0.064}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -226,7 +226,7 @@ Transform:
   - {fileID: 6621791328990831516}
   - {fileID: 3651338195372573655}
   - {fileID: 7164767378524356601}
-  m_Father: {fileID: 2556913243995340128}
+  m_Father: {fileID: 4326586600275339620}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &76083557840886831
 GameObject:
@@ -2554,6 +2554,39 @@ Transform:
   m_Children:
   - {fileID: 7231820180779366467}
   m_Father: {fileID: 3550696565733237591}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1368517770014494290
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4326586600275339620}
+  m_Layer: 0
+  m_Name: VisualRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4326586600275339620
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1368517770014494290}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6968880569745728810}
+  - {fileID: 2986507512442394647}
+  m_Father: {fileID: 4566717417416805786}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1376936689597586608
 GameObject:
@@ -9558,9 +9591,7 @@ Transform:
   m_LocalPosition: {x: 0, y: 1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 6968880569745728810}
-  - {fileID: 2986507512442394647}
+  m_Children: []
   m_Father: {fileID: 4566717417416805786}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4328464116505813522
@@ -15433,9 +15464,9 @@ GameObject:
   - component: {fileID: 4445043330926483629}
   - component: {fileID: 8188509914162312914}
   - component: {fileID: 2539907645035161265}
-  - component: {fileID: 4225514056831661317}
   - component: {fileID: 7730455707243882626}
   - component: {fileID: 6336234727296163067}
+  - component: {fileID: -1469339193753302141}
   m_Layer: 0
   m_Name: BroomRacer
   m_TagString: Untagged
@@ -15460,6 +15491,7 @@ Transform:
   - {fileID: 981711996941091500}
   - {fileID: 6991620993304553582}
   - {fileID: 3954144497780249813}
+  - {fileID: 4326586600275339620}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &4445043330926483629
@@ -15479,9 +15511,9 @@ MonoBehaviour:
   Flags: 262145
   NestedObjects: []
   NetworkedBehaviours:
-  - {fileID: 4225514056831661317}
   - {fileID: 7730455707243882626}
   - {fileID: 6336234727296163067}
+  - {fileID: -1469339193753302141}
   ForceRemoteRenderTimeframe: 0
 --- !u!54 &8188509914162312914
 Rigidbody:
@@ -15531,29 +15563,6 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.8
   m_Center: {x: 0, y: 1, z: 0}
---- !u!114 &4225514056831661317
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7092673203643427425}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0a591d221a634417e9827eb58e17de84, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Fusion.Addons.Physics::Fusion.Addons.Physics.NetworkRigidbody3D
-  _stateAuthorityChangeErrorCorrectionDelta: 0
-  SyncScale: 0
-  SyncParent: 1
-  _interpolationTarget: {fileID: 0}
-  UsePreciseRotation: 0
-  UseRenderSleepThresholds: 1
-  RenderThresholds:
-    UseEnergy: 1
-    Position: 0.01
-    Rotation: 0.01
-    Scale: 0.01
 --- !u!114 &7730455707243882626
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15567,13 +15576,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BroomMove
   acceleration: 20
-  reverseAcceleration: 12
   maxForwardSpeed: 25
-  maxReverseSpeed: 10
   idleDrag: 1.2
   movingDrag: 0.1
   steerStrength: 120
-  highSpeedSteerFactor: 0.35
   lateralGrip: 6
   downforce: 2
 --- !u!114 &6336234727296163067
@@ -15589,6 +15595,29 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LocalPlayerSetup
   myCameraSocket: {fileID: 3954144497780249813}
+--- !u!114 &-1469339193753302141
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7092673203643427425}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a591d221a634417e9827eb58e17de84, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Addons.Physics::Fusion.Addons.Physics.NetworkRigidbody3D
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 1
+  _interpolationTarget: {fileID: 4326586600275339620}
+  UsePreciseRotation: 0
+  UseRenderSleepThresholds: 1
+  RenderThresholds:
+    UseEnergy: 1
+    Position: 0.01
+    Rotation: 0.01
+    Scale: 0.01
 --- !u!1 &7098714450728896804
 GameObject:
   m_ObjectHideFlags: 0
@@ -17221,12 +17250,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7781586115900784528}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -0.1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 1, z: -0.1}
   m_LocalScale: {x: 5, y: 5, z: 30}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 2556913243995340128}
+  m_Father: {fileID: 4326586600275339620}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &6276245888178317967
 MeshFilter:
