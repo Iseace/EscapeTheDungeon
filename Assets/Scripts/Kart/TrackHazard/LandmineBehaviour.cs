@@ -26,6 +26,18 @@ public class LandmineBehaviour : NetworkBehaviour
     [Networked]
     private TickTimer RespawnTimer { get; set; }
 
+    [Networked]
+    private NetworkBool HasSpawnPose { get; set; }
+
+    [Networked]
+    private Vector3 SpawnPosition { get; set; }
+
+    [Networked]
+    private Vector3 SpawnEulerAngles { get; set; }
+
+    [Networked]
+    private Vector3 SpawnLocalScale { get; set; }
+
     private Collider mineCollider;
     private Renderer[] mineRenderers;
 
@@ -33,7 +45,22 @@ public class LandmineBehaviour : NetworkBehaviour
     {
         mineCollider = GetComponent<Collider>();
         mineRenderers = GetComponentsInChildren<Renderer>(true);
+
+        if (HasStateAuthority && !HasSpawnPose)
+        {
+            HasSpawnPose = true;
+            SpawnPosition = transform.position;
+            SpawnEulerAngles = transform.eulerAngles;
+            SpawnLocalScale = transform.localScale;
+        }
+
+        ApplyNetworkedSpawnPose();
         ApplyTriggeredState((bool)IsTriggered);
+    }
+
+    public override void Render()
+    {
+        ApplyNetworkedSpawnPose();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -141,6 +168,26 @@ public class LandmineBehaviour : NetworkBehaviour
         for (int i = 0; i < mineRenderers.Length; i++)
         {
             mineRenderers[i].enabled = !shouldDisableMine;
+        }
+    }
+
+    private void ApplyNetworkedSpawnPose()
+    {
+        if (!HasSpawnPose)
+        {
+            return;
+        }
+
+        Quaternion spawnRotation = Quaternion.Euler(SpawnEulerAngles);
+
+        if ((transform.localScale - SpawnLocalScale).sqrMagnitude > 0.0001f)
+        {
+            transform.localScale = SpawnLocalScale;
+        }
+
+        if ((transform.position - SpawnPosition).sqrMagnitude > 0.0001f || Quaternion.Angle(transform.rotation, spawnRotation) > 0.1f)
+        {
+            transform.SetPositionAndRotation(SpawnPosition, spawnRotation);
         }
     }
 
