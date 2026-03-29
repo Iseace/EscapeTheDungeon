@@ -15576,10 +15576,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BroomMove
   acceleration: 20
+  reverseAcceleration: 12
   maxForwardSpeed: 25
+  maxReverseSpeed: 10
   idleDrag: 1.2
   movingDrag: 0.1
   steerStrength: 120
+  highSpeedSteerFactor: 0.35
   lateralGrip: 6
   downforce: 2
 --- !u!114 &6336234727296163067
@@ -15595,6 +15598,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LocalPlayerSetup
   myCameraSocket: {fileID: 3954144497780249813}
+  seatAnchor: {fileID: 2986507512442394647}
+  _SelectedCharacterIndex: 0
 --- !u!114 &-1469339193753302141
 MonoBehaviour:
   m_ObjectHideFlags: 0
