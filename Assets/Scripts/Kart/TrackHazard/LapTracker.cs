@@ -213,29 +213,37 @@ public class LapTracker : MonoBehaviour
 
     private void RefreshLocalHud()
     {
-        if (localLapText == null)
-        {
-            return;
-        }
-
+        // 1. Try to find the local racer if we don't have one yet
         if (localRacer == null && Time.time >= nextLocalRacerResolveTime)
         {
             BroomMove[] allRacers = FindObjectsByType<BroomMove>(FindObjectsSortMode.None);
-            for (int i = 0; i < allRacers.Length; i++)
+            foreach (var racer in allRacers)
             {
-                if (allRacers[i] != null && allRacers[i].HasInputAuthority)
+                if (racer != null && racer.HasInputAuthority)
                 {
-                    localRacer = allRacers[i];
+                    localRacer = racer;
+
+                    // 2. NEW: Automatically find the TMP_Text on the spawned prefab
+                    // This searches the racer and all its children for a TMP_Text component
+                    localLapText = racer.GetComponentInChildren<TMP_Text>();
+
+                    if (localLapText == null && enableDebugLogs)
+                    {
+                        Debug.LogWarning($"[LAP] Found local racer {racer.name}, but no TMP_Text found on it!");
+                    }
                     break;
                 }
             }
-
             nextLocalRacerResolveTime = Time.time + 0.5f;
         }
 
+        // 3. Safety check: If we still don't have a text component, we can't update anything
+        if (localLapText == null) return;
+
+        // 4. Update the text based on progress
         if (localRacer == null)
         {
-            localLapText.text = string.Format("{0} 0/{1}", lapPrefix, totalLaps);
+            localLapText.text = $"{lapPrefix} 1/{totalLaps}";
             return;
         }
 
