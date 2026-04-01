@@ -490,7 +490,12 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         if (!isDead && !optionsMenuOpen)
         {
             // Movement
-            if (moveAction != null)
+            string _sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (_sceneName == "Race" && KartMobileInput.IsActive)
+            {
+                myInput.MoveDirection = new Vector3(KartInput.Steer, 0, KartInput.Throttle);
+            }
+            else if (moveAction != null)
             {
                 Vector2 moveVal = moveAction.action.ReadValue<Vector2>();
                 myInput.MoveDirection = new Vector3(moveVal.x, 0, moveVal.y);
