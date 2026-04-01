@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.IO;
 
 public class DungeonNetworkRunner : NetworkBehaviour
 {
@@ -32,6 +33,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
 
     [Networked] public NetworkBool MatchInProgress { get; set; }
     [Networked] public NetworkBool MatchEnded { get; set; }
+    [Networked] private int EndMatchReasonCode { get; set; }
     [Networked] private TickTimer BossFreezeTimer { get; set; }
     [Networked] private TickTimer MatchTimer { get; set; }
 
@@ -92,6 +94,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
         {
             MatchInProgress = false;
             MatchEnded = false;
+            EndMatchReasonCode = -1;
             BossFreezeTimer = TickTimer.None;
             MatchTimer = TickTimer.None;
         }
@@ -177,6 +180,8 @@ public class DungeonNetworkRunner : NetworkBehaviour
             localMatchEndedLogged = true;
             Debug.Log("[MATCH] Tiempo de partida finalizado.");
         }
+
+        TryEnsureLocalEndMatchSnapshot();
     }
 
     public override void FixedUpdateNetwork()
@@ -642,6 +647,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
         if (isEndingMatch) return;
         isEndingMatch = true;
 
+        EndMatchReasonCode = (int)reason;
         MatchEnded = true;
         MatchInProgress = false;
         BossFreezeTimer = TickTimer.None;
@@ -649,6 +655,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
 
         MatchEndSnapshot localSnapshot = MatchEndSnapshotBuilder.CaptureFromRunner(Runner, reason);
         MatchEndRuntimeContext.SetSnapshot(localSnapshot);
+        Debug.Log($"[MATCH] Snapshot local capturado: players={localSnapshot.Players.Count}, reason={reason}");
 
         Rpc_PrepareLocalEndMatchSnapshot(reason);
 
@@ -686,6 +693,30 @@ public class DungeonNetworkRunner : NetworkBehaviour
 
         MatchEndSnapshot snapshot = MatchEndSnapshotBuilder.CaptureFromRunner(Runner, reason);
         MatchEndRuntimeContext.SetSnapshot(snapshot);
+        Debug.Log($"[MATCH] Snapshot por RPC capturado: players={snapshot.Players.Count}, reason={reason}");
+    }
+
+    private void TryEnsureLocalEndMatchSnapshot()
+    {
+        if (!MatchEnded) return;
+        if (MatchEndRuntimeContext.LatestSnapshot != null) return;
+        if (Runner == null || !Runner.IsRunning) return;
+        if (SceneManager.GetActiveScene().name != "Game") return;
+
+        MatchEndReason reason = DecodeNetworkedEndReason();
+        MatchEndSnapshot snapshot = MatchEndSnapshotBuilder.CaptureFromRunner(Runner, reason);
+        if (snapshot == null || snapshot.Players.Count == 0) return;
+
+        MatchEndRuntimeContext.SetSnapshot(snapshot);
+        Debug.Log($"[MATCH] Snapshot fallback capturado: players={snapshot.Players.Count}, reason={reason}");
+    }
+
+    private MatchEndReason DecodeNetworkedEndReason()
+    {
+        if (Enum.IsDefined(typeof(MatchEndReason), EndMatchReasonCode))
+            return (MatchEndReason)EndMatchReasonCode;
+
+        return MatchEndReason.Manual;
     }
 
     private int ResolveEndMatchSceneIndex()
@@ -695,8 +726,22 @@ public class DungeonNetworkRunner : NetworkBehaviour
             int resolved = SceneUtility.GetBuildIndexByScenePath("Scenes/" + endMatchSceneName);
             if (resolved >= 0) return resolved;
 
+            resolved = SceneUtility.GetBuildIndexByScenePath("Assets/Scenes/" + endMatchSceneName + ".unity");
+            if (resolved >= 0) return resolved;
+
             resolved = SceneUtility.GetBuildIndexByScenePath(endMatchSceneName);
             if (resolved >= 0) return resolved;
+
+            int sceneCount = SceneManager.sceneCountInBuildSettings;
+            for (int i = 0; i < sceneCount; i++)
+            {
+                string path = SceneUtility.GetScenePathByBuildIndex(i);
+                if (string.IsNullOrWhiteSpace(path)) continue;
+
+                string fileName = Path.GetFileNameWithoutExtension(path);
+                if (string.Equals(fileName, endMatchSceneName, StringComparison.OrdinalIgnoreCase))
+                    return i;
+            }
         }
 
         if (endMatchSceneIndex >= 0) return endMatchSceneIndex;

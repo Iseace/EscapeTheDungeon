@@ -68,6 +68,9 @@ public class EndMatchSkinsPresenter : MonoBehaviour
             return;
         }
 
+        if (debugLogs)
+            Debug.Log($"[EndMatchSkinsPresenter] Snapshot recibido: players={snapshot.Players.Count}, escaped={snapshot.SurvivorsEscaped}, defeated={snapshot.SurvivorsDefeated}");
+
         EndCinematicVariant variant = MatchEndSnapshotEvaluator.ResolveLocalVariant(snapshot);
 
         if (clearChildrenOnStart)
@@ -134,6 +137,8 @@ public class EndMatchSkinsPresenter : MonoBehaviour
             Animator anim = instance.GetComponentInChildren<Animator>();
             if (anim != null)
             {
+                PrepareAnimatorForCinematic(anim);
+
                 if (wantEscaped)
                 {
                     anim.SetBool("IsDead", false);
@@ -146,7 +151,31 @@ public class EndMatchSkinsPresenter : MonoBehaviour
                     ApplyAnimationMode(anim, defeatedAnimationMode, defeatedStateName, defeatedMoveValue, "defeated");
                 }
             }
+            else if (debugLogs)
+            {
+                Debug.LogWarning($"[EndMatchSkinsPresenter] El prefab '{instance.name}' no tiene Animator en hijos.");
+            }
         }
+    }
+
+    private void PrepareAnimatorForCinematic(Animator anim)
+    {
+        if (anim == null)
+            return;
+
+        if (anim.runtimeAnimatorController == null && debugLogs)
+        {
+            Debug.LogWarning($"[EndMatchSkinsPresenter] Animator sin RuntimeAnimatorController en {anim.name}.");
+        }
+
+        anim.enabled = true;
+        anim.updateMode = AnimatorUpdateMode.Normal;
+        anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        anim.speed = 1f;
+
+        // Rebind ensures imported humanoid avatars/controllers restart in a deterministic state.
+        anim.Rebind();
+        anim.Update(0f);
     }
 
     private void ApplyCommonEscapedLocomotion(Animator anim)
@@ -179,9 +208,9 @@ public class EndMatchSkinsPresenter : MonoBehaviour
         switch (mode)
         {
             case SlotAnimationMode.ForceState:
-                if (!string.IsNullOrWhiteSpace(stateName) && HasStateInAnyLayer(anim, stateName))
+                if (!string.IsNullOrWhiteSpace(stateName) && TryPlayStateInAnyLayer(anim, stateName))
                 {
-                    anim.CrossFadeInFixedTime(stateName, 0.1f);
+                    anim.Update(0f);
                 }
                 else if (debugLogs)
                 {
@@ -208,6 +237,8 @@ public class EndMatchSkinsPresenter : MonoBehaviour
                 {
                     Debug.LogWarning($"[EndMatchSkinsPresenter] No se aplico ningun parametro float para {groupLabel} en {anim.name}. Revisa moveFloatParameters.");
                 }
+
+                anim.Update(0f);
                 break;
         }
     }
@@ -216,6 +247,11 @@ public class EndMatchSkinsPresenter : MonoBehaviour
     {
         if (selectedCharacterIndex >= 0 && selectedCharacterIndex < survivorSkinPrefabs.Count)
             return survivorSkinPrefabs[selectedCharacterIndex];
+
+        if (fallbackSurvivorSkinPrefab == null && debugLogs)
+        {
+            Debug.LogWarning($"[EndMatchSkinsPresenter] Sin prefab para SelectedCharacterIndex={selectedCharacterIndex} y fallbackSurvivorSkinPrefab es null.");
+        }
 
         return fallbackSurvivorSkinPrefab;
     }
@@ -253,15 +289,26 @@ public class EndMatchSkinsPresenter : MonoBehaviour
         }
     }
 
-    private static bool HasStateInAnyLayer(Animator anim, string stateName)
+    private static bool TryPlayStateInAnyLayer(Animator anim, string stateName)
     {
         if (anim == null || string.IsNullOrWhiteSpace(stateName)) return false;
 
-        int stateHash = Animator.StringToHash(stateName);
         for (int layer = 0; layer < anim.layerCount; layer++)
         {
-            if (anim.HasState(layer, stateHash))
+            int directHash = Animator.StringToHash(stateName);
+            if (anim.HasState(layer, directHash))
+            {
+                anim.Play(directHash, layer, 0f);
                 return true;
+            }
+
+            string layerPath = anim.GetLayerName(layer) + "." + stateName;
+            int layerPathHash = Animator.StringToHash(layerPath);
+            if (anim.HasState(layer, layerPathHash))
+            {
+                anim.Play(layerPathHash, layer, 0f);
+                return true;
+            }
         }
 
         return false;

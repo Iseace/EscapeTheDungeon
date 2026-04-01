@@ -18,12 +18,15 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     [Header("Network Settings")]
     [SerializeField] private string lobbySceneName = "LobbyRoom";
     [SerializeField] private string gameSceneName = "Game";
+    [SerializeField] private string lobbyListSceneName = "LobbyList";
     [SerializeField] private int maxPlayers = 5;
+    [SerializeField] private bool autoReturnToLobbyListOnDisconnect = true;
 
     [Header("Session List")]
     [SerializeField] private LobbyListManager LobbyListManager;
 
     private NetworkRunner _runner;
+    private bool _isReturningToLobbyList;
 
     // Cached reference to the local player's health so OnInput can check IsDead.
     // Looked up lazily the first time it is needed — avoids a Find() call every frame.
@@ -211,6 +214,11 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 
         // Clear cached health so it is re-fetched after a reconnect
         _localHealth = null;
+
+        if (!autoReturnToLobbyListOnDisconnect)
+            return;
+
+        TryReturnToLobbyList("shutdown", reason.ToString());
     }
 
     public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
@@ -387,7 +395,15 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
     public void OnConnectedToServer(NetworkRunner runner) { }
-    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
+    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason)
+    {
+        Debug.LogWarning($"[NETWORK] Disconnected from server: {reason}");
+
+        if (!autoReturnToLobbyListOnDisconnect)
+            return;
+
+        TryReturnToLobbyList("disconnect", reason.ToString());
+    }
     public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
     public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
     public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
@@ -398,6 +414,85 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     public void OnSceneLoadStart(NetworkRunner runner) { }
     public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
+
+    private void TryReturnToLobbyList(string source, string reason)
+    {
+        if (_isReturningToLobbyList)
+            return;
+
+        string currentScene = SceneManager.GetActiveScene().name;
+        if (!ShouldAutoReturnFromScene(currentScene))
+            return;
+
+        _isReturningToLobbyList = true;
+
+        int sceneIndex = ResolveSceneIndex(lobbyListSceneName);
+        Debug.LogWarning($"[NETWORK] Auto returning to {lobbyListSceneName} from scene '{currentScene}' after {source}: {reason}");
+
+        if (sceneIndex >= 0)
+        {
+            SceneManager.LoadScene(sceneIndex);
+        }
+        else
+        {
+            SceneManager.LoadScene(lobbyListSceneName);
+        }
+    }
+
+    private bool ShouldAutoReturnFromScene(string sceneName)
+    {
+        if (string.IsNullOrWhiteSpace(sceneName))
+            return false;
+
+        if (string.Equals(sceneName, lobbyListSceneName, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (string.Equals(sceneName, "MainMenu", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (string.Equals(sceneName, "CharacterSelect", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Return from gameplay flow scenes.
+        if (string.Equals(sceneName, gameSceneName, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (string.Equals(sceneName, "EndMatch", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (string.Equals(sceneName, lobbySceneName, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
+    }
+
+    private static int ResolveSceneIndex(string sceneName)
+    {
+        if (string.IsNullOrWhiteSpace(sceneName))
+            return -1;
+
+        int index = SceneUtility.GetBuildIndexByScenePath("Assets/Scenes/" + sceneName + ".unity");
+        if (index >= 0)
+            return index;
+
+        index = SceneUtility.GetBuildIndexByScenePath("Scenes/" + sceneName);
+        if (index >= 0)
+            return index;
+
+        int sceneCount = SceneManager.sceneCountInBuildSettings;
+        for (int i = 0; i < sceneCount; i++)
+        {
+            string path = SceneUtility.GetScenePathByBuildIndex(i);
+            if (string.IsNullOrWhiteSpace(path))
+                continue;
+
+            string fileName = System.IO.Path.GetFileNameWithoutExtension(path);
+            if (string.Equals(fileName, sceneName, StringComparison.OrdinalIgnoreCase))
+                return i;
+        }
+
+        return -1;
+    }
 }
 
 public struct PlayerInputData : INetworkInput

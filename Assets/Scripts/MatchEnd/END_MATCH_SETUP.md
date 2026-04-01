@@ -10,6 +10,7 @@ Ya estan listos estos scripts:
 - EndMatchResultsHUD.cs
 - EndMatchSkinsPresenter.cs
 - EndMatchTimelineRouter.cs
+- EndMatchReturnToLobbyButton.cs
 
 ## 2) Configuracion en escena Game
 
@@ -122,6 +123,40 @@ El HUD muestra:
 - motivo de fin
 - variante seleccionada
 - listado de jugadores con estado
+
+### Tabla de resultados (recomendado)
+
+Para pasar de texto corrido a formato tabla:
+
+1. Crea un contenedor con Vertical Layout Group para filas (ejemplo: ResultsTableRows).
+2. Crea un prefab de fila UI (RowResult) con 5 columnas TMP:
+  - Jugador
+  - Rol
+  - Resultado
+  - Detalle
+  - Skin
+3. Agrega EndMatchResultsRowUI al prefab de fila y asigna sus TMP_Text.
+4. En EndMatchResultsHUD asigna:
+  - tableRowsContainer -> ResultsTableRows
+  - tableRowPrefab -> RowResult
+5. Opcional: llena skinNamesByIndex para mostrar nombres en vez de Skin #index.
+
+El HUD mantiene playersText como fallback automatico si no hay tabla conectada.
+
+### Boton para volver a LobbyList
+
+1. Crea un boton en el Canvas de resultados (ejemplo: Btn_ReturnLobby).
+2. Agrega el script EndMatchReturnToLobbyButton al mismo GameObject del boton.
+3. Configura:
+  - lobbyListSceneName = LobbyList
+  - shutdownRunnerBeforeLoad = true
+4. Si no asignas returnButton manualmente, el script usa el Button del mismo objeto.
+
+Flujo del boton:
+
+1. Desactiva el boton para evitar doble click.
+2. Cierra runners de Fusion activos.
+3. Carga la escena LobbyList.
 
 ## 5.1) Mostrar skins reales de jugadores en la cinematic
 
