@@ -21,6 +21,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private string lobbyListSceneName = "LobbyList";
     [SerializeField] private int maxPlayers = 5;
     [SerializeField] private bool autoReturnToLobbyListOnDisconnect = true;
+    [SerializeField] private bool stayInEndMatchAfterDisconnect = true;
 
     [Header("Session List")]
     [SerializeField] private LobbyListManager LobbyListManager;
@@ -458,7 +459,7 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
             return true;
 
         if (string.Equals(sceneName, "EndMatch", StringComparison.OrdinalIgnoreCase))
-            return true;
+            return !stayInEndMatchAfterDisconnect;
 
         if (string.Equals(sceneName, lobbySceneName, StringComparison.OrdinalIgnoreCase))
             return true;

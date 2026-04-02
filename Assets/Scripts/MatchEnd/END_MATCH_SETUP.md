@@ -11,6 +11,7 @@ Ya estan listos estos scripts:
 - EndMatchSkinsPresenter.cs
 - EndMatchTimelineRouter.cs
 - EndMatchReturnToLobbyButton.cs
+- EndMatchRoomSafetyTimer.cs
 
 ## 2) Configuracion en escena Game
 
@@ -157,6 +158,19 @@ Flujo del boton:
 1. Desactiva el boton para evitar doble click.
 2. Cierra runners de Fusion activos.
 3. Carga la escena LobbyList.
+
+### Mantener resultados visibles pero cerrar room por seguridad
+
+Si quieres que jugadores se queden viendo resultados aunque el host salga, pero evitar que la room quede viva indefinidamente:
+
+1. En NetworkRunnerHandler activa stayInEndMatchAfterDisconnect.
+2. En EndMatchDirector (o cualquier objeto de EndMatch) agrega EndMatchRoomSafetyTimer.
+3. Configura safetyShutdownDelaySeconds (por ejemplo 45-90 segundos).
+
+Comportamiento:
+
+1. Los jugadores pueden quedarse en EndMatch y presionar Return cuando quieran.
+2. El host cierra la room automaticamente al vencer el timer de seguridad.
 
 ## 5.1) Mostrar skins reales de jugadores en la cinematic
 

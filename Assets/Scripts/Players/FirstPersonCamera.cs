@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 public class FirstPersonCamera : MonoBehaviour
 {
@@ -12,6 +13,7 @@ public class FirstPersonCamera : MonoBehaviour
     public InputActionReference lookAction;      // Input System reference (mouse/gamepad)
     public MobileControlsBridge mobileBridge;    // Mobile look input provider
     public string InvisibleLayerName = "LocalPlayerHidden"; // Layer to hide local player mesh
+    public string GameplaySceneName = "Game";
 
 
     // ===== PRIVATE STATE =====
@@ -46,6 +48,13 @@ public class FirstPersonCamera : MonoBehaviour
     // =========================================================
     private void Start()
     {
+        if (!ShouldLockCursorInCurrentScene())
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            return;
+        }
+
         if (!Application.isMobilePlatform)
         {
             if (OptionsDeploy.IsAnyOptionsMenuOpen)
@@ -62,6 +71,15 @@ public class FirstPersonCamera : MonoBehaviour
     // =========================================================
     private void Update()
     {
+        if (!ShouldLockCursorInCurrentScene())
+        {
+            if (Cursor.lockState != CursorLockMode.None)
+                Cursor.lockState = CursorLockMode.None;
+            if (!Cursor.visible)
+                Cursor.visible = true;
+            return;
+        }
+
         if (!Application.isMobilePlatform)
         {
             if (OptionsDeploy.IsAnyOptionsMenuOpen)
@@ -81,6 +99,12 @@ public class FirstPersonCamera : MonoBehaviour
     // =========================================================
     private void OnEnable() => lookAction?.action.Enable();
     private void OnDisable() => lookAction?.action.Disable();
+
+    private bool ShouldLockCursorInCurrentScene()
+    {
+        string sceneName = SceneManager.GetActiveScene().name;
+        return string.Equals(sceneName, GameplaySceneName, System.StringComparison.OrdinalIgnoreCase);
+    }
 
 
     // =========================================================

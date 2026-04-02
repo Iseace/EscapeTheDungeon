@@ -257,6 +257,14 @@ public class DungeonNetworkRunner : NetworkBehaviour
             return true;
         }
 
+        // Mixed resolution case: e.g. one escaped and one died.
+        // If nobody remains actively playing as survivor, the match should end.
+        if (survivorsEscaped + survivorsDefeated >= survivorsTotal)
+        {
+            BeginEndMatch(MatchEndReason.NoActiveSurvivors);
+            return true;
+        }
+
         return false;
     }
 

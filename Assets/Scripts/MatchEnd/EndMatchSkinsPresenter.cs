@@ -44,6 +44,15 @@ public class EndMatchSkinsPresenter : MonoBehaviour
     [SerializeField] private string isGroundedParameter = "IsGrounded";
     [SerializeField] private bool escapedIsGroundedValue = true;
 
+    [Header("Escaped Animation Offset")]
+    [SerializeField] private bool enableEscapedPhaseOffset = true;
+    [Tooltip("Offset de fase normalizado [0..1] entre jugadores.")]
+    [SerializeField] private Vector2 escapedPhaseOffsetRange = new Vector2(0f, 0.85f);
+    [SerializeField] private bool deterministicPhaseByPlayerId = true;
+    [SerializeField] private bool enableEscapedSpeedJitter = true;
+    [Tooltip("Multiplicador de velocidad del Animator para evitar marcha sincronizada.")]
+    [SerializeField] private Vector2 escapedSpeedJitterRange = new Vector2(0.92f, 1.08f);
+
     [Header("Escaped Runtime Movement")]
     [SerializeField] private bool addRunnerControllerToLocalEscaped = false;
     [SerializeField] private float escapedForwardSpeed = 4f;
@@ -144,6 +153,7 @@ public class EndMatchSkinsPresenter : MonoBehaviour
                     anim.SetBool("IsDead", false);
                     ApplyAnimationMode(anim, escapedAnimationMode, escapedStateName, escapedMoveValue, "escaped");
                     ApplyCommonEscapedLocomotion(anim);
+                    ApplyEscapedAnimationOffset(anim, player.PlayerId, slotIndex - 1);
                 }
                 else
                 {
@@ -199,6 +209,63 @@ public class EndMatchSkinsPresenter : MonoBehaviour
             return;
 
         mover.Configure(escapedForwardSpeed, escapedLateralSpeed, escapedXBounds, allowLocalForwardInput);
+    }
+
+    private void ApplyEscapedAnimationOffset(Animator anim, int playerId, int slotIndex)
+    {
+        if (anim == null)
+            return;
+
+        float speedMul = 1f;
+        if (enableEscapedSpeedJitter)
+        {
+            float min = Mathf.Min(escapedSpeedJitterRange.x, escapedSpeedJitterRange.y);
+            float max = Mathf.Max(escapedSpeedJitterRange.x, escapedSpeedJitterRange.y);
+            speedMul = deterministicPhaseByPlayerId
+                ? DeterministicRange(playerId * 31 + slotIndex * 17 + 7, min, max)
+                : Random.Range(min, max);
+            anim.speed = Mathf.Max(0.01f, speedMul);
+        }
+
+        if (!enableEscapedPhaseOffset)
+            return;
+
+        float minPhase = Mathf.Min(escapedPhaseOffsetRange.x, escapedPhaseOffsetRange.y);
+        float maxPhase = Mathf.Max(escapedPhaseOffsetRange.x, escapedPhaseOffsetRange.y);
+        float phase = deterministicPhaseByPlayerId
+            ? DeterministicRange(playerId * 67 + slotIndex * 13 + 11, minPhase, maxPhase)
+            : Random.Range(minPhase, maxPhase);
+
+        phase = Mathf.Repeat(phase, 1f);
+
+        for (int layer = 0; layer < anim.layerCount; layer++)
+        {
+            AnimatorStateInfo state = anim.GetCurrentAnimatorStateInfo(layer);
+            if (state.fullPathHash == 0)
+                continue;
+
+            anim.Play(state.fullPathHash, layer, phase);
+        }
+
+        anim.Update(0f);
+
+        if (debugLogs)
+        {
+            Debug.Log($"[EndMatchSkinsPresenter] Escaped offset applied on {anim.name}: phase={phase:0.00}, speed={anim.speed:0.00}");
+        }
+    }
+
+    private static float DeterministicRange(int seed, float min, float max)
+    {
+        unchecked
+        {
+            uint x = (uint)seed;
+            x ^= x << 13;
+            x ^= x >> 17;
+            x ^= x << 5;
+            float t = (x & 0xFFFFFF) / (float)0xFFFFFF;
+            return Mathf.Lerp(min, max, t);
+        }
     }
 
     private void ApplyAnimationMode(Animator anim, SlotAnimationMode mode, string stateName, float moveValue, string groupLabel)

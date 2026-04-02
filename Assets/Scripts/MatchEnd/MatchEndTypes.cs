@@ -7,7 +7,8 @@ public enum MatchEndReason
     TimeLimitExpired,
     AllSurvivorsEscaped,
     AllSurvivorsDefeated,
-    Manual
+    Manual,
+    NoActiveSurvivors
 }
 
 [Serializable]
