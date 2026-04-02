@@ -351,6 +351,10 @@ MonoBehaviour:
   volume: 0.4
   attackClip: {fileID: 8300000, guid: be9ee117b1fe82fc889e9015ac867b03, type: 3}
   attackVolume: 1
+  invisibilityClip: {fileID: 8300000, guid: c3497506ae02d1d849a7ad3c78d51215, type: 3}
+  invisibilityVolume: 1
+  glowClip: {fileID: 8300000, guid: ae0b63bacb7ff60b0b6ab6a86929db9c, type: 3}
+  glowVolume: 1
 --- !u!82 &3180125345330576617
 AudioSource:
   m_ObjectHideFlags: 0
@@ -1584,6 +1588,9 @@ MonoBehaviour:
   attackCooldown: 2
   attackAnimationName: Attack
   attackMoveSpeedMultiplier: 0.3
+  postAttackPenaltyDuration: 2
+  knockbackForce: 3
+  knockbackUpwardBonus: 2
   _IsAttacking:
     _value: 0
 --- !u!4 &3021168189467054524 stripped
