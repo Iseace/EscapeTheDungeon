@@ -16,6 +16,8 @@ public class GlowPlayer : NetworkBehaviour
     // Tracked indicators so we can turn them off later
     private List<GlowIndicator> _activeIndicators = new List<GlowIndicator>();
 
+    private BossSounds _bossSounds;
+
     public override void Spawned()
     {
         if (!Object.HasInputAuthority)
@@ -23,7 +25,11 @@ public class GlowPlayer : NetworkBehaviour
             enabled = false;
             return;
         }
+
         _isLocalBoss = true;
+
+        _bossSounds = GetComponent<BossSounds>();
+
         Debug.Log("[GlowPlayer] Spawned — I am the local boss");
     }
 
@@ -45,10 +51,13 @@ public class GlowPlayer : NetworkBehaviour
     {
         Debug.Log("Glow Activado");
         _isGlowing = true;
+
+        // Play sound when activated skill
+        if (_bossSounds != null)
+            _bossSounds.OnGlowActivate();
+
         ShowIndicators();
-
         yield return new WaitForSeconds(glowDuration);
-
         HideIndicators();
         _isGlowing = false;
         _cooldownEndTime = Time.time + cooldown;

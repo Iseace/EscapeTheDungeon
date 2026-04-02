@@ -22,6 +22,9 @@ public class BossSpecial : NetworkBehaviour
     private Material[][] _ghostMaterials;
     private bool _lastInvisibleState;
 
+    // Reference to the sound component on this prefab
+    private BossSounds _bossSounds;
+
     public override void Spawned()
     {
         // Cache all renderers under this object for toggling visibility
@@ -29,6 +32,9 @@ public class BossSpecial : NetworkBehaviour
         CacheAndPrepareGhostMaterials();
         _lastInvisibleState = IsInvisible;
         ApplyVisuals(IsInvisible);
+
+        // Grab the sound component
+        _bossSounds = GetComponent<BossSounds>();
     }
 
     /// <summary>
@@ -69,6 +75,10 @@ public class BossSpecial : NetworkBehaviour
 
         IsInvisible = wantInvisible;
         CooldownTimer = TickTimer.CreateFromSeconds(Runner, toggleCooldown);
+
+        // Play sound here — skill has actually activated on StateAuthority
+        if (_bossSounds != null)
+            _bossSounds.OnInvisibilityToggle();
     }
 
     // ----- Visuals -----
