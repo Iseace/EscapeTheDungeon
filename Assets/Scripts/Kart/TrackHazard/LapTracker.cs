@@ -274,7 +274,7 @@ public class LapTracker : MonoBehaviour
 
     private static int GetRacerId(BroomMove racer)
     {
-        if (racer == null || !racer.Object.IsValid)
+        if (racer == null || racer.Object == null || !racer.Object.IsValid)
         {
             return -1;
         }
