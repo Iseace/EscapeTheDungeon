@@ -66,7 +66,6 @@ public class BossSounds : NetworkBehaviour
     private void RPC_PlayFootstep()
     {
         if (walkClip == null || _audioSource == null) return;
-        _audioSource.Stop();
         _audioSource.PlayOneShot(walkClip, volume);
     }
 
