@@ -76,6 +76,16 @@ public class BroomMove : NetworkBehaviour
             ClearTrackModifierInternal();
         }
 
+        // Block movement until countdown finishes but allow gravity so
+        // brooms fall to the ground naturally during the ready phase.
+        if (!RaceCountdown.IsRaceStarted)
+        {
+            rb.linearVelocity  = new Vector3(0f, rb.linearVelocity.y, 0f); // keep Y (gravity), zero X/Z
+            rb.angularVelocity = Vector3.zero;
+            rb.linearDamping   = 0f; // no drag so gravity works freely
+            return;
+        }
+
         if (GetInput(out PlayerInputData input))
         {
             float steerInput = Mathf.Clamp(input.MoveDirection.x, -1f, 1f);
