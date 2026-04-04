@@ -33,6 +33,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
     [Header("Race Spawn")]
     [SerializeField] private Vector3 raceSpawnOrigin = new Vector3(0f, 1f, 0f);
     [SerializeField] private float raceSpawnLaneWidth = 2f;
+    [SerializeField] private float raceSpawnRowDepth = 3f;
 
     [Header("Boss System")]
     [SerializeField] private string menuSceneName = "LobbyList";
@@ -149,17 +150,24 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
         {
             var orderedPlayers = runner.ActivePlayers.OrderBy(p => p.PlayerId).ToList();
             int idx = orderedPlayers.IndexOf(player);
-            spawnPos = raceSpawnOrigin + new Vector3(idx * raceSpawnLaneWidth, 0f, 0f);
-            spawnRot = Quaternion.identity;
-            Debug.Log($"[SPAWNER] Race spawn for player {player.PlayerId} at {spawnPos}");
 
-            NetworkObject raceObj = runner.Spawn(broomPrefab, spawnPos, spawnRot, inputAuthority: player);
-            runner.SetPlayerObject(player, raceObj);
-            return;
+            // 3-2 grid offsets: X = lateral, Z = depth (negative = further back from start)
+            Vector3[] gridOffsets = new Vector3[]
+            {
+                new Vector3(-raceSpawnLaneWidth,  0f,  0f),              // P1 front-left
+                new Vector3( 0f,                  0f,  0f),              // P2 front-center
+                new Vector3( raceSpawnLaneWidth,  0f,  0f),              // P3 front-right
+                new Vector3(-raceSpawnLaneWidth * 0.5f, 0f, -raceSpawnRowDepth), // P4 back-left
+                new Vector3( raceSpawnLaneWidth * 0.5f, 0f, -raceSpawnRowDepth)  // P5 back-right
+            };
+
+            Vector3 offset = idx < gridOffsets.Length ? gridOffsets[idx] : gridOffsets[gridOffsets.Length - 1];
+            spawnPos = raceSpawnOrigin + offset;
+            spawnRot = Quaternion.identity; // faces forward (positive Z)
+            Debug.Log($"[SPAWNER] Race grid slot {idx} for player {player.PlayerId} at {spawnPos}");
         }
 
-        // Game scene — always PlayerPrefab
-        NetworkObject playerObj = runner.Spawn(PlayerPrefab, spawnPos, spawnRot, player);
+        NetworkObject playerObj = runner.Spawn(broomPrefab, spawnPos, spawnRot, player);
         runner.SetPlayerObject(player, playerObj);
 
         Debug.Log($"[SPAWNER] Player {player.PlayerId} spawned");
