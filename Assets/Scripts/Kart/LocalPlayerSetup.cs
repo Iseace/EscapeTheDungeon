@@ -77,14 +77,24 @@ public class LocalPlayerSetup : NetworkBehaviour
         if (seatAnchor == null || seatAnchor.childCount == 0) return;
 
         int count = seatAnchor.childCount;
-        int normalizedIndex = NormalizeIndex(SelectedCharacterIndex, count);
+        int activeIndex;
+
+        // Special case for Dog (ID 99)
+        if (SelectedCharacterIndex == 99)
+        {
+            activeIndex = count - 1; // Assume Dog is the last child
+        }
+        else
+        {
+            activeIndex = NormalizeIndex(SelectedCharacterIndex, count - 1);
+        }
 
         for (int i = 0; i < count; i++)
         {
             Transform skin = seatAnchor.GetChild(i);
             if (skin == null) continue;
 
-            bool shouldBeActive = (i == normalizedIndex);
+            bool shouldBeActive = (i == activeIndex);
             if (skin.gameObject.activeSelf != shouldBeActive)
             {
                 skin.gameObject.SetActive(shouldBeActive);

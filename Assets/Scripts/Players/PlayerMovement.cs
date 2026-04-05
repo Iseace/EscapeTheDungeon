@@ -139,7 +139,10 @@ public class PlayerMovement : NetworkBehaviour
             if (_animator == null) return;
         }
 
-        Vector3 localMove = transform.InverseTransformDirection(move.normalized);
+        // Use Magnitude to check if we are actually providing movement input
+        float moveMagnitude = move.magnitude;
+        Vector3 localMove = moveMagnitude > 0.01f ? transform.InverseTransformDirection(move.normalized) : Vector3.zero;
+
         _animator.SetFloat("MoveX", localMove.x);
         _animator.SetFloat("MoveZ", localMove.z);
         _animator.SetBool("IsGrounded", _isGrounded);
@@ -156,9 +159,22 @@ public class PlayerMovement : NetworkBehaviour
 
     public void RefreshAnimatorReference()
     {
-        _animator = (GraphicsRoot != null)
-            ? GraphicsRoot.GetComponentInChildren<Animator>(false)
-            : GetComponentInChildren<Animator>(false);
+        // Try searching in the GraphicsRoot first
+        if (GraphicsRoot != null)
+        {
+            _animator = GraphicsRoot.GetComponentInChildren<Animator>(false);
+        }
+
+        // If still null, search the whole object (important for Secret Character swap)
+        if (_animator == null)
+        {
+            _animator = GetComponentInChildren<Animator>(false);
+        }
+
+        if (_animator != null)
+        {
+            // Debug.Log($"[PlayerMovement] Animator found: {_animator.gameObject.name} (Active: {_animator.isActiveAndEnabled})");
+        }
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

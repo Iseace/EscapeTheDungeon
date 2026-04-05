@@ -5,6 +5,7 @@ public class LobbySelectedCharacterPreview : MonoBehaviour
 {
     [Header("Model Preview")]
     [SerializeField] private GameObject[] previewModels;
+    [SerializeField] private GameObject secretPreviewModel;
     [SerializeField] private Transform previewParent;
     [SerializeField] private Transform rotationTarget;
     [SerializeField] private float rotationSpeed = 25f;
@@ -27,6 +28,7 @@ public class LobbySelectedCharacterPreview : MonoBehaviour
 
     private int _currentIndex = -1;
     private GameObject[] _runtimeModels;
+    private GameObject _secretInstance;
 
     private void Awake()
     {
@@ -63,13 +65,23 @@ public class LobbySelectedCharacterPreview : MonoBehaviour
 
     public void RefreshPreview()
     {
+        int savedIndex = PlayerPrefs.GetInt(CharacterIdKey, 0);
+
+        if (savedIndex == 99)
+        {
+            ShowSecretPreview();
+            return;
+        }
+
         if (_runtimeModels == null || _runtimeModels.Length == 0)
         {
             Debug.LogWarning("[LobbyPreview] No preview models assigned.");
             return;
         }
 
-        int savedIndex = PlayerPrefs.GetInt(CharacterIdKey, 0);
+        // Deactivate secret if it was active
+        if (_secretInstance != null) _secretInstance.SetActive(false);
+
         int normalizedIndex = Mathf.Clamp(savedIndex, 0, _runtimeModels.Length - 1);
 
         for (int i = 0; i < _runtimeModels.Length; i++)
@@ -93,6 +105,32 @@ public class LobbySelectedCharacterPreview : MonoBehaviour
             string nick = PlayerPrefs.GetString(NicknameKey, string.Empty).Trim();
             nicknameText.text = string.IsNullOrEmpty(nick) ? "Player" : nick;
         }
+    }
+
+    private void ShowSecretPreview()
+    {
+        // Deactivate all normal models
+        if (_runtimeModels != null)
+        {
+            foreach (var model in _runtimeModels)
+            {
+                if (model != null) model.SetActive(false);
+            }
+        }
+
+        if (_secretInstance == null && secretPreviewModel != null)
+        {
+            _secretInstance = Instantiate(secretPreviewModel, previewParent);
+            _secretInstance.name = "Secret_Preview";
+        }
+
+        if (_secretInstance != null)
+        {
+            _secretInstance.SetActive(true);
+            SetupAnimatorForPreview(_secretInstance, -1);
+        }
+
+        _currentIndex = 99;
     }
 
     public int GetCurrentIndex()

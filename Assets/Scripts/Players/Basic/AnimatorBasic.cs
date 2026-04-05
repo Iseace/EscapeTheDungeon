@@ -23,19 +23,42 @@ public class AnimatorBasic : NetworkBehaviour
     private void Awake()
     {
         _inventory = GetComponent<PlayerInventory>();
-        _animator = GetComponentInChildren<Animator>();
+        RefreshAnimator();
+    }
+
+    private void RefreshAnimator()
+    {
+        var setup = GetComponent<PlayerSetup>();
+        if (setup != null && setup.SelectedCharacterIndex == 99)
+        {
+            // For the dog, we need to find the animator in the specific dog child
+            var movement = GetComponent<PlayerMovement>();
+            if (movement != null && movement.GraphicsRoot != null)
+            {
+                _animator = movement.GraphicsRoot.GetComponentInChildren<Animator>();
+            }
+        }
+
+        if (_animator == null)
+        {
+            _animator = GetComponentInChildren<Animator>();
+        }
     }
 
     public override void FixedUpdateNetwork()
     {
         if (GetInput(out PlayerInputData data) && data.AttackPressed)
         {
+            // Check for dog special case (no weapon needed)
+            var setup = GetComponent<PlayerSetup>();
+            bool isDog = (setup != null && setup.SelectedCharacterIndex == 99);
+
             // Skip if still on cooldown
             if (!_attackCooldownTimer.ExpiredOrNotRunning(Runner)) return;
 
-            if (_inventory != null && _inventory.CurrentWeaponID > 0)
+            if (isDog || (_inventory != null && _inventory.CurrentWeaponID > 0))
             {
-                _savedWeaponID = _inventory.CurrentWeaponID;
+                _savedWeaponID = isDog ? 99 : _inventory.CurrentWeaponID;
                 _attackCooldownTimer = TickTimer.CreateFromSeconds(Runner, attackCooldown);
 
                 // Only send the RPC on the forward tick, never during resimulation
@@ -48,8 +71,7 @@ public class AnimatorBasic : NetworkBehaviour
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_PlayAttack()
     {
-        if (_animator == null)
-            _animator = GetComponentInChildren<Animator>();
+        RefreshAnimator();
 
         if (_animator != null)
         {
