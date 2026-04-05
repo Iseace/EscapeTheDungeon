@@ -1,5 +1,4 @@
 using UnityEngine;
-using Fusion;
 
 /// <summary>
 /// Defines the types of weather events that can affect the racetrack
@@ -18,7 +17,11 @@ public class EventManager : MonoBehaviour
 {
     [Header("Weather Settings")]
     [SerializeField] private WeatherType currentWeather = WeatherType.Sunny;
-    [SerializeField] private bool autoChangeWeather = false; // Disabled - weather stays same per race
+
+    [Header("Skybox")]
+    [SerializeField] private Material sunnySkybox;
+    [SerializeField] private Material chillySkybox;
+    [SerializeField] private Material rainySkybox;
 
     [Header("Chilly Day Modifiers")]
     [SerializeField] private float chillyGripMultiplier = 0.25f; // 25% of normal lateral grip
@@ -29,28 +32,27 @@ public class EventManager : MonoBehaviour
     [SerializeField] private float rainyFogDensity = 0.15f; // Fog density for rain
     [SerializeField] private Color rainyFogColor = new Color(0.7f, 0.7f, 0.8f); // Grayish fog
 
-    private float weatherChangeTimer = 0f;
+    private Material defaultSkybox;
 
     private void Start()
     {
+        defaultSkybox = RenderSettings.skybox;
+        currentWeather = GetRandomWeather();
+
         // Apply weather to any karts already present in scene.
         ApplyWeatherEffects();
-    }
 
-    private void Update()
-    {
-        // Weather stays the same throughout the race
+        Debug.Log($"Weather selected for this race: {currentWeather}");
     }
 
     /// <summary>
-    /// Randomly changes the current weather to a different type
+    /// Gets a random weather type for the current race
     /// </summary>
-    private void ChangeWeatherRandomly()
+    private WeatherType GetRandomWeather()
     {
-        int randomWeather = Random.Range(0, 3);
-        currentWeather = (WeatherType)randomWeather;
-        ApplyWeatherEffects();
-        Debug.Log($"Weather changed to: {currentWeather}");
+        int weatherCount = System.Enum.GetValues(typeof(WeatherType)).Length;
+        int randomWeather = Random.Range(0, weatherCount);
+        return (WeatherType)randomWeather;
     }
 
     /// <summary>
@@ -95,18 +97,54 @@ public class EventManager : MonoBehaviour
         {
             case WeatherType.Sunny:
                 RenderSettings.fog = false;
+                ApplyConfiguredSkybox(sunnySkybox);
                 break;
 
             case WeatherType.Chilly:
                 RenderSettings.fog = false;
+                ApplyConfiguredSkybox(chillySkybox);
                 break;
 
             case WeatherType.Rainy:
                 RenderSettings.fog = true;
                 RenderSettings.fogDensity = rainyFogDensity;
                 RenderSettings.fogColor = rainyFogColor;
+                ApplyConfiguredSkybox(rainySkybox);
                 break;
         }
+    }
+
+    private void ApplyConfiguredSkybox(Material configuredSkybox)
+    {
+        if (configuredSkybox != null)
+        {
+            ApplySkybox(configuredSkybox);
+            return;
+        }
+
+        RestoreDefaultSkybox();
+    }
+
+    private void ApplySkybox(Material skyboxMaterial)
+    {
+        if (RenderSettings.skybox == skyboxMaterial)
+        {
+            return;
+        }
+
+        RenderSettings.skybox = skyboxMaterial;
+        DynamicGI.UpdateEnvironment();
+    }
+
+    private void RestoreDefaultSkybox()
+    {
+        if (RenderSettings.skybox == defaultSkybox)
+        {
+            return;
+        }
+
+        RenderSettings.skybox = defaultSkybox;
+        DynamicGI.UpdateEnvironment();
     }
 
     /// <summary>
@@ -139,7 +177,6 @@ public class EventManager : MonoBehaviour
     public void SetWeather(WeatherType newWeather)
     {
         currentWeather = newWeather;
-        weatherChangeTimer = 0f;
         ApplyWeatherEffects();
     }
 
