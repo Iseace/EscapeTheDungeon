@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 2100000, guid: 0543e64dc8f83314590b78ab1b40efd3, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -1655,7 +1655,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EventManager
   currentWeather: 1
-  autoChangeWeather: 0
+  sunnySkybox: {fileID: 2100000, guid: a8c471e56c570114788f3c38078d7cc7, type: 2}
+  chillySkybox: {fileID: 2100000, guid: 8cce7fc4685274a4fbbd49622aefe6db, type: 2}
+  rainySkybox: {fileID: 2100000, guid: 0eaaac7b8edcb354799adde052e8e763, type: 2}
   chillyGripMultiplier: 0.35
   chillyDragMultiplier: 1.25
   chillySteerMultiplier: 0.75
@@ -8161,9 +8163,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 35ee9ce5aedf51d7fa4c672b9a606ac3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  readySeconds: 2
   countdownSeconds: 3
   countdownText: {fileID: 1986052793}
   readyTextCanvas: {fileID: 1824264459}
+  normalColor: {r: 1, g: 1, b: 1, a: 1}
+  goColor: {r: 0, g: 1, b: 0, a: 1}
+  outlineColor: {r: 0, g: 0, b: 0, a: 1}
+  outlineWidth: 0.2
   _RaceStarted:
     _value: 0
 --- !u!1001 &1414453446
@@ -12208,6 +12215,7 @@ MonoBehaviour:
   groundSnapOffset: 0.05
   raceSpawnOrigin: {x: 0, y: 1, z: 0}
   raceSpawnLaneWidth: 2
+  raceSpawnRowDepth: 3
   menuSceneName: LobbyList
   menuSceneIndex: 0
 --- !u!4 &2033075430
