@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 
 /// <summary>
 /// Defines the types of weather events that can affect the racetrack
@@ -15,6 +16,8 @@ public enum WeatherType
 /// </summary>
 public class EventManager : MonoBehaviour
 {
+    public event Action<WeatherType> WeatherChanged;
+
     [Header("Weather Settings")]
     [SerializeField] private WeatherType currentWeather = WeatherType.Sunny;
 
@@ -51,7 +54,7 @@ public class EventManager : MonoBehaviour
     private WeatherType GetRandomWeather()
     {
         int weatherCount = System.Enum.GetValues(typeof(WeatherType)).Length;
-        int randomWeather = Random.Range(0, weatherCount);
+        int randomWeather = UnityEngine.Random.Range(0, weatherCount);
         return (WeatherType)randomWeather;
     }
 
@@ -73,6 +76,8 @@ public class EventManager : MonoBehaviour
 
         // Apply visual effects
         ApplyVisualEffects();
+
+        WeatherChanged?.Invoke(currentWeather);
     }
 
     /// <summary>
