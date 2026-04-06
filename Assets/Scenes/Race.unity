@@ -1655,9 +1655,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EventManager
   currentWeather: 1
-  sunnySkybox: {fileID: 0}
-  chillySkybox: {fileID: 0}
-  rainySkybox: {fileID: 0}
+  sunnySkybox: {fileID: 2100000, guid: a8c471e56c570114788f3c38078d7cc7, type: 2}
+  chillySkybox: {fileID: 2100000, guid: 8cce7fc4685274a4fbbd49622aefe6db, type: 2}
+  rainySkybox: {fileID: 2100000, guid: 0eaaac7b8edcb354799adde052e8e763, type: 2}
   chillyGripMultiplier: 0.35
   chillyDragMultiplier: 1.25
   chillySteerMultiplier: 0.75
@@ -12136,7 +12136,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -50, y: -50}
+  m_AnchoredPosition: {x: -750, y: -50}
   m_SizeDelta: {x: 50, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2004693307
