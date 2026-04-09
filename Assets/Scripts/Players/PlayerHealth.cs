@@ -334,39 +334,75 @@ public class PlayerHealth : NetworkBehaviour
 
   public void HandleDeath()
   {
+    // 1. Safety check: only run if actually dead and hasn't been handled yet
     if (!IsDead || deathHandled) return;
     deathHandled = true;
     spectatorModeActive = true;
 
     Debug.Log($"[PlayerHealth] HandleDeath called for player {Object.InputAuthority.PlayerId}");
 
-    // 1. Play death animation
-    Animator anim = GetComponentInChildren<Animator>();
+    // 2. FIND THE CORRECT ACTIVE ANIMATOR
+    // We look for the animator that is currently ACTIVE and ENABLED. 
+    // This prevents the script from accidentally talking to the hidden 'Assassin' or 'Mage' models.
+    Animator anim = null;
+    var pm = GetComponent<PlayerMovement>();
+
+    if (pm != null && pm.GraphicsRoot != null)
+    {
+      // Search specifically inside the current active graphics folder (like the Dog model)
+      anim = pm.GraphicsRoot.GetComponentInChildren<Animator>(false);
+    }
+
+    // Fallback: search the whole object but ONLY for active animators
+    if (anim == null)
+    {
+      anim = GetComponentInChildren<Animator>(false);
+    }
+
+    // 3. APPLY DEATH TO ANIMATOR
     if (anim != null)
+    {
+      // Set the Bool shown in your screenshot
       anim.SetBool("IsDead", true);
 
-    // 2. Hide nameplate on death — runs on ALL clients for this player
+      // Force movement values to 0 so the player doesn't "slide" while dying
+      anim.SetFloat("MoveX", 0f);
+      anim.SetFloat("MoveZ", 0f);
+
+      Debug.Log($"[PlayerHealth] Death applied to animator: {anim.gameObject.name}");
+    }
+    else
+    {
+      Debug.LogWarning("[PlayerHealth] No active animator found to play death animation!");
+    }
+
+    // 4. NETWORK SYNC: Hide nameplate for everyone
     GetComponent<PlayerSetup>()?.SetNameplateVisible(false);
 
-    // 3. Disable physics / movement so the corpse freezes on all clients
+    // 5. DISABLE PHYSICS / MOVEMENT (Runs on all clients)
+    // We disable the CharacterController so the corpse doesn't block other players
     if (TryGetComponent<CharacterController>(out var cc))
       cc.enabled = false;
 
-    if (TryGetComponent<PlayerMovement>(out var pm))
+    // We disable movement logic so the position stops updating
+    if (pm != null)
       pm.enabled = false;
 
-    // 4. Local-only: switch UI and enable spectator camera
+    // 6. LOCAL PLAYER ONLY: UI and Spectator Setup
     if (HasInputAuthority)
     {
+      // Stop the player from being able to interact or attack
       if (TryGetComponent<PlayerInteraction>(out var pi)) pi.enabled = false;
       if (TryGetComponent<AnimatorBasic>(out var ab)) ab.enabled = false;
 
-      // Switch canvas panels: hide controls, show spectator overlay
+      // Switch UI from gameplay buttons to Spectator buttons
       SetDeadUI();
 
-      // Only add SpectatorSystem once
+      // Attach the spectator system so they can watch other players
       if (GetComponent<SpectatorSystem>() == null)
+      {
         gameObject.AddComponent<SpectatorSystem>();
+      }
     }
   }
 }

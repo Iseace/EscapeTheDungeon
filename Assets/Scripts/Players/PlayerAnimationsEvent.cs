@@ -26,4 +26,12 @@ public class PlayerAnimationEvents : MonoBehaviour
         if (_playerSounds != null)
             _playerSounds.OnLanding();
     }
+
+    // ADDED: For spell spawning from AnimatorBasic
+    public void Hit()
+    {
+        var combat = GetComponentInParent<AnimatorBasic>();
+        if (combat != null)
+            combat.OnAttackHit();
+    }
 }

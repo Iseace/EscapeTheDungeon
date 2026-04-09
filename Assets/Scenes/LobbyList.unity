@@ -3963,6 +3963,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerSpawner
   PlayerPrefab: {fileID: 6293013754538618073, guid: c71f20dc8891381488230ede61c54a8e, type: 3}
+  DogPrefab: {fileID: 6293013754538618073, guid: faed8b4ed38375e4e8f01175dcbfbe81, type: 3}
   broomPrefab: {fileID: 4445043330926483629, guid: adb843a03fa2f134680abf1d0c50df47, type: 3}
   BossPrefab: {fileID: 6293013754538618073, guid: 99c011a9858252845b73b6c8729c1244, type: 3}
   dungeonNetworkRunnerPrefab: {fileID: 6750589672458909840, guid: c73683454a7eca7a088415433d0c5dbd, type: 3}
@@ -3978,6 +3979,7 @@ MonoBehaviour:
   groundSnapOffset: 0.05
   raceSpawnOrigin: {x: 0, y: 1, z: 0}
   raceSpawnLaneWidth: 2
+  raceSpawnRowDepth: 3
   menuSceneName: LobbyList
   menuSceneIndex: 0
 --- !u!4 &1626271135

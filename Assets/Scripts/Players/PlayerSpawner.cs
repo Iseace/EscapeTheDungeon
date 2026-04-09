@@ -9,6 +9,7 @@ using System.Linq;
 public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 {
     public NetworkObject PlayerPrefab;
+    public NetworkObject DogPrefab;
     public NetworkObject broomPrefab;
 
     [Header("Character Prefabs")]
@@ -38,6 +39,8 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
     [Header("Boss System")]
     [SerializeField] private string menuSceneName = "LobbyList";
     [SerializeField] private int menuSceneIndex = 0;
+
+    [SerializeField] private NetworkObject fallbackPrefab; // Ad-hoc fix for inspector validation
 
     private bool bossSelected = false;
     private PlayerRef bossPlayer;
@@ -86,10 +89,20 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
         return false;
     }
 
-    // Returns PlayerPrefab for normal sessions, broomPrefab for race sessions
-    private NetworkObject GetPrefabForSession(NetworkRunner runner)
+    // Returns PlayerPrefab or DogPrefab for normal sessions, broomPrefab for race sessions
+    private NetworkObject GetPrefabForSession(NetworkRunner runner, PlayerRef player)
     {
-        return IsRaceSession(runner) ? broomPrefab : PlayerPrefab;
+        if (IsRaceSession(runner))
+            return broomPrefab;
+
+        // In normal sessions, check if user has selected the dog (ID 99)
+        int selectedID = PlayerPrefs.GetInt("SelectedCharacterID", 0);
+        NetworkObject selectedPrefab = (selectedID == 99 && DogPrefab != null) ? DogPrefab : PlayerPrefab;
+
+        // Fallback if prefabs are unassigned in inspector
+        if (selectedPrefab == null) selectedPrefab = fallbackPrefab;
+
+        return selectedPrefab;
     }
 
     public void PlayerJoinedLogic(NetworkRunner runner, PlayerRef player)
@@ -98,11 +111,24 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
         Debug.Log($"[SPAWNER] Player {player.PlayerId} joining");
 
-        // Prevent duplicate spawns - check if player already has an object
-        if (runner.TryGetPlayerObject(player, out NetworkObject existingPlayerObj))
+        // Special case for Lobby: Always allow spawning if we are trying to sync a prefab selection
+        if (SceneManager.GetActiveScene().name != "LobbyRoom")
         {
-            Debug.LogWarning($"[SPAWNER] Player {player.PlayerId} already has an object! Skipping spawn.");
-            return;
+            if (runner.TryGetPlayerObject(player, out NetworkObject existingPlayerObj))
+            {
+                Debug.LogWarning($"[SPAWNER] Player {player.PlayerId} already has an object! Skipping spawn.");
+                return;
+            }
+        }
+        else
+        {
+            // In LobbyRoom, if we already have an object, we want to destroy it and respawn the new selection
+            if (runner.TryGetPlayerObject(player, out NetworkObject existingLobbyObj))
+            {
+                Debug.Log($"[SPAWNER] Player {player.PlayerId} already has a lobby object. Despawning to allow prefab selection sync.");
+                runner.Despawn(existingLobbyObj);
+                // We DON'T return here, we fall through to the spawn logic below
+            }
         }
 
         // Handle Dungeon Runner logic only in the Game scene
@@ -135,9 +161,16 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             spawnRot = Quaternion.identity;
 
             // Spawn PlayerPrefab or broomPrefab depending on session type
-            NetworkObject lobbyObj = runner.Spawn(GetPrefabForSession(runner), spawnPos, spawnRot, player);
+            NetworkObject selectedPrefab = GetPrefabForSession(runner, player);
+            if (selectedPrefab == null)
+            {
+                Debug.LogError($"[SPAWNER] NO PREFAB FOUND FOR PLAYER {player.PlayerId}!");
+                return;
+            }
+
+            NetworkObject lobbyObj = runner.Spawn(selectedPrefab, spawnPos, spawnRot, player);
             runner.SetPlayerObject(player, lobbyObj);
-            Debug.Log($"[SPAWNER] Player {player.PlayerId} spawned in LobbyRoom as {GetPrefabForSession(runner).name}");
+            Debug.Log($"[SPAWNER] Player {player.PlayerId} spawned in LobbyRoom as {selectedPrefab.name}");
             return;
         }
 
@@ -167,10 +200,11 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             Debug.Log($"[SPAWNER] Race grid slot {idx} for player {player.PlayerId} at {spawnPos}");
         }
 
-        NetworkObject playerObj = runner.Spawn(broomPrefab, spawnPos, spawnRot, player);
+        NetworkObject prefabToSpawn = GetPrefabForSession(runner, player);
+        NetworkObject playerObj = runner.Spawn(prefabToSpawn, spawnPos, spawnRot, player);
         runner.SetPlayerObject(player, playerObj);
 
-        Debug.Log($"[SPAWNER] Player {player.PlayerId} spawned");
+        Debug.Log($"[SPAWNER] Player {player.PlayerId} spawned as {prefabToSpawn.name}");
     }
 
     public override void FixedUpdateNetwork()

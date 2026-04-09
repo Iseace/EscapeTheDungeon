@@ -14,9 +14,6 @@ public class PlayerSetup : NetworkBehaviour
     [Header("Visual Models")]
     [SerializeField] private GameObject[] characterModels;
     [SerializeField] private Avatar[] characterAvatars;
-    [SerializeField] private GameObject secretCharacterModel;
-    [SerializeField] private Avatar secretCharacterAvatar;
-    [SerializeField] private RuntimeAnimatorController secretAnimatorController;
 
     [Header("Nameplate")]
     [SerializeField] private TMP_Text nameplateText;
@@ -181,90 +178,42 @@ public class PlayerSetup : NetworkBehaviour
         Animator anim = graphicsContainer.GetComponent<Animator>();
         int currentID = SelectedCharacterIndex;
 
-        // Secret Character Logic (ID 99)
-        if (currentID == 99)
+        // Special case: If this is a DogPrefab, it only has ONE model (the dog)
+        // We should ensure it's visible even though currentID might be 99
+        bool isDogPrefab = (characterModels != null && characterModels.Length == 1 && gameObject.name.Contains("Dog"));
+
+        for (int i = 0; i < characterModels.Length; i++)
         {
-            // Hide all normal models
-            foreach (var model in characterModels) if (model != null && model.activeSelf) model.SetActive(false);
+            if (characterModels[i] == null) continue;
 
-            // Setup Secret Model - ONLY swap avatar/controller once per selection change
-            if (secretCharacterModel != null)
+            bool isSelected = (i == currentID) || isDogPrefab;
+
+            if (characterModels[i].activeSelf != isSelected)
             {
-                if (!secretCharacterModel.activeSelf) secretCharacterModel.SetActive(true);
-
-                // Ensure NO other model is active if we are the dog
-                for (int i = 0; i < characterModels.Length; i++)
-                {
-                    if (characterModels[i] != null && characterModels[i].activeSelf)
-                        characterModels[i].SetActive(false);
-                }
-
-                if (anim != null)
-                {
-                    // Important: If 'anim' is on the container, we might need to update its avatar too
-                    if (secretCharacterAvatar != null && anim.avatar != secretCharacterAvatar)
-                    {
-                        anim.avatar = secretCharacterAvatar;
-                        if (secretAnimatorController != null) anim.runtimeAnimatorController = secretAnimatorController;
-                        Debug.Log("Secret Character Meta applied once.");
-
-                        // NEW: Force PlayerMovement to refresh its animator reference
-                        var movement = GetComponent<PlayerMovement>();
-                        if (movement != null)
-                        {
-                            movement.GraphicsRoot = secretCharacterModel.transform; // Change the root to the dog model
-                            movement.RefreshAnimatorReference();
-                        }
-                    }
-                }
-            }
-        }
-        else
-        {
-            // Deactivate secret model if not selected
-            if (secretCharacterModel != null && secretCharacterModel.activeSelf) secretCharacterModel.SetActive(false);
-
-            // Revert GraphicsRoot if we were the dog but now we are human
-            var movement = GetComponent<PlayerMovement>();
-            if (movement != null && movement.GraphicsRoot == secretCharacterModel.transform)
-            {
-                movement.GraphicsRoot = graphicsContainer.transform;
-                movement.RefreshAnimatorReference();
+                characterModels[i].SetActive(isSelected);
             }
 
-            for (int i = 0; i < characterModels.Length; i++)
+            int avatarIndex = isDogPrefab ? 0 : i;
+
+            if (isSelected && anim != null && characterAvatars != null && characterAvatars.Length > avatarIndex)
             {
-                bool isSelected = (i == currentID);
-
-                if (characterModels[i].activeSelf != isSelected)
+                if (anim.avatar != characterAvatars[avatarIndex])
                 {
-                    characterModels[i].SetActive(isSelected);
-                }
-
-                if (isSelected && anim != null && characterAvatars.Length > i)
-                {
-                    if (anim.avatar != characterAvatars[i])
-                    {
-                        anim.avatar = characterAvatars[i];
-                        // anim.Rebind(); // Disabled to prevent flickering and parameter reset
-                        // anim.Update(0);
-                        Debug.Log($"Avatar synchronized: {characterModels[i].name}");
-                    }
+                    anim.avatar = characterAvatars[avatarIndex];
+                    Debug.Log($"Avatar synchronized: {characterModels[i].name} (Using index {avatarIndex})");
                 }
             }
         }
 
-        // Shared Wand Logic (Ensure it runs even for the dog!)
-        if (wandConstraint != null)
+        // Shared Wand Logic
+        if (wandConstraint != null && !isDogPrefab)
         {
             for (int s = 0; s < wandConstraint.sourceCount; s++)
             {
                 ConstraintSource source = wandConstraint.GetSource(s);
 
-                // If it's the dog (currentID == 99), activate the LAST source
-                bool isDogSource = (currentID == 99 && s == wandConstraint.sourceCount - 1);
-                bool isNormalSource = (currentID != 99 && s == currentID);
-                float targetWeight = (isDogSource || isNormalSource) ? 1f : 0f;
+                bool isSelectedSource = (s == currentID);
+                float targetWeight = (isSelectedSource) ? 1f : 0f;
 
                 if (wandConstraint.GetSource(s).weight != targetWeight)
                 {
