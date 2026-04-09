@@ -1635,6 +1635,7 @@ GameObject:
   m_Component:
   - component: {fileID: 276150028}
   - component: {fileID: 276150027}
+  - component: {fileID: 276150029}
   m_Layer: 0
   m_Name: WeatherManager
   m_TagString: Untagged
@@ -1654,7 +1655,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fd5f7ec2f68088b4d94bbdcebf05782a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EventManager
-  currentWeather: 1
   sunnySkybox: {fileID: 2100000, guid: a8c471e56c570114788f3c38078d7cc7, type: 2}
   chillySkybox: {fileID: 2100000, guid: 8cce7fc4685274a4fbbd49622aefe6db, type: 2}
   rainySkybox: {fileID: 2100000, guid: 0eaaac7b8edcb354799adde052e8e763, type: 2}
@@ -1678,6 +1678,25 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &276150029
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 276150026}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.NetworkObject
+  SortKey: 3914958508
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 276150027}
+  ForceRemoteRenderTimeframe: 0
 --- !u!1001 &283224413
 PrefabInstance:
   m_ObjectHideFlags: 0
