@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using Fusion; // Using Photon Fusion instead of Netcode
 
 /// <summary>
 /// Defines the types of weather events that can affect the racetrack
@@ -14,12 +15,13 @@ public enum WeatherType
 /// <summary>
 /// Manages weather events and applies physics/visual effects to all karts
 /// </summary>
-public class EventManager : MonoBehaviour
+public class EventManager : NetworkBehaviour
 {
     public event Action<WeatherType> WeatherChanged;
 
     [Header("Weather Settings")]
-    [SerializeField] private WeatherType currentWeather = WeatherType.Sunny;
+    [Networked, OnChangedRender(nameof(OnWeatherChanged))]
+    private WeatherType currentWeather { get; set; }
 
     [Header("Skybox")]
     [SerializeField] private Material sunnySkybox;
@@ -37,15 +39,35 @@ public class EventManager : MonoBehaviour
 
     private Material defaultSkybox;
 
-    private void Start()
+    private bool _weatherApplied = false;
+
+    public override void Spawned()
     {
         defaultSkybox = RenderSettings.skybox;
-        currentWeather = GetRandomWeather();
 
-        // Apply weather to any karts already present in scene.
+        if (HasStateAuthority)
+        {
+            currentWeather = GetRandomWeather();
+        }
+        
         ApplyWeatherEffects();
+    }
 
-        Debug.Log($"Weather selected for this race: {currentWeather}");
+    public override void Render()
+    {
+        if (!_weatherApplied && currentWeather != default)
+        {
+            ApplyWeatherEffects();
+        }
+    }
+
+    public void OnWeatherChanged()
+    {
+        ApplyWeatherEffects();
+    }
+
+    private void Start()
+    {
     }
 
     /// <summary>
@@ -63,6 +85,8 @@ public class EventManager : MonoBehaviour
     /// </summary>
     public void ApplyWeatherEffects()
     {
+        _weatherApplied = true;
+
         BroomMove[] allKarts = FindObjectsByType<BroomMove>(FindObjectsSortMode.None);
 
         // Update all karts with new weather conditions
@@ -101,17 +125,23 @@ public class EventManager : MonoBehaviour
         switch (currentWeather)
         {
             case WeatherType.Sunny:
+                // Always explicitly disable fog so it never bleeds from scene settings
                 RenderSettings.fog = false;
+                RenderSettings.fogDensity = 0f;
                 ApplyConfiguredSkybox(sunnySkybox);
                 break;
 
             case WeatherType.Chilly:
+                // Always explicitly disable fog so it never bleeds from scene settings
                 RenderSettings.fog = false;
+                RenderSettings.fogDensity = 0f;
                 ApplyConfiguredSkybox(chillySkybox);
                 break;
 
             case WeatherType.Rainy:
+                // Force every fog setting explicitly — scene defaults are unreliable in builds
                 RenderSettings.fog = true;
+                RenderSettings.fogMode = FogMode.Exponential;
                 RenderSettings.fogDensity = rainyFogDensity;
                 RenderSettings.fogColor = rainyFogColor;
                 ApplyConfiguredSkybox(rainySkybox);
@@ -181,8 +211,10 @@ public class EventManager : MonoBehaviour
     /// </summary>
     public void SetWeather(WeatherType newWeather)
     {
-        currentWeather = newWeather;
-        ApplyWeatherEffects();
+        if (Object != null && HasStateAuthority)
+        {
+            currentWeather = newWeather;
+        }
     }
 
     /// <summary>
