@@ -178,38 +178,48 @@ public class PlayerSetup : NetworkBehaviour
         Animator anim = graphicsContainer.GetComponent<Animator>();
         int currentID = SelectedCharacterIndex;
 
+        // Special case: If this is a DogPrefab, it only has ONE model (the dog)
+        // We should ensure it's visible even though currentID might be 99
+        bool isDogPrefab = (characterModels != null && characterModels.Length == 1 && gameObject.name.Contains("Dog"));
+
         for (int i = 0; i < characterModels.Length; i++)
         {
-            bool isSelected = (i == currentID);
+            if (characterModels[i] == null) continue;
+
+            bool isSelected = (i == currentID) || isDogPrefab;
 
             if (characterModels[i].activeSelf != isSelected)
             {
                 characterModels[i].SetActive(isSelected);
             }
 
-            if (isSelected && anim != null && characterAvatars.Length > i)
+            int avatarIndex = isDogPrefab ? 0 : i;
+
+            if (isSelected && anim != null && characterAvatars != null && characterAvatars.Length > avatarIndex)
             {
-                if (anim.avatar != characterAvatars[i])
+                if (anim.avatar != characterAvatars[avatarIndex])
                 {
-                    anim.avatar = characterAvatars[i];
-                    anim.Rebind();
-                    anim.Update(0);
-                    Debug.Log($"Avatar sincronizado: {characterModels[i].name}");
+                    anim.avatar = characterAvatars[avatarIndex];
+                    Debug.Log($"Avatar synchronized: {characterModels[i].name} (Using index {avatarIndex})");
                 }
             }
         }
 
-        if (wandConstraint != null)
+        // Shared Wand Logic
+        if (wandConstraint != null && !isDogPrefab)
         {
             for (int s = 0; s < wandConstraint.sourceCount; s++)
             {
                 ConstraintSource source = wandConstraint.GetSource(s);
-                float targetWeight = (s == currentID) ? 1f : 0f;
 
-                if (source.weight != targetWeight)
+                bool isSelectedSource = (s == currentID);
+                float targetWeight = (isSelectedSource) ? 1f : 0f;
+
+                if (wandConstraint.GetSource(s).weight != targetWeight)
                 {
-                    source.weight = targetWeight;
-                    wandConstraint.SetSource(s, source);
+                    ConstraintSource updatedSource = wandConstraint.GetSource(s);
+                    updatedSource.weight = targetWeight;
+                    wandConstraint.SetSource(s, updatedSource);
                 }
             }
         }

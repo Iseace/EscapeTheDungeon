@@ -1,6 +1,6 @@
 using UnityEngine;
 using Fusion;
-using UnityEngine.SceneManagement; 
+using UnityEngine.SceneManagement;
 using System;
 using System.Collections.Generic;
 
@@ -43,7 +43,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
     {
         get
         {
-            if (!MatchInProgress || !enableMatchTimeLimit) return 0f;
+            if (Runner == null || !MatchInProgress || !enableMatchTimeLimit) return 0f;
             float? remaining = MatchTimer.RemainingTime(Runner);
             return Mathf.Max(0f, remaining ?? 0f);
         }
@@ -55,7 +55,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
     {
         get
         {
-            if (!MatchInProgress || !IsBossFrozen) return 0f;
+            if (Runner == null || !MatchInProgress || !IsBossFrozen) return 0f;
             float? remaining = BossFreezeTimer.RemainingTime(Runner);
             return Mathf.Max(0f, remaining ?? 0f);
         }
@@ -65,7 +65,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
     {
         get
         {
-            if (!MatchInProgress) return false;
+            if (Runner == null || !MatchInProgress) return false;
             return !BossFreezeTimer.ExpiredOrNotRunning(Runner);
         }
     }

@@ -12,13 +12,16 @@ public class LobbyUIHandler : NetworkBehaviour
     [SerializeField] private TextMeshProUGUI countdownText;
     [SerializeField] private Button readyBtn;
     [SerializeField] private TextMeshProUGUI readyBtnText;
+
     [Header("Settings")]
     [SerializeField] private string gameSceneName = "Game";
+    [SerializeField] private string raceSceneName = "Race"; // NEW: used when sessionType == "race"
     [SerializeField] private float countdownDuration = 5f;
+
     [Networked] private TickTimer CountdownTimer { get; set; }
-    
+
     private Dictionary<PlayerRef, bool> _readyPlayers = new Dictionary<PlayerRef, bool>();
-    
+
     // LOCAL state
     private bool _isLocalPlayerReady = false;
 
@@ -26,10 +29,10 @@ public class LobbyUIHandler : NetworkBehaviour
     {
         if (countdownText != null) countdownText.text = "";
         if (readyBtn != null) readyBtn.onClick.AddListener(OnReadyClicked);
-        
+
         // Reset local state when spawning in the lobby
         _isLocalPlayerReady = false;
-        
+
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -38,7 +41,7 @@ public class LobbyUIHandler : NetworkBehaviour
     {
         // Toggle local visual state immediately for responsiveness
         _isLocalPlayerReady = !_isLocalPlayerReady;
-        
+
         // Update the Button Text immediately
         if (readyBtnText != null)
             readyBtnText.text = _isLocalPlayerReady ? "NOT READY" : "READY";
@@ -52,14 +55,13 @@ public class LobbyUIHandler : NetworkBehaviour
     {
         _readyPlayers[player] = isReady;
         Debug.Log($"[LOBBY] Player {player.PlayerId} is now {(isReady ? "READY" : "NOT READY")}");
-        
         CheckAllReady();
     }
 
     private void CheckAllReady()
     {
         if (!Runner.IsServer) return;
-        
+
         // Get all active players
         var activePlayers = Runner.ActivePlayers.ToList();
         if (activePlayers.Count == 0) return;
@@ -112,15 +114,38 @@ public class LobbyUIHandler : NetworkBehaviour
     public override void FixedUpdateNetwork()
     {
         // Only the Server/Host handles the scene transition
-        if (Runner.IsServer && CountdownTimer.Expired(Runner))
+        if (!Runner.IsServer || !CountdownTimer.Expired(Runner)) return;
+
+        CountdownTimer = TickTimer.None;
+
+        // NEW: read the session type set by the host to decide which scene to load
+        string targetScene = gameSceneName; // default — normal game
+
+        if (Runner.SessionInfo != null &&
+            Runner.SessionInfo.Properties != null &&
+            Runner.SessionInfo.Properties.TryGetValue(NetworkRunnerHandler.SESSION_TYPE_KEY, out SessionProperty prop))
         {
-            CountdownTimer = TickTimer.None;
-            Debug.Log("[LOBBY] Countdown complete, loading Game scene");
-            
-            // Use the scene loading method
-            Runner.LoadScene(SceneRef.FromIndex(
-                UnityEngine.SceneManagement.SceneUtility.GetBuildIndexByScenePath("Scenes/" + gameSceneName)
-            ));
+            if ((string)prop == NetworkRunnerHandler.SESSION_TYPE_RACE)
+            {
+                targetScene = raceSceneName;
+                Debug.Log("[LOBBY] Race session detected — loading Race scene");
+            }
+            else
+            {
+                Debug.Log("[LOBBY] Normal session — loading Game scene");
+            }
         }
+
+        int sceneIndex = UnityEngine.SceneManagement.SceneUtility
+            .GetBuildIndexByScenePath($"Assets/Scenes/{targetScene}.unity");
+
+        if (sceneIndex < 0)
+        {
+            Debug.LogError($"[LOBBY] Cannot load scene '{targetScene}'. Add it to Build Settings.");
+            return;
+        }
+
+        Debug.Log($"[LOBBY] Countdown complete, loading '{targetScene}'");
+        Runner.LoadScene(SceneRef.FromIndex(sceneIndex));
     }
 }
