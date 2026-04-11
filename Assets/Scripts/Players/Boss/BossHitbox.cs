@@ -13,8 +13,8 @@ public class BossHitbox : NetworkBehaviour
     public float postAttackPenaltyDuration = 2f;
 
     [Header("Knockback Settings")]
-    public float knockbackForce = 3f; // Force applied to the hit player
-    public float knockbackUpwardBonus = 2f; // Additional upward force for dramatic effect
+    public float knockbackForce = 250f; // TRULY DRAMATIC PUSH
+    public float knockbackUpwardBonus = 15f; // Launches into air to take advantage of low air-friction
 
     private Collider _myCollider;
     private Transform _bossRoot;
