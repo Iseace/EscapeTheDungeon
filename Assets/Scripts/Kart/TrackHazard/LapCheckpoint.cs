@@ -9,33 +9,26 @@ public class LapCheckpoint : MonoBehaviour
 
     private void Awake()
     {
-        Collider checkpointCollider = GetComponent<Collider>();
-        checkpointCollider.isTrigger = true;
+        GetComponent<Collider>().isTrigger = true;
 
         if (lapTracker == null)
-        {
             lapTracker = FindAnyObjectByType<LapTracker>();
-        }
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (lapTracker == null)
-        {
-            return;
-        }
+        if (lapTracker == null) return;
 
         BroomMove racer = other.GetComponentInParent<BroomMove>();
-        if (racer == null)
-        {
-            return;
-        }
+        if (racer == null) return;
 
         if (enableDebugLogs)
-        {
-            Debug.Log($"[LAP] Checkpoint trigger {checkpointIndex} touched by {racer.name}.", this);
-        }
+            Debug.Log($"[LAP] Checkpoint {checkpointIndex} touched by {racer.name}.", this);
 
         lapTracker.RegisterCheckpointPass(racer, checkpointIndex);
+
+        RaceRespawnData respawn = racer.GetComponent<RaceRespawnData>();
+        if (respawn != null)
+            respawn.SaveCheckpoint(transform.position, transform.rotation, checkpointIndex);
     }
 }
