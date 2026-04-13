@@ -12,7 +12,7 @@ public class KillBox : SimulationBehaviour
 
     public override void FixedUpdateNetwork()
     {
-        // Only the server authorizes respawns, same pattern as your PlayerSpawner
+        // Only the server authorizes respawns
         if (!Runner.IsServer) return;
 
         if (transform.position.y < killDepth)

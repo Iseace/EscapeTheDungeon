@@ -16,10 +16,36 @@ public class RaceRespawnData : NetworkBehaviour
     private Vector3 _startPosition;
     private Quaternion _startRotation;
 
+    private LapTracker _lapTracker;
+
     public override void Spawned()
     {
         _startPosition = transform.position;
         _startRotation = transform.rotation;
+
+        _lapTracker = FindAnyObjectByType<LapTracker>();
+        if (_lapTracker != null)
+            _lapTracker.OnLapCompleted += OnLapCompleted;
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        if (_lapTracker != null)
+            _lapTracker.OnLapCompleted -= OnLapCompleted;
+    }
+
+    private void OnLapCompleted(BroomMove racer, int lap)
+    {
+        if (racer == GetComponent<BroomMove>())
+            ResetForNewLap();
+    }
+
+    private void ResetForNewLap()
+    {
+        LastCheckpointIndex = -1;
+
+        if (enableDebugLogs)
+            Debug.Log($"[RESPAWN] {name} started new lap, checkpoint index reset.");
     }
 
     public override void FixedUpdateNetwork()
@@ -46,31 +72,34 @@ public class RaceRespawnData : NetworkBehaviour
         _checkpointPosition = position;
         _checkpointRotation = rotation;
         LastCheckpointIndex = index;
+
+        if (enableDebugLogs)
+            Debug.Log($"[RESPAWN] {name} saved checkpoint {index} at {position}.");
     }
 
-   public void Respawn()
-{
-    Vector3 targetPos;
-    Quaternion targetRot;
-
-    if (LastCheckpointIndex >= 0)
+    public void Respawn()
     {
-        targetPos = _checkpointPosition;
-        targetRot = _checkpointRotation;
-    }
-    else
-    {
-        targetPos = _startPosition;
-        targetRot = _startRotation;
-    }
+        Vector3 targetPos;
+        Quaternion targetRot;
 
-    transform.position = targetPos;
-    transform.rotation = targetRot;
+        if (LastCheckpointIndex >= 0)
+        {
+            targetPos = _checkpointPosition;
+            targetRot = _checkpointRotation;
+        }
+        else
+        {
+            targetPos = _startPosition;
+            targetRot = _startRotation;
+        }
 
-    if (TryGetComponent<Rigidbody>(out var rb))
-    {
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
+        transform.position = targetPos;
+        transform.rotation = targetRot;
+
+        if (TryGetComponent<Rigidbody>(out var rb))
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
     }
-}
 }

@@ -119,6 +119,79 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1001 &51066134
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 28478960984452192, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_Name
+      value: LapCheckpoint 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 15.559399
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -25.7
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -1.094004
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -86.92
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7594252754501424724, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: lapTracker
+      value: 
+      objectReference: {fileID: 93304586}
+    - target: {fileID: 7594252754501424724, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: checkpointIndex
+      value: 2
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
 --- !u!1001 &69417502
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -559,7 +632,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8008750470530560499, guid: 07d0010b9dfa3964aa0956ced51c4943, type: 3}
       propertyPath: totalLaps
-      value: 1
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 8008750470530560499, guid: 07d0010b9dfa3964aa0956ced51c4943, type: 3}
+      propertyPath: checkpointCount
+      value: 3
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -4949,7 +5026,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 28478960984452192, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
       propertyPath: m_Name
-      value: LapCheckpoint
+      value: LapCheckpoint 2
       objectReference: {fileID: 0}
     - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
       propertyPath: m_LocalScale.x
@@ -4999,6 +5076,10 @@ PrefabInstance:
       propertyPath: lapTracker
       value: 
       objectReference: {fileID: 93304586}
+    - target: {fileID: 7594252754501424724, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: checkpointIndex
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -12875,6 +12956,79 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5142532879768850087, guid: 5983c8a04c0e73047a6c860b9cd9aaad, type: 3}
   m_PrefabInstance: {fileID: 2104792340}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &2107816737
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 28478960984452192, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_Name
+      value: LapCheckpoint 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 62.65
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -1.094004
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 28.62
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5453300862056039093, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7594252754501424724, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
+      propertyPath: lapTracker
+      value: 
+      objectReference: {fileID: 93304586}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 24cd4b86aed20cb4bbf21bc7bb2011a3, type: 3}
 --- !u!1001 &2114184295
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -13286,7 +13440,9 @@ SceneRoots:
   - {fileID: 782580746}
   - {fileID: 1213935302}
   - {fileID: 93304585}
+  - {fileID: 2107816737}
   - {fileID: 878671030}
+  - {fileID: 51066134}
   - {fileID: 299775073}
   - {fileID: 1824264463}
   - {fileID: 1518184048}
