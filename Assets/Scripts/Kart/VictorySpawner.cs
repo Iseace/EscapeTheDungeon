@@ -5,6 +5,7 @@ public class VictorySpawner : NetworkBehaviour
 {
     [Header("Winner Display")]
     [SerializeField] private GameObject[] characterSkins; // Lista de prefabs/objetos en la escena para cada ID
+    [SerializeField] private GameObject dogSkin; // Dog skin for secret character (ID 99)
 
     private bool _hasSetup = false;
 
@@ -48,7 +49,20 @@ public class VictorySpawner : NetworkBehaviour
         // 2. Lógica de Display
         // TODOS activan la skin del personaje que ganó
         int skinId = raceManager.WinnerCharacterIndex;
-        if (skinId >= 0 && skinId < characterSkins.Length)
+
+        if (skinId == 99)
+        {
+            if (dogSkin != null)
+            {
+                dogSkin.SetActive(true);
+                Debug.Log($"[VICTORY] Activando skin de PERRO (ID 99) para el ganador.");
+            }
+            else
+            {
+                Debug.LogWarning("[VICTORY] ID 99 detectado pero dogSkin no está asignado.");
+            }
+        }
+        else if (skinId >= 0 && skinId < characterSkins.Length)
         {
             GameObject selectedSkin = characterSkins[skinId];
             if (selectedSkin != null)
