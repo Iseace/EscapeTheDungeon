@@ -15707,6 +15707,8 @@ GameObject:
   - component: {fileID: 7730455707243882626}
   - component: {fileID: 6336234727296163067}
   - component: {fileID: -1469339193753302141}
+  - component: {fileID: -1060268322058557028}
+  - component: {fileID: 3864002276216712713}
   m_Layer: 0
   m_Name: BroomRacer
   m_TagString: Untagged
@@ -15755,6 +15757,7 @@ MonoBehaviour:
   - {fileID: 7730455707243882626}
   - {fileID: 6336234727296163067}
   - {fileID: -1469339193753302141}
+  - {fileID: -1060268322058557028}
   ForceRemoteRenderTimeframe: 0
 --- !u!54 &8188509914162312914
 Rigidbody:
@@ -15864,6 +15867,34 @@ MonoBehaviour:
     Position: 0.01
     Rotation: 0.01
     Scale: 0.01
+--- !u!114 &-1060268322058557028
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7092673203643427425}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fba4a90341298de90bd3a5ac6a3aed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RaceRespawnData
+  killDepth: -5
+  enableDebugLogs: 1
+--- !u!114 &3864002276216712713
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7092673203643427425}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6bdd2d69bdc3b0860845ccb5323be141, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  killDepth: -5
+  enableDebugLogs: 1
 --- !u!1 &7098714450728896804
 GameObject:
   m_ObjectHideFlags: 0
