@@ -41644,6 +41644,8 @@ MonoBehaviour:
   - {fileID: 8314732526367987913, guid: ed4a3973fa0147741a21a5886271254c, type: 3}
   - {fileID: 8567707190563194561, guid: ff56665fc356aaa49a7f64d921385887, type: 3}
   - {fileID: 6682346003165541475, guid: 55d22adc7302f724e903a01f06b86c4c, type: 3}
+  secretCharacterIndex: 99
+  secretCharacterSkinPrefab: {fileID: 432275541992832816, guid: fc799458ae4103a43922f81d5d668906, type: 3}
   fallbackSurvivorSkinPrefab: {fileID: 3277224982151655860, guid: 2214f2b9572756e41988455dc3ffc3a5, type: 3}
   defeatedSlots:
   - {fileID: 1666714336}
@@ -43506,6 +43508,8 @@ MonoBehaviour:
   - Necromancer
   - Warrior
   - Witch
+  secretCharacterIndex: 99
+  secretCharacterLabel: Dog
   escapedLabel: Escaped
   killedLabel: Dead
   trappedLabel: Didn't Escaped

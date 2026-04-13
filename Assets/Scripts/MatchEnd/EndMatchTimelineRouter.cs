@@ -31,7 +31,14 @@ public class EndMatchTimelineRouter : MonoBehaviour
 
     private void Start()
     {
+        EnsureCursorVisible();
         StartCoroutine(RunFlow());
+    }
+
+    private void Update()
+    {
+        // Defensive: some timeline-controlled objects can re-lock cursor depending on variant.
+        EnsureCursorVisible();
     }
 
     private IEnumerator RunFlow()
@@ -77,6 +84,7 @@ public class EndMatchTimelineRouter : MonoBehaviour
 
         if (!showResultsPanelAfterCinematic)
         {
+            EnsureCursorVisible();
             yield break;
         }
 
@@ -84,6 +92,8 @@ public class EndMatchTimelineRouter : MonoBehaviour
         {
             resultsPanelRoot.SetActive(true);
         }
+
+        EnsureCursorVisible();
 
         if (resultsHud != null)
         {
@@ -159,5 +169,11 @@ public class EndMatchTimelineRouter : MonoBehaviour
         {
             Debug.Log($"[EndMatchTimelineRouter] Reproduciendo director '{label}'.");
         }
+    }
+
+    private static void EnsureCursorVisible()
+    {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 }

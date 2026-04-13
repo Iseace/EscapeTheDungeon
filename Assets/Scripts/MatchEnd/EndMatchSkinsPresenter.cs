@@ -13,6 +13,11 @@ public class EndMatchSkinsPresenter : MonoBehaviour
     [Header("Skin Prefabs By Character Index")]
     [Tooltip("Index 0..N debe corresponder al SelectedCharacterIndex del PlayerSetup")]
     [SerializeField] private List<GameObject> survivorSkinPrefabs = new List<GameObject>();
+    [Header("Special Character Mapping")]
+    [Tooltip("Indice especial usado por personajes secretos (por defecto, perro=99).")]
+    [SerializeField] private int secretCharacterIndex = 99;
+    [Tooltip("Prefab para el personaje secreto. Si no esta asignado, se usa fallback.")]
+    [SerializeField] private GameObject secretCharacterSkinPrefab;
     [SerializeField] private GameObject fallbackSurvivorSkinPrefab;
 
     [Header("Slots")]
@@ -29,9 +34,10 @@ public class EndMatchSkinsPresenter : MonoBehaviour
     [SerializeField] private SlotAnimationMode defeatedAnimationMode = SlotAnimationMode.ForceState;
     [SerializeField] private SlotAnimationMode escapedAnimationMode = SlotAnimationMode.SetMoveParameters;
     [Tooltip("Nombre de estado para derrotados, por ejemplo Dead o Knockdown")]
-    [SerializeField] private string defeatedStateName = "Dead";
+    [SerializeField] private string defeatedStateName = "dead";
     [Tooltip("Nombre de estado para escaped, por ejemplo Locomotion o Run")]
     [SerializeField] private string escapedStateName = "Locomotion";
+    [SerializeField] private string[] deadBoolParameters = { "IsDead", "isDead" };
     [Tooltip("Parametros float de locomocion comunes en tus Animator Controllers")]
     [SerializeField] private string[] moveFloatParameters = { "Speed", "MoveSpeed", "Velocity" };
     [SerializeField] private float escapedMoveValue = 1f;
@@ -142,23 +148,30 @@ public class EndMatchSkinsPresenter : MonoBehaviour
                 ConfigureEscapedRunnerController(mover);
             }
 
-            // Best effort: if prefab has controller, keep deterministic visuals for cinematic start.
-            Animator anim = instance.GetComponentInChildren<Animator>();
-            if (anim != null)
+            // Some prefabs (especially imported ones) can contain multiple Animators.
+            // Configure all of them so visuals don't desync (e.g., one running while another is dead).
+            Animator[] animators = instance.GetComponentsInChildren<Animator>(true);
+            if (animators != null && animators.Length > 0)
             {
-                PrepareAnimatorForCinematic(anim);
+                for (int a = 0; a < animators.Length; a++)
+                {
+                    Animator anim = animators[a];
+                    if (anim == null) continue;
 
-                if (wantEscaped)
-                {
-                    anim.SetBool("IsDead", false);
-                    ApplyAnimationMode(anim, escapedAnimationMode, escapedStateName, escapedMoveValue, "escaped");
-                    ApplyCommonEscapedLocomotion(anim);
-                    ApplyEscapedAnimationOffset(anim, player.PlayerId, slotIndex - 1);
-                }
-                else
-                {
-                    anim.SetBool("IsDead", true);
-                    ApplyAnimationMode(anim, defeatedAnimationMode, defeatedStateName, defeatedMoveValue, "defeated");
+                    PrepareAnimatorForCinematic(anim);
+
+                    if (wantEscaped)
+                    {
+                        SetDeadState(anim, false);
+                        ApplyAnimationMode(anim, escapedAnimationMode, escapedStateName, escapedMoveValue, "escaped");
+                        ApplyCommonEscapedLocomotion(anim);
+                        ApplyEscapedAnimationOffset(anim, player.PlayerId, slotIndex - 1);
+                    }
+                    else
+                    {
+                        SetDeadState(anim, true);
+                        ApplyAnimationMode(anim, defeatedAnimationMode, defeatedStateName, defeatedMoveValue, "defeated");
+                    }
                 }
             }
             else if (debugLogs)
@@ -275,7 +288,7 @@ public class EndMatchSkinsPresenter : MonoBehaviour
         switch (mode)
         {
             case SlotAnimationMode.ForceState:
-                if (!string.IsNullOrWhiteSpace(stateName) && TryPlayStateInAnyLayer(anim, stateName))
+                if (!string.IsNullOrWhiteSpace(stateName) && TryPlayStateWithFallbackCasing(anim, stateName))
                 {
                     anim.Update(0f);
                 }
@@ -312,6 +325,9 @@ public class EndMatchSkinsPresenter : MonoBehaviour
 
     private GameObject ResolveSkinPrefab(int selectedCharacterIndex)
     {
+        if (selectedCharacterIndex == secretCharacterIndex && secretCharacterSkinPrefab != null)
+            return secretCharacterSkinPrefab;
+
         if (selectedCharacterIndex >= 0 && selectedCharacterIndex < survivorSkinPrefabs.Count)
             return survivorSkinPrefabs[selectedCharacterIndex];
 
@@ -381,6 +397,25 @@ public class EndMatchSkinsPresenter : MonoBehaviour
         return false;
     }
 
+    private static bool TryPlayStateWithFallbackCasing(Animator anim, string stateName)
+    {
+        if (TryPlayStateInAnyLayer(anim, stateName))
+            return true;
+
+        string lower = stateName.ToLowerInvariant();
+        if (lower != stateName && TryPlayStateInAnyLayer(anim, lower))
+            return true;
+
+        if (!string.IsNullOrEmpty(stateName))
+        {
+            string title = char.ToUpperInvariant(stateName[0]) + stateName.Substring(1).ToLowerInvariant();
+            if (title != stateName && TryPlayStateInAnyLayer(anim, title))
+                return true;
+        }
+
+        return false;
+    }
+
     private static bool HasFloatParameter(Animator anim, string parameterName)
     {
         if (anim == null || string.IsNullOrWhiteSpace(parameterName)) return false;
@@ -409,5 +444,30 @@ public class EndMatchSkinsPresenter : MonoBehaviour
         }
 
         return false;
+    }
+
+    private void SetDeadState(Animator anim, bool value)
+    {
+        if (anim == null)
+            return;
+
+        bool applied = false;
+        if (deadBoolParameters != null)
+        {
+            for (int i = 0; i < deadBoolParameters.Length; i++)
+            {
+                string param = deadBoolParameters[i];
+                if (!HasBoolParameter(anim, param))
+                    continue;
+
+                anim.SetBool(param, value);
+                applied = true;
+            }
+        }
+
+        if (!applied && debugLogs)
+        {
+            Debug.LogWarning($"[EndMatchSkinsPresenter] No se encontro parametro bool de muerte en {anim.name}. Revisa deadBoolParameters.");
+        }
     }
 }

@@ -102,7 +102,10 @@ public class PlayerSetup : NetworkBehaviour
     // Added Update to force cursor visibility if a camera script tries to lock it in the Lobby
     private void Update()
     {
-        if (HasInputAuthority && SceneManager.GetActiveScene().name == "LobbyRoom")
+        if (!HasInputAuthority)
+            return;
+
+        if (ShouldCursorBeVisibleInCurrentScene())
         {
             if (Cursor.lockState != CursorLockMode.None || !Cursor.visible)
             {
@@ -336,8 +339,7 @@ public class PlayerSetup : NetworkBehaviour
 
     private void HandleCursorState()
     {
-        // CHANGED: Using "LobbyRoom" to match your actual scene name
-        if (SceneManager.GetActiveScene().name == "LobbyRoom")
+        if (ShouldCursorBeVisibleInCurrentScene())
         {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -347,5 +349,12 @@ public class PlayerSetup : NetworkBehaviour
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
         }
+    }
+
+    private static bool ShouldCursorBeVisibleInCurrentScene()
+    {
+        string sceneName = SceneManager.GetActiveScene().name;
+        return !string.Equals(sceneName, "Game", System.StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(sceneName, "Race", System.StringComparison.OrdinalIgnoreCase);
     }
 }

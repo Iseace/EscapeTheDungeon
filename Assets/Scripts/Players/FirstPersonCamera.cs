@@ -103,7 +103,8 @@ public class FirstPersonCamera : MonoBehaviour
     private bool ShouldLockCursorInCurrentScene()
     {
         string sceneName = SceneManager.GetActiveScene().name;
-        return string.Equals(sceneName, GameplaySceneName, System.StringComparison.OrdinalIgnoreCase);
+        return string.Equals(sceneName, "Game", System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(sceneName, "Race", System.StringComparison.OrdinalIgnoreCase);
     }
 
 

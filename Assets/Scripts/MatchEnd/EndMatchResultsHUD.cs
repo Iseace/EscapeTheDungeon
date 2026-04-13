@@ -22,6 +22,9 @@ public class EndMatchResultsHUD : MonoBehaviour
     [Header("Skin Names")]
     [Tooltip("Opcional: nombre legible por indice de skin. Si no existe, se muestra Skin #index.")]
     [SerializeField] private string[] skinNamesByIndex;
+    [Header("Special Character Labels")]
+    [SerializeField] private int secretCharacterIndex = 99;
+    [SerializeField] private string secretCharacterLabel = "Dog";
 
     [Header("Labels")]
     [SerializeField] private string escapedLabel = "Escaped";
@@ -220,6 +223,9 @@ public class EndMatchResultsHUD : MonoBehaviour
             return bossLabel;
 
         int index = player.SelectedCharacterIndex;
+        if (index == secretCharacterIndex && !string.IsNullOrWhiteSpace(secretCharacterLabel))
+            return secretCharacterLabel;
+
         if (skinNamesByIndex != null && index >= 0 && index < skinNamesByIndex.Length)
         {
             string skinName = skinNamesByIndex[index];
