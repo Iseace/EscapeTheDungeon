@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: fd5f7ec2f68088b4d94bbdcebf05782a
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - sunnySkybox: {fileID: 2100000, guid: a8c471e56c570114788f3c38078d7cc7, type: 2}
+  - chillySkybox: {fileID: 2100000, guid: 0eaaac7b8edcb354799adde052e8e763, type: 2}
+  - rainySkybox: {fileID: 2100000, guid: 496fd34ffc9b92340be81b648750cef9, type: 2}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

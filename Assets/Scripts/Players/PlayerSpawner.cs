@@ -9,6 +9,8 @@ using System.Linq;
 public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 {
     public NetworkObject PlayerPrefab;
+    public NetworkObject DogPrefab;
+    public NetworkObject broomPrefab;
 
     [Header("Character Prefabs")]
     public NetworkObject BossPrefab;      //prefab del Boss
@@ -29,19 +31,78 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
     [SerializeField] private float groundRayStartHeight = 10f;
     [SerializeField] private float groundSnapOffset = 0.05f;
 
+    [Header("Race Spawn")]
+    [SerializeField] private Vector3 raceSpawnOrigin = new Vector3(0f, 1f, 0f);
+    [SerializeField] private float raceSpawnLaneWidth = 2f;
+    [SerializeField] private float raceSpawnRowDepth = 3f;
+
     [Header("Boss System")]
     [SerializeField] private string menuSceneName = "LobbyList";
     [SerializeField] private int menuSceneIndex = 0;
+
+    [SerializeField] private NetworkObject fallbackPrefab; // Ad-hoc fix for inspector validation
 
     private bool bossSelected = false;
     private PlayerRef bossPlayer;
     private bool isSwappingBoss = false;
     private bool matchFlowStarted = false;
+    private bool callbacksRegistered = false;
+    private NetworkRunner registeredRunner;
 
     private void Start()
     {
+        TryRegisterRunnerCallbacks();
+    }
+
+    private void Update()
+    {
+        if (!callbacksRegistered)
+        {
+            TryRegisterRunnerCallbacks();
+        }
+    }
+
+    private void TryRegisterRunnerCallbacks()
+    {
         var runner = FindFirstObjectByType<NetworkRunner>();
-        if (runner != null) runner.AddCallbacks(this);
+        if (runner == null)
+            return;
+
+        if (callbacksRegistered && registeredRunner == runner)
+            return;
+
+        runner.AddCallbacks(this);
+        registeredRunner = runner;
+        callbacksRegistered = true;
+        Debug.Log("[SPAWNER] Registered callbacks with NetworkRunner");
+    }
+
+    // Returns true when the current session is a Race session
+    private bool IsRaceSession(NetworkRunner runner)
+    {
+        if (runner.SessionInfo == null || runner.SessionInfo.Properties == null)
+            return false;
+
+        if (runner.SessionInfo.Properties.TryGetValue(NetworkRunnerHandler.SESSION_TYPE_KEY, out SessionProperty prop))
+            return (string)prop == NetworkRunnerHandler.SESSION_TYPE_RACE;
+
+        return false;
+    }
+
+    // Returns PlayerPrefab or DogPrefab for normal sessions, broomPrefab for race sessions
+    private NetworkObject GetPrefabForSession(NetworkRunner runner, PlayerRef player)
+    {
+        if (IsRaceSession(runner))
+            return broomPrefab;
+
+        // In normal sessions, check if user has selected the dog (ID 99)
+        int selectedID = PlayerPrefs.GetInt("SelectedCharacterID", 0);
+        NetworkObject selectedPrefab = (selectedID == 99 && DogPrefab != null) ? DogPrefab : PlayerPrefab;
+
+        // Fallback if prefabs are unassigned in inspector
+        if (selectedPrefab == null) selectedPrefab = fallbackPrefab;
+
+        return selectedPrefab;
     }
 
     public void PlayerJoinedLogic(NetworkRunner runner, PlayerRef player)
@@ -50,11 +111,24 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
         Debug.Log($"[SPAWNER] Player {player.PlayerId} joining");
 
-        // Prevent duplicate spawns - check if player already has an object
-        if (runner.TryGetPlayerObject(player, out NetworkObject existingPlayerObj))
+        // Special case for Lobby: Always allow spawning if we are trying to sync a prefab selection
+        if (SceneManager.GetActiveScene().name != "LobbyRoom")
         {
-            Debug.LogWarning($"[SPAWNER] Player {player.PlayerId} already has an object! Skipping spawn.");
-            return;
+            if (runner.TryGetPlayerObject(player, out NetworkObject existingPlayerObj))
+            {
+                Debug.LogWarning($"[SPAWNER] Player {player.PlayerId} already has an object! Skipping spawn.");
+                return;
+            }
+        }
+        else
+        {
+            // In LobbyRoom, if we already have an object, we want to destroy it and respawn the new selection
+            if (runner.TryGetPlayerObject(player, out NetworkObject existingLobbyObj))
+            {
+                Debug.Log($"[SPAWNER] Player {player.PlayerId} already has a lobby object. Despawning to allow prefab selection sync.");
+                runner.Despawn(existingLobbyObj);
+                // We DON'T return here, we fall through to the spawn logic below
+            }
         }
 
         // Handle Dungeon Runner logic only in the Game scene
@@ -71,7 +145,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             }
         }
 
-        // Default spawn position
+        // Default spawn position — must be declared before any scene-specific block overrides it
         Vector3 spawnPos = new Vector3(3f, 1f, 3f);
         Quaternion spawnRot = Quaternion.identity;
 
@@ -82,9 +156,22 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             int totalPlayers = runner.ActivePlayers.Count();
             float totalWidth = (totalPlayers - 1) * spacing;
             float startOffset = -totalWidth / 2f;
-            
+
             spawnPos = new Vector3(startOffset + (totalPlayers - 1) * spacing, 0f, 0f);
             spawnRot = Quaternion.identity;
+
+            // Spawn PlayerPrefab or broomPrefab depending on session type
+            NetworkObject selectedPrefab = GetPrefabForSession(runner, player);
+            if (selectedPrefab == null)
+            {
+                Debug.LogError($"[SPAWNER] NO PREFAB FOUND FOR PLAYER {player.PlayerId}!");
+                return;
+            }
+
+            NetworkObject lobbyObj = runner.Spawn(selectedPrefab, spawnPos, spawnRot, player);
+            runner.SetPlayerObject(player, lobbyObj);
+            Debug.Log($"[SPAWNER] Player {player.PlayerId} spawned in LobbyRoom as {selectedPrefab.name}");
+            return;
         }
 
         if (SceneManager.GetActiveScene().name == "Game")
@@ -92,10 +179,32 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             spawnPos = GetSafeGameSpawnForPlayer(runner, player);
         }
 
-        NetworkObject playerObj = runner.Spawn(PlayerPrefab, spawnPos, spawnRot, player);
+        if (SceneManager.GetActiveScene().name == "Race")
+        {
+            var orderedPlayers = runner.ActivePlayers.OrderBy(p => p.PlayerId).ToList();
+            int idx = orderedPlayers.IndexOf(player);
+
+            // 3-2 grid offsets: X = lateral, Z = depth (negative = further back from start)
+            Vector3[] gridOffsets = new Vector3[]
+            {
+                new Vector3(-raceSpawnLaneWidth,  0f,  0f),              // P1 front-left
+                new Vector3( 0f,                  0f,  0f),              // P2 front-center
+                new Vector3( raceSpawnLaneWidth,  0f,  0f),              // P3 front-right
+                new Vector3(-raceSpawnLaneWidth * 0.5f, 0f, -raceSpawnRowDepth), // P4 back-left
+                new Vector3( raceSpawnLaneWidth * 0.5f, 0f, -raceSpawnRowDepth)  // P5 back-right
+            };
+
+            Vector3 offset = idx < gridOffsets.Length ? gridOffsets[idx] : gridOffsets[gridOffsets.Length - 1];
+            spawnPos = raceSpawnOrigin + offset;
+            spawnRot = Quaternion.identity; // faces forward (positive Z)
+            Debug.Log($"[SPAWNER] Race grid slot {idx} for player {player.PlayerId} at {spawnPos}");
+        }
+
+        NetworkObject prefabToSpawn = GetPrefabForSession(runner, player);
+        NetworkObject playerObj = runner.Spawn(prefabToSpawn, spawnPos, spawnRot, player);
         runner.SetPlayerObject(player, playerObj);
 
-        Debug.Log($"[SPAWNER] Player {player.PlayerId} spawned");
+        Debug.Log($"[SPAWNER] Player {player.PlayerId} spawned as {prefabToSpawn.name}");
     }
 
     public override void FixedUpdateNetwork()
@@ -106,12 +215,12 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
             float spacing = 1.5f;
             var activePlayers = Runner.ActivePlayers.ToList();
             int totalPlayers = activePlayers.Count;
-            
+
             if (totalPlayers > 0)
             {
                 float totalWidth = (totalPlayers - 1) * spacing;
                 float startOffset = -totalWidth / 2f;
-                
+
                 int index = 0;
                 foreach (var p in activePlayers)
                 {
@@ -124,7 +233,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
                 }
             }
         }
-        
+
         if (!Runner.IsServer || SceneManager.GetActiveScene().name != "Game") return;
 
         if (bossSelected && !matchFlowStarted)
@@ -188,8 +297,8 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
         string currentScene = SceneManager.GetActiveScene().name;
 
-        // Re-spawning logic for transitions into Lobby or Game
-        if (currentScene == "Game" || currentScene == "LobbyRoom")
+        // Re-spawning logic for transitions into Lobby, Game, or Race
+        if (currentScene == "Game" || currentScene == "LobbyRoom" || currentScene == "Race")
         {
             Debug.Log($"[SPAWNER] Scene {currentScene} loaded, spawning players");
             dungeonRunnerSpawned = false;
@@ -439,7 +548,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
         try
         {
             Debug.Log("[BOSS DISCONNECT] Loading menu scene...");
-            
+
             int sceneIndex = SceneUtility.GetBuildIndexByScenePath("Scenes/" + menuSceneName);
             if (sceneIndex >= 0)
             {
@@ -469,6 +578,14 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
     private void OnDestroy()
     {
         dungeonRunnerSpawned = false;
+
+        if (registeredRunner != null)
+        {
+            registeredRunner.RemoveCallbacks(this);
+        }
+
+        callbacksRegistered = false;
+        registeredRunner = null;
     }
 
     // Boilerplate Fusion callbacks

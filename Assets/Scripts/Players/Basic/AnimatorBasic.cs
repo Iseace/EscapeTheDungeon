@@ -23,7 +23,21 @@ public class AnimatorBasic : NetworkBehaviour
     private void Awake()
     {
         _inventory = GetComponent<PlayerInventory>();
-        _animator = GetComponentInChildren<Animator>();
+    }
+
+    public override void Spawned()
+    {
+        RefreshAnimator();
+    }
+
+    private void RefreshAnimator()
+    {
+        if (Object == null || !Object.IsValid) return;
+
+        if (_animator == null)
+        {
+            _animator = GetComponentInChildren<Animator>();
+        }
     }
 
     public override void FixedUpdateNetwork()
@@ -48,8 +62,7 @@ public class AnimatorBasic : NetworkBehaviour
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_PlayAttack()
     {
-        if (_animator == null)
-            _animator = GetComponentInChildren<Animator>();
+        RefreshAnimator();
 
         if (_animator != null)
         {

@@ -133,15 +133,31 @@ public class PlayerMovement : NetworkBehaviour
 
     private void UpdateAnimations(Vector3 move)
     {
-        if (_animator == null)
+        // Always ensure we are talking to the CURRENT active animator
+        RefreshAnimatorReference();
+
+        if (_animator == null || !_animator.isActiveAndEnabled) return;
+
+        // Use the raw move vector so the Blend Tree gets the actual speed
+        Vector3 localMove = transform.InverseTransformDirection(move);
+
+        // Normalize these for the 2D Blend Tree to ensure they stay in -1 to 1 range
+        float normX = move.magnitude > 0.01f ? localMove.x / PlayerSpeed : 0;
+        float normZ = move.magnitude > 0.01f ? localMove.z / PlayerSpeed : 0;
+
+        _animator.SetFloat("MoveX", normX);
+        _animator.SetFloat("MoveZ", normZ);
+
+        // Check if "Speed" parameter exists to avoid warnings/errors
+        foreach (var param in _animator.parameters)
         {
-            RefreshAnimatorReference();
-            if (_animator == null) return;
+            if (param.name == "Speed")
+            {
+                _animator.SetFloat("Speed", move.magnitude);
+                break;
+            }
         }
 
-        Vector3 localMove = transform.InverseTransformDirection(move.normalized);
-        _animator.SetFloat("MoveX", localMove.x);
-        _animator.SetFloat("MoveZ", localMove.z);
         _animator.SetBool("IsGrounded", _isGrounded);
     }
 
@@ -151,14 +167,30 @@ public class PlayerMovement : NetworkBehaviour
         {
             _animator.SetFloat("MoveX", 0);
             _animator.SetFloat("MoveZ", 0);
+
+            // Check if "Speed" parameter exists to avoid warnings/errors
+            foreach (var param in _animator.parameters)
+            {
+                if (param.name == "Speed")
+                {
+                    _animator.SetFloat("Speed", 0);
+                    break;
+                }
+            }
         }
     }
 
     public void RefreshAnimatorReference()
     {
-        _animator = (GraphicsRoot != null)
-            ? GraphicsRoot.GetComponentInChildren<Animator>(false)
-            : GetComponentInChildren<Animator>(false);
+        if (GraphicsRoot != null)
+        {
+            _animator = GraphicsRoot.GetComponentInChildren<Animator>(false); // false = only active
+        }
+
+        if (_animator == null)
+        {
+            _animator = GetComponentInChildren<Animator>(false);
+        }
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
