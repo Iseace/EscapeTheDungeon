@@ -97,13 +97,13 @@ CharacterController:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Height: 2
+  m_Height: 0
   m_Radius: 1
   m_SlopeLimit: 45
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0.5, z: 0}
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!114 &5849904117143132054
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -140,6 +140,8 @@ MonoBehaviour:
   PlayerSpeed: 5
   JumpForce: 5
   Gravity: -9.81
+  GroundFriction: 6
+  AirFriction: 0.5
   isBoss: 0
   Camera: {fileID: 0}
 --- !u!114 &8479133809032691040
@@ -290,7 +292,7 @@ AudioSource:
   Priority: 128
   DopplerLevel: 1
   MinDistance: 1
-  MaxDistance: 500
+  MaxDistance: 28180.102
   Pan2D: 0
   rolloffMode: 0
   BypassEffects: 0
