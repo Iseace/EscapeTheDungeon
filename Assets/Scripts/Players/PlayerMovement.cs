@@ -15,6 +15,8 @@ public class PlayerMovement : NetworkBehaviour
     public float PlayerSpeed = 5f;
     public float JumpForce = 5f;
     public float Gravity = -9.81f;
+    public float GroundFriction = 6f; // High friction on ground to prevent skating
+    public float AirFriction = 0.5f;   // Very low friction in air for long slides
 
     [Header("Boss Settings (Optional)")]
     public bool isBoss = false; // Check this for boss characters
@@ -120,12 +122,34 @@ public class PlayerMovement : NetworkBehaviour
                 if (HasStateAuthority) RPC_TriggerJump();
             }
 
+            // 3.1. Apply Gravity
             currentVelocity.y += Gravity * Runner.DeltaTime;
+
+            // 3.2. Apply Horizontal Friction/Drag to the horizontal velocity
+            // This ensures knockback doesn't last forever.
+            // USES AIR FRICTION WHILE IN AIR FOR A TRUE LONG PUSH
+            float currentFriction = _isGrounded ? GroundFriction : AirFriction;
+
+            Vector2 horizontalVelocity = new Vector2(currentVelocity.x, currentVelocity.z);
+            if (horizontalVelocity.magnitude > 0.01f)
+            {
+                horizontalVelocity = Vector2.Lerp(horizontalVelocity, Vector2.zero, currentFriction * Runner.DeltaTime);
+                currentVelocity = new Vector3(horizontalVelocity.x, currentVelocity.y, horizontalVelocity.y);
+            }
+            else
+            {
+                currentVelocity = new Vector3(0, currentVelocity.y, 0);
+            }
+
             _velocity = currentVelocity;
 
             // 4. APLICAR MOVIMIENTO (Combinado en un solo vector)
-            Vector3 finalMotion = (move + _velocity) * Runner.DeltaTime;
-            _controller.Move(finalMotion);
+            // Separate the velocity (knockback/gravity) from the input-based horizontal move
+            // because _controller.Move takes a DELTA displacement.
+            Vector3 moveDisplacement = move * Runner.DeltaTime;
+            Vector3 velocityDisplacement = _velocity * Runner.DeltaTime;
+
+            _controller.Move(moveDisplacement + velocityDisplacement);
 
             UpdateAnimations(move);
         }
