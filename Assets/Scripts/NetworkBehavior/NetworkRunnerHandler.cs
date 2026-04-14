@@ -350,6 +350,12 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnShutdown(NetworkRunner runner, ShutdownReason reason)
     {
+        if (ShouldIgnoreDisconnectCallbacks())
+        {
+            Debug.Log($"[NETWORK] Shutdown during EndMatch flow (expected): {reason}");
+            return;
+        }
+
         Debug.Log($"Runner shutdown: {reason}");
 
         // Clear cached health so it is re-fetched after a reconnect
@@ -542,6 +548,12 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     public void OnConnectedToServer(NetworkRunner runner) { }
     public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason)
     {
+        if (ShouldIgnoreDisconnectCallbacks())
+        {
+            Debug.Log($"[NETWORK] Disconnect during EndMatch flow (expected): {reason}");
+            return;
+        }
+
         Debug.LogWarning($"[NETWORK] Disconnected from server: {reason}");
 
         if (!autoReturnToLobbyListOnDisconnect)
@@ -565,6 +577,14 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         if (_isReturningToLobbyList)
             return;
 
+        // EndMatch has its own explicit timer-driven return flow.
+        // If that controller exists, never force a scene jump from disconnect callbacks.
+        if (FindAnyObjectByType<EndMatchReturnToLobbyButton>() != null)
+        {
+            Debug.LogWarning($"[NETWORK] Auto-return blocked by EndMatch timer flow after {source}: {reason}");
+            return;
+        }
+
         string currentScene = SceneManager.GetActiveScene().name;
         if (!ShouldAutoReturnFromScene(currentScene))
             return;
@@ -582,6 +602,18 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         {
             SceneManager.LoadScene(lobbyListSceneName);
         }
+    }
+
+    private static bool ShouldIgnoreDisconnectCallbacks()
+    {
+        string currentScene = SceneManager.GetActiveScene().name;
+        if (string.Equals(currentScene, "EndMatch", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (FindAnyObjectByType<EndMatchReturnToLobbyButton>() != null)
+            return true;
+
+        return false;
     }
 
     private bool ShouldAutoReturnFromScene(string sceneName)
@@ -602,8 +634,10 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         if (string.Equals(sceneName, gameSceneName, StringComparison.OrdinalIgnoreCase))
             return true;
 
+        // EndMatch has its own explicit return flow (countdown/UI).
+        // Never auto-return from disconnect here to avoid skipping results screen.
         if (string.Equals(sceneName, "EndMatch", StringComparison.OrdinalIgnoreCase))
-            return !stayInEndMatchAfterDisconnect;
+            return false;
 
         if (string.Equals(sceneName, lobbySceneName, StringComparison.OrdinalIgnoreCase))
             return true;

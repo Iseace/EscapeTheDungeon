@@ -23,9 +23,13 @@ public class PlayerSetup : NetworkBehaviour
 
     [Networked]
     public NetworkBool HasEscaped { get; set; }
+    public bool IsNetworkStateReady => hasSpawned && Object != null && Runner != null;
+    public bool HasEscapedSafe => IsNetworkStateReady && HasEscaped;
+
     public ParentConstraint wandConstraint;
     private bool escapeHandledLocally;
     private bool escapeCollisionDisabled;
+    private bool hasSpawned;
 
     [Networked, OnChangedRender(nameof(OnNicknameChanged))]
     public NetworkString<_32> Nickname { get; set; }
@@ -40,6 +44,7 @@ public class PlayerSetup : NetworkBehaviour
 
     public override void Spawned()
     {
+        hasSpawned = true;
         escapeHandledLocally = false;
         escapeCollisionDisabled = false;
 
@@ -71,6 +76,11 @@ public class PlayerSetup : NetworkBehaviour
                 nameplateText.transform.parent.gameObject.SetActive(isLobby);
             }
         }
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        hasSpawned = false;
     }
 
     public void SetNameplateVisible(bool visible)
@@ -126,14 +136,14 @@ public class PlayerSetup : NetworkBehaviour
     {
         if (Object == null || !Object.HasStateAuthority) return;
         if (IsBossPlayer()) return;
-        if (HasEscaped) return;
+        if (HasEscapedSafe) return;
         HasEscaped = true;
     }
 
     public bool IsBossPlayer()
     {
         var role = GetComponent<PlayerRole>();
-        if (role != null && role.IsBoss) return true;
+        if (role != null && role.IsBossSafe) return true;
 
         // Fallback for prefabs where role sync is late or missing.
         if (GetComponent<BossSpecial>() != null) return true;
@@ -160,7 +170,7 @@ public class PlayerSetup : NetworkBehaviour
 
         TryHandleEscapedState();
 
-        if (HasEscaped)
+        if (HasEscapedSafe)
         {
             SetAllCharacterModelsActive(false);
             return;
@@ -230,7 +240,7 @@ public class PlayerSetup : NetworkBehaviour
 
     private void TryHandleEscapedState()
     {
-        if (!HasEscaped) return;
+        if (!HasEscapedSafe) return;
 
         if (!escapeCollisionDisabled)
         {

@@ -10,7 +10,6 @@ public class DungeonCreatorEditor : Editor
     private SerializedProperty wallPrefab;
     private SerializedProperty wallHeight;
 
-    private bool showPerformanceInfo = false;
     private GUIStyle headerStyle;
     private GUIStyle infoBoxStyle;
 

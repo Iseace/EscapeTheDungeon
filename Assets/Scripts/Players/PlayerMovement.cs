@@ -57,7 +57,7 @@ public class PlayerMovement : NetworkBehaviour
         }
 
         var playerSetup = GetComponent<PlayerSetup>();
-        if (playerSetup != null && playerSetup.HasEscaped)
+        if (playerSetup != null && playerSetup.HasEscapedSafe)
         {
             _velocity = Vector3.zero;
             StopAnimations();
@@ -73,7 +73,7 @@ public class PlayerMovement : NetworkBehaviour
         }
 
         var role = GetComponent<PlayerRole>();
-        if (role != null && role.IsBoss && DungeonNetworkRunner.Instance != null && DungeonNetworkRunner.Instance.IsBossFrozen)
+        if (role != null && role.IsBossSafe && DungeonNetworkRunner.Instance != null && DungeonNetworkRunner.Instance.IsBossFrozen)
         {
             _isGrounded = _controller.isGrounded;
 

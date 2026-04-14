@@ -47,12 +47,17 @@ public class DungeonNetworkRunner : NetworkBehaviour
     private bool isEndingMatch;
     private bool pickupItemsSpawned;
     private int lastPickupGeneration = -1;
+    private bool hasSpawned;
+
+    public bool IsNetworkStateReady => hasSpawned && Object != null && Runner != null;
+    public bool IsMatchInProgressSafe => IsNetworkStateReady && MatchInProgress;
+    public bool IsMatchEndedSafe => IsNetworkStateReady && MatchEnded;
 
     public float RemainingMatchTimeSeconds
     {
         get
         {
-            if (Runner == null || !MatchInProgress || !enableMatchTimeLimit) return 0f;
+            if (!IsNetworkStateReady || !IsMatchInProgressSafe || !enableMatchTimeLimit) return 0f;
             float? remaining = MatchTimer.RemainingTime(Runner);
             return Mathf.Max(0f, remaining ?? 0f);
         }
@@ -64,7 +69,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
     {
         get
         {
-            if (Runner == null || !MatchInProgress || !IsBossFrozen) return 0f;
+            if (!IsNetworkStateReady || !IsMatchInProgressSafe || !IsBossFrozen) return 0f;
             float? remaining = BossFreezeTimer.RemainingTime(Runner);
             return Mathf.Max(0f, remaining ?? 0f);
         }
@@ -74,7 +79,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
     {
         get
         {
-            if (Runner == null || !MatchInProgress) return false;
+            if (!IsNetworkStateReady || !IsMatchInProgressSafe) return false;
             return !BossFreezeTimer.ExpiredOrNotRunning(Runner);
         }
     }
@@ -82,6 +87,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
     public override void Spawned()
     {
         Instance = this;
+        hasSpawned = true;
 
         Debug.Log($"=== DungeonNetworkRunner.Spawned() ===");
         Debug.Log($"HasStateAuthority: {Object.HasStateAuthority}");
@@ -128,6 +134,11 @@ public class DungeonNetworkRunner : NetworkBehaviour
 
             Debug.Log($"[MASTER CLIENT] Generated seed: {SharedSeed}");
         }
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        hasSpawned = false;
     }
 
     private static int GenerateSessionSeed()
@@ -231,7 +242,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
 
             survivorsTotal++;
 
-            if (setup.HasEscaped)
+            if (setup.HasEscapedSafe)
             {
                 survivorsEscaped++;
                 continue;
@@ -627,6 +638,8 @@ public class DungeonNetworkRunner : NetworkBehaviour
 
     private void OnDestroy()
     {
+        hasSpawned = false;
+
         if (Instance == this)
         {
             Instance = null;

@@ -320,7 +320,7 @@ public class SpectatorSystem : MonoBehaviour
         foreach (var p in allPlayers)
         {
             if (p.gameObject == this.gameObject) continue;
-            if (p.HasEscaped) continue;
+            if (p.HasEscapedSafe) continue;
 
             PlayerHealth health = p.GetComponent<PlayerHealth>();
             if (health == null || !health.IsDeadSafe)

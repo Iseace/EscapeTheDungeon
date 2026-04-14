@@ -139,7 +139,7 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
             hasSetButtonVisibility = true;
         }
 
-        if (localPlayerRole.IsBoss && !hasAppliedBossUI)
+        if (localPlayerRole.IsBossSafe && !hasAppliedBossUI)
         {
             ApplyBossUI();
             hasAppliedBossUI = true;
@@ -242,7 +242,7 @@ public class MobileControlsBridge : MonoBehaviour, IPointerDownHandler, IDragHan
 
     private void UpdateButtonVisibility()
     {
-        bool isBoss = localPlayerRole.IsBoss;
+        bool isBoss = localPlayerRole.IsBossSafe;
         if (jumpParent != null) jumpParent.SetActive(!isBoss);
         if (pickupParent != null) pickupParent.SetActive(!isBoss);
         if (specialParent != null) specialParent.SetActive(isBoss);

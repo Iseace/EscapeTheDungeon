@@ -133,12 +133,12 @@ public class MissionObjectivePylon : MonoBehaviour, IInteractable
         {
             var player = hits[i].GetComponentInParent<PlayerSetup>();
             if (player == null) continue;
-            if (player.HasEscaped) continue;
+            if (player.HasEscapedSafe) continue;
 
             if (!allowBossToActivate)
             {
                 var role = player.GetComponent<PlayerRole>();
-                if (role != null && role.IsBoss)
+                if (role != null && role.IsBossSafe)
                 {
                     continue;
                 }

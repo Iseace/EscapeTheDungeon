@@ -62,7 +62,7 @@ public static class MatchEndSnapshotBuilder
         result.Nickname = setup.Nickname.ToString();
         result.IsBoss = setup.IsBossPlayer();
         result.SelectedCharacterIndex = setup.SelectedCharacterIndex;
-        result.HasEscaped = setup.HasEscaped;
+        result.HasEscaped = setup.HasEscapedSafe;
 
         bool isDead = false;
         if (playerObject.TryGetComponent<PlayerHealth>(out PlayerHealth health))

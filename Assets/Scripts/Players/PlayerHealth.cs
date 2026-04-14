@@ -290,7 +290,7 @@ public class PlayerHealth : NetworkBehaviour
     if (!Object.HasStateAuthority || IsDead) return;
 
     var setup = GetComponent<PlayerSetup>();
-    if (setup != null && setup.HasEscaped)
+    if (setup != null && setup.HasEscapedSafe)
       return;
 
     CurrentHealth = Mathf.Max(0, CurrentHealth - damage);

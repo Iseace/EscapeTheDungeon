@@ -62,7 +62,7 @@ public class MatchTimerHUD : MonoBehaviour
             }
         }
 
-        if (!dungeonRunner.MatchInProgress || dungeonRunner.MatchEnded)
+        if (!dungeonRunner.IsMatchInProgressSafe || dungeonRunner.IsMatchEndedSafe)
         {
             if (verboseBuildLogs)
             {

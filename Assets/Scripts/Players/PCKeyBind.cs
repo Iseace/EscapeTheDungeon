@@ -72,7 +72,7 @@ public class PCKeybindUI : MonoBehaviour
 
     private void UpdateUIVisibility()
     {
-        bool isBoss = localPlayerRole.IsBoss;
+        bool isBoss = localPlayerRole.IsBossSafe;
 
         if (survivorKeys != null) survivorKeys.SetActive(!isBoss);
         if (bossKeys != null) bossKeys.SetActive(isBoss);

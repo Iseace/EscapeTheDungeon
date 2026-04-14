@@ -45,7 +45,7 @@ public class SpellLogic : NetworkBehaviour
         if (health != null)
         {
             var setup = health.GetComponent<PlayerSetup>();
-            if (setup != null && setup.HasEscaped)
+            if (setup != null && setup.HasEscapedSafe)
             {
                 Runner.Despawn(Object);
                 return;
