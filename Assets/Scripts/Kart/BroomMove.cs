@@ -80,9 +80,16 @@ public class BroomMove : NetworkBehaviour
         // brooms fall to the ground naturally during the ready phase.
         if (!RaceCountdown.IsRaceStarted)
         {
-            rb.linearVelocity  = new Vector3(0f, rb.linearVelocity.y, 0f); // keep Y (gravity), zero X/Z
+            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f); // keep Y (gravity), zero X/Z
             rb.angularVelocity = Vector3.zero;
-            rb.linearDamping   = 0f; // no drag so gravity works freely
+            rb.linearDamping = 0f; // no drag so gravity works freely
+            return;
+        }
+
+        if (OptionsDeploy.IsAnyOptionsMenuOpen)
+        {
+            rb.linearVelocity = Vector3.up * rb.linearVelocity.y;
+            rb.linearDamping = movingDrag;
             return;
         }
 
