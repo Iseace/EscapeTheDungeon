@@ -3982,6 +3982,7 @@ MonoBehaviour:
   raceSpawnRowDepth: 3
   menuSceneName: LobbyList
   menuSceneIndex: 0
+  fallbackPrefab: {fileID: 0}
 --- !u!4 &1626271135
 Transform:
   m_ObjectHideFlags: 0
