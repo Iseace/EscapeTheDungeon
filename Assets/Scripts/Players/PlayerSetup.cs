@@ -60,14 +60,15 @@ public class PlayerSetup : NetworkBehaviour
             AttachCamera();
             HandleCursorState();
 
-            int idGuardado = PlayerPrefs.GetInt("SelectedCharacterID", 0);
-            Rpc_RequestCharacterSelection(idGuardado);
-
-            // Set the nickname for the player
+            // Set the nickname for the player locally as a backup, 
+            // the server will also set it from the connection token
             string nick = PlayerPrefs.GetString("Nickname", "").Trim();
             if (string.IsNullOrEmpty(nick))
                 nick = "Player" + Runner.LocalPlayer.PlayerId;
             Rpc_SetNickname(nick);
+
+            int idGuardado = PlayerPrefs.GetInt("SelectedCharacterID", 0);
+            Rpc_RequestCharacterSelection(idGuardado);
 
             // Show own nickname in LobbyRoom, hide in Game scene
             if (nameplateText != null)
@@ -191,22 +192,25 @@ public class PlayerSetup : NetworkBehaviour
         Animator anim = graphicsContainer.GetComponent<Animator>();
         int currentID = SelectedCharacterIndex;
 
-        // Special case: If this is a DogPrefab, it only has ONE model (the dog)
-        // We should ensure it's visible even though currentID might be 99
-        bool isDogPrefab = (characterModels != null && characterModels.Length == 1 && gameObject.name.Contains("Dog"));
+        // Special case: If this is the DogPrefab object, it might have one model (the dog)
+        // or it might just be the base player with index 99.
+        // If it's the DogPrefab, we need to make sure the model is active.
+        bool isDogPrefabObject = gameObject.name.Contains("Dog");
+        bool isDogSelection = (currentID == 99) || isDogPrefabObject;
 
         for (int i = 0; i < characterModels.Length; i++)
         {
             if (characterModels[i] == null) continue;
 
-            bool isSelected = (i == currentID) || isDogPrefab;
+            // If it's a DogPrefab, and it only has 1 model, that model MUST be the dog.
+            bool isSelected = (i == currentID) || (isDogPrefabObject && characterModels.Length == 1);
 
             if (characterModels[i].activeSelf != isSelected)
             {
                 characterModels[i].SetActive(isSelected);
             }
 
-            int avatarIndex = isDogPrefab ? 0 : i;
+            int avatarIndex = (isDogPrefabObject && characterModels.Length == 1) ? 0 : i;
 
             if (isSelected && anim != null && characterAvatars != null && characterAvatars.Length > avatarIndex)
             {
@@ -219,8 +223,17 @@ public class PlayerSetup : NetworkBehaviour
         }
 
         // Shared Wand Logic
-        if (wandConstraint != null && !isDogPrefab)
+        if (wandConstraint != null)
         {
+            // Don't enable wand for Dog Selection
+            if (isDogSelection)
+            {
+                if (wandConstraint.enabled) wandConstraint.enabled = false;
+                return;
+            }
+
+            if (!wandConstraint.enabled) wandConstraint.enabled = true;
+
             for (int s = 0; s < wandConstraint.sourceCount; s++)
             {
                 ConstraintSource source = wandConstraint.GetSource(s);

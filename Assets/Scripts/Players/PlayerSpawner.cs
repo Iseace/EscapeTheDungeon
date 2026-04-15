@@ -49,6 +49,10 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
     private bool callbacksRegistered = false;
     private NetworkRunner registeredRunner;
 
+    // Cache to store character selections arriving via connection tokens
+    private Dictionary<PlayerRef, int> playerCharacterSelections = new Dictionary<PlayerRef, int>();
+    private Dictionary<PlayerRef, string> playerNicknames = new Dictionary<PlayerRef, string>();
+
     private void Start()
     {
         TryRegisterRunnerCallbacks();
@@ -95,14 +99,14 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
         if (IsRaceSession(runner))
             return broomPrefab;
 
-        // In normal sessions, check if user has selected the dog (ID 99)
-        int selectedID = PlayerPrefs.GetInt("SelectedCharacterID", 0);
-        NetworkObject selectedPrefab = (selectedID == 99 && DogPrefab != null) ? DogPrefab : PlayerPrefab;
+        // Check if the player has selected the dog (ID 99)
+        if (playerCharacterSelections.TryGetValue(player, out int selectedID))
+        {
+            if (selectedID == 99 && DogPrefab != null)
+                return DogPrefab;
+        }
 
-        // Fallback if prefabs are unassigned in inspector
-        if (selectedPrefab == null) selectedPrefab = fallbackPrefab;
-
-        return selectedPrefab;
+        return PlayerPrefab;
     }
 
     public void PlayerJoinedLogic(NetworkRunner runner, PlayerRef player)
@@ -203,6 +207,16 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
         NetworkObject prefabToSpawn = GetPrefabForSession(runner, player);
         NetworkObject playerObj = runner.Spawn(prefabToSpawn, spawnPos, spawnRot, player);
         runner.SetPlayerObject(player, playerObj);
+
+        // SYNC SELECTION TO THE PLAYER OBJECT
+        if (playerObj.TryGetComponent<PlayerSetup>(out var setup))
+        {
+            if (playerCharacterSelections.TryGetValue(player, out int selectedID))
+                setup.SelectedCharacterIndex = selectedID;
+
+            if (playerNicknames.TryGetValue(player, out string nick))
+                setup.Nickname = nick;
+        }
 
         Debug.Log($"[SPAWNER] Player {player.PlayerId} spawned as {prefabToSpawn.name}");
     }
@@ -516,6 +530,27 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
+        // Fusion 2: Retrieve the token provided by this specific player during connection
+        // This is necessary because OnConnectRequest doesn't give us the PlayerRef yet.
+        try
+        {
+            byte[] token = runner.GetPlayerConnectionToken(player);
+            if (token != null && token.Length >= 4)
+            {
+                int characterID = BitConverter.ToInt32(token, 0);
+                string nickname = System.Text.Encoding.UTF8.GetString(token, 4, token.Length - 4);
+
+                playerCharacterSelections[player] = characterID;
+                playerNicknames[player] = nickname;
+
+                Debug.Log($"[SPAWNER] Player {player.PlayerId} joined with selection: ID={characterID}, Nick={nickname}");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[SPAWNER] Could not retrieve connection token for player {player.PlayerId}: {e.Message}");
+        }
+
         PlayerJoinedLogic(runner, player);
     }
 
@@ -529,6 +564,10 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
         }
 
         Debug.Log($"[SPAWNER] Player {player.PlayerId} disconnected");
+
+        // Clean up cached selections
+        playerCharacterSelections.Remove(player);
+        playerNicknames.Remove(player);
 
         // Check if boss disconnected
         if (bossSelected && player == bossPlayer)
@@ -596,23 +635,35 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
     }
 
     // Boilerplate Fusion callbacks
-    public void OnInput(NetworkRunner runner, NetworkInput input) { }
-    public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
-    public void OnShutdown(NetworkRunner runner, ShutdownReason reason)
+    void INetworkRunnerCallbacks.OnInput(NetworkRunner runner, NetworkInput input) { }
+    void INetworkRunnerCallbacks.OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
+    void INetworkRunnerCallbacks.OnShutdown(NetworkRunner runner, ShutdownReason reason)
     {
         Debug.Log($"[SPAWNER] Runner shutdown: {reason}");
     }
-    public void OnConnectedToServer(NetworkRunner runner) { }
-    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
-    public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
-    public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
-    public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
-    public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList) { }
-    public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
-    public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
-    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data) { }
-    public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
-    public void OnSceneLoadStart(NetworkRunner runner) { }
-    public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
-    public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
+    void INetworkRunnerCallbacks.OnConnectedToServer(NetworkRunner runner) { }
+    void INetworkRunnerCallbacks.OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
+    void INetworkRunnerCallbacks.OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token)
+    {
+        if (token != null && token.Length >= 4)
+        {
+            int selectedID = BitConverter.ToInt32(token, 0);
+            string nickname = "Player";
+            if (token.Length > 4)
+            {
+                nickname = System.Text.Encoding.UTF8.GetString(token, 4, token.Length - 4);
+            }
+
+        }
+    }
+    void INetworkRunnerCallbacks.OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
+    void INetworkRunnerCallbacks.OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
+    void INetworkRunnerCallbacks.OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList) { }
+    void INetworkRunnerCallbacks.OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
+    void INetworkRunnerCallbacks.OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
+    void INetworkRunnerCallbacks.OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data) { }
+    void INetworkRunnerCallbacks.OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
+    void INetworkRunnerCallbacks.OnSceneLoadStart(NetworkRunner runner) { }
+    void INetworkRunnerCallbacks.OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
+    void INetworkRunnerCallbacks.OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
 }
