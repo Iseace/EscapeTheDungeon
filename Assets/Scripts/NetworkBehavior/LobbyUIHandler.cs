@@ -15,7 +15,7 @@ public class LobbyUIHandler : NetworkBehaviour
 
     [Header("Settings")]
     [SerializeField] private string gameSceneName = "Game";
-    [SerializeField] private string raceSceneName = "Race"; // NEW: used when sessionType == "race"
+    [SerializeField] private string raceSceneName = "Race";
     [SerializeField] private float countdownDuration = 5f;
 
     [Networked] private TickTimer CountdownTimer { get; set; }
@@ -27,7 +27,13 @@ public class LobbyUIHandler : NetworkBehaviour
 
     public override void Spawned()
     {
-        if (countdownText != null) countdownText.text = "";
+        if (countdownText != null)
+        {
+            countdownText.text = "";
+            countdownText.outlineWidth = 0.2f;
+            countdownText.outlineColor = new Color32(0x2D, 0x2F, 0x39, 0xFF);
+        }
+
         if (readyBtn != null) readyBtn.onClick.AddListener(OnReadyClicked);
 
         // Reset local state when spawning in the lobby
@@ -118,7 +124,7 @@ public class LobbyUIHandler : NetworkBehaviour
 
         CountdownTimer = TickTimer.None;
 
-        // NEW: read the session type set by the host to decide which scene to load
+        // Read the session type set by the host to decide which scene to load
         string targetScene = gameSceneName; // default — normal game
 
         if (Runner.SessionInfo != null &&
