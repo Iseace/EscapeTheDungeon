@@ -27,9 +27,9 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private LobbyListManager LobbyListManager;
 
     // NEW: session type constants — LobbyUIHandler reads these to decide which scene to load
-    public const string SESSION_TYPE_KEY    = "sessionType";
+    public const string SESSION_TYPE_KEY = "sessionType";
     public const string SESSION_TYPE_NORMAL = "normal";
-    public const string SESSION_TYPE_RACE   = "race";
+    public const string SESSION_TYPE_RACE = "race";
 
     private NetworkRunner _runner;
 
@@ -177,13 +177,19 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
             { SESSION_TYPE_KEY, SESSION_TYPE_RACE }
         };
 
+        // Pack connection token with selected character and nickname
+        int selectedID = PlayerPrefs.GetInt("SelectedCharacterID", 0);
+        string nickname = PlayerPrefs.GetString("Nickname", "Player");
+        byte[] connectionToken = SerializeConnectionToken(selectedID, nickname);
+
         var result = await _runner.StartGame(new StartGameArgs
         {
-            GameMode          = GameMode.Host,
-            SessionName       = roomName,
-            Scene             = lobbySceneRef,
-            SceneManager      = gameObject.AddComponent<NetworkSceneManagerDefault>(),
-            PlayerCount       = maxPlayers,
+            GameMode = GameMode.Host,
+            SessionName = roomName,
+            Scene = lobbySceneRef,
+            SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>(),
+            PlayerCount = maxPlayers,
+            ConnectionToken = connectionToken,
             SessionProperties = props
         });
 
@@ -244,13 +250,19 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
             { SESSION_TYPE_KEY, SESSION_TYPE_NORMAL }
         };
 
+        // Pack connection token with selected character and nickname
+        int selectedID = PlayerPrefs.GetInt("SelectedCharacterID", 0);
+        string nickname = PlayerPrefs.GetString("Nickname", "Player");
+        byte[] connectionToken = SerializeConnectionToken(selectedID, nickname);
+
         var result = await _runner.StartGame(new StartGameArgs
         {
-            GameMode          = mode,
-            SessionName       = roomName,
-            Scene             = lobbySceneRef,
-            SceneManager      = gameObject.AddComponent<NetworkSceneManagerDefault>(),
-            PlayerCount       = maxPlayers,
+            GameMode = mode,
+            SessionName = roomName,
+            Scene = lobbySceneRef,
+            SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>(),
+            PlayerCount = maxPlayers,
+            ConnectionToken = connectionToken,
             // Only set props when hosting — clients inherit them from the session
             SessionProperties = (mode == GameMode.Host) ? props : null
         });
@@ -263,6 +275,16 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         {
             Debug.LogError($"Failed to connect: {result.ShutdownReason}");
         }
+    }
+
+    private byte[] SerializeConnectionToken(int characterID, string nickname)
+    {
+        // Simple serialization: [4 bytes ID] + [UTF8 nickname]
+        byte[] nickBytes = System.Text.Encoding.UTF8.GetBytes(nickname);
+        byte[] token = new byte[4 + nickBytes.Length];
+        System.BitConverter.GetBytes(characterID).CopyTo(token, 0);
+        nickBytes.CopyTo(token, 4);
+        return token;
     }
 
     // Method to start the actual game (call this when players are ready)
