@@ -6,6 +6,8 @@ using UnityEngine.Playables;
 using UnityEngine.SceneManagement;
 public class EndMatchReturnToLobbyButton : MonoBehaviour
 {
+    public static float IgnoreDisconnectCallbacksUntilRealtime { get; private set; }
+
     [Header("Target Scene")]
     [SerializeField] private string lobbyListSceneName = "LobbyList";
 
@@ -26,6 +28,7 @@ public class EndMatchReturnToLobbyButton : MonoBehaviour
 
     [Header("Flow")]
     [SerializeField] private float loadDelaySecondsAfterShutdown = 0.05f;
+    [SerializeField] private float expectedDisconnectWindowSeconds = 25f;
     [SerializeField] private bool debugLogs = true;
 
     private bool isLeaving;
@@ -145,6 +148,8 @@ public class EndMatchReturnToLobbyButton : MonoBehaviour
         isLeaving = true;
         WriteLeavingText();
 
+        MarkExpectedDisconnectWindow();
+
         yield return ShutdownAllRunners();
 
         if (loadDelaySecondsAfterShutdown > 0f)
@@ -163,6 +168,15 @@ public class EndMatchReturnToLobbyButton : MonoBehaviour
                 Debug.LogWarning($"[EndMatchReturnToLobbyButton] Scene index not found for '{lobbyListSceneName}'. Trying by name.");
             SceneManager.LoadScene(lobbyListSceneName);
         }
+    }
+
+    private void MarkExpectedDisconnectWindow()
+    {
+        float window = Mathf.Max(5f, expectedDisconnectWindowSeconds);
+        IgnoreDisconnectCallbacksUntilRealtime = Time.realtimeSinceStartup + window;
+
+        if (debugLogs)
+            Debug.Log($"[EndMatchReturnToLobbyButton] Expected disconnect window armed for {window:0.#}s.");
     }
 
     private void UpdateCountdownText(int remainingSeconds)

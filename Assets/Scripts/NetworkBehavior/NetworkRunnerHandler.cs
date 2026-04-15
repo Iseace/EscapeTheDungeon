@@ -8,6 +8,7 @@ using System;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
+[DefaultExecutionOrder(-10000)]
 public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 {
     [Header("UI References")]
@@ -41,6 +42,11 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     // Looked up lazily the first time it is needed — avoids a Find() call every frame.
     private PlayerHealth _localHealth;
 
+    private void Awake()
+    {
+        DisablePrototypeFusionBootstrap();
+    }
+
     private void Start()
     {
         hostBtn.onClick.AddListener(OnHostRoom);
@@ -59,6 +65,35 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         Cursor.visible = true;
 
         OnJoinLobby();
+    }
+
+    private void DisablePrototypeFusionBootstrap()
+    {
+        MonoBehaviour[] behaviours = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        for (int i = 0; i < behaviours.Length; i++)
+        {
+            MonoBehaviour behaviour = behaviours[i];
+            if (behaviour == null) continue;
+
+            string fullName = behaviour.GetType().FullName;
+            if (!string.Equals(fullName, "Fusion.FusionBootstrap", StringComparison.Ordinal) &&
+                !string.Equals(fullName, "Fusion.FusionBootstrapDebugGUI", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            GameObject targetObject = behaviour.gameObject;
+            if (targetObject != null)
+            {
+                targetObject.SetActive(false);
+                Debug.Log($"[NETWORK] Disabled prototype Fusion bootstrap object: '{targetObject.name}'.");
+            }
+            else
+            {
+                behaviour.enabled = false;
+            }
+        }
     }
 
     // Saves nickname to disk the moment the player finishes typing
@@ -606,6 +641,9 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 
     private static bool ShouldIgnoreDisconnectCallbacks()
     {
+        if (Time.realtimeSinceStartup <= EndMatchReturnToLobbyButton.IgnoreDisconnectCallbacksUntilRealtime)
+            return true;
+
         string currentScene = SceneManager.GetActiveScene().name;
         if (string.Equals(currentScene, "EndMatch", StringComparison.OrdinalIgnoreCase))
             return true;
