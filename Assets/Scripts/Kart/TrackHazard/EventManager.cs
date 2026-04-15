@@ -40,22 +40,34 @@ public class EventManager : NetworkBehaviour
     private Material defaultSkybox;
 
     private bool _weatherApplied = false;
+    private bool hasSpawned;
+    private WeatherType localWeather = WeatherType.Sunny;
+
+    public bool IsNetworkStateReady => hasSpawned && Object != null && Runner != null;
 
     public override void Spawned()
     {
+        hasSpawned = true;
         defaultSkybox = RenderSettings.skybox;
 
         if (HasStateAuthority)
         {
             currentWeather = GetRandomWeather();
         }
+
+        localWeather = ReadWeatherSafe();
         
         ApplyWeatherEffects();
     }
 
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        hasSpawned = false;
+    }
+
     public override void Render()
     {
-        if (!_weatherApplied && currentWeather != default)
+        if (!_weatherApplied && IsNetworkStateReady)
         {
             ApplyWeatherEffects();
         }
@@ -63,6 +75,7 @@ public class EventManager : NetworkBehaviour
 
     public void OnWeatherChanged()
     {
+        localWeather = ReadWeatherSafe();
         ApplyWeatherEffects();
     }
 
@@ -86,6 +99,7 @@ public class EventManager : NetworkBehaviour
     public void ApplyWeatherEffects()
     {
         _weatherApplied = true;
+        WeatherType weather = ReadWeatherSafe();
 
         BroomMove[] allKarts = FindObjectsByType<BroomMove>(FindObjectsSortMode.None);
 
@@ -94,14 +108,14 @@ public class EventManager : NetworkBehaviour
         {
             if (kart != null)
             {
-                kart.SetWeather(currentWeather, this);
+                kart.SetWeather(weather, this);
             }
         }
 
         // Apply visual effects
         ApplyVisualEffects();
 
-        WeatherChanged?.Invoke(currentWeather);
+        WeatherChanged?.Invoke(weather);
     }
 
     /// <summary>
@@ -114,7 +128,7 @@ public class EventManager : NetworkBehaviour
             return;
         }
 
-        kart.SetWeather(currentWeather, this);
+        kart.SetWeather(ReadWeatherSafe(), this);
     }
 
     /// <summary>
@@ -122,7 +136,7 @@ public class EventManager : NetworkBehaviour
     /// </summary>
     private void ApplyVisualEffects()
     {
-        switch (currentWeather)
+        switch (ReadWeatherSafe())
         {
             case WeatherType.Sunny:
                 // Always explicitly disable fog so it never bleeds from scene settings
@@ -187,7 +201,7 @@ public class EventManager : NetworkBehaviour
     /// </summary>
     public float GetGripMultiplier()
     {
-        return currentWeather == WeatherType.Chilly ? chillyGripMultiplier : 1f;
+        return ReadWeatherSafe() == WeatherType.Chilly ? chillyGripMultiplier : 1f;
     }
 
     /// <summary>
@@ -195,7 +209,7 @@ public class EventManager : NetworkBehaviour
     /// </summary>
     public float GetDragMultiplier()
     {
-        return currentWeather == WeatherType.Chilly ? chillyDragMultiplier : 1f;
+        return ReadWeatherSafe() == WeatherType.Chilly ? chillyDragMultiplier : 1f;
     }
 
     /// <summary>
@@ -203,7 +217,7 @@ public class EventManager : NetworkBehaviour
     /// </summary>
     public float GetSteerMultiplier()
     {
-        return currentWeather == WeatherType.Chilly ? chillySteerMultiplier : 1f;
+        return ReadWeatherSafe() == WeatherType.Chilly ? chillySteerMultiplier : 1f;
     }
 
     /// <summary>
@@ -211,10 +225,14 @@ public class EventManager : NetworkBehaviour
     /// </summary>
     public void SetWeather(WeatherType newWeather)
     {
+        localWeather = newWeather;
+
         if (Object != null && HasStateAuthority)
         {
             currentWeather = newWeather;
         }
+
+        ApplyWeatherEffects();
     }
 
     /// <summary>
@@ -222,6 +240,17 @@ public class EventManager : NetworkBehaviour
     /// </summary>
     public WeatherType GetCurrentWeather()
     {
-        return currentWeather;
+        return ReadWeatherSafe();
+    }
+
+    private WeatherType ReadWeatherSafe()
+    {
+        if (IsNetworkStateReady)
+        {
+            localWeather = currentWeather;
+            return currentWeather;
+        }
+
+        return localWeather;
     }
 }
