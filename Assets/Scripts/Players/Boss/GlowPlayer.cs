@@ -79,8 +79,8 @@ public class GlowPlayer : NetworkBehaviour
 
         foreach (var player in allPlayers)
         {
-            Debug.Log($"[GlowPlayer]   -> {player.gameObject.name} | IsBoss={player.IsBoss}");
-            if (player.IsBoss) continue;
+            Debug.Log($"[GlowPlayer]   -> {player.gameObject.name} | IsBoss={player.IsBossSafe}");
+            if (player.IsBossSafe) continue;
 
             GlowIndicator indicator = player.GetComponentInChildren<GlowIndicator>(true);
             if (indicator != null)

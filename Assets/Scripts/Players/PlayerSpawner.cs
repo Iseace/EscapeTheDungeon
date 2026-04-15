@@ -352,7 +352,7 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
         }
 
         dungeonRunner.StartMatchFlow();
-        if (dungeonRunner.MatchInProgress)
+        if (dungeonRunner.IsMatchInProgressSafe)
         {
             matchFlowStarted = true;
         }
@@ -556,6 +556,13 @@ public class PlayerSpawner : SimulationBehaviour, INetworkRunnerCallbacks
 
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
     {
+        string currentScene = SceneManager.GetActiveScene().name;
+        if (string.Equals(currentScene, "EndMatch", StringComparison.OrdinalIgnoreCase))
+        {
+            Debug.Log($"[SPAWNER] Ignorando OnPlayerLeft en EndMatch para {player.PlayerId}.");
+            return;
+        }
+
         Debug.Log($"[SPAWNER] Player {player.PlayerId} disconnected");
 
         // Clean up cached selections

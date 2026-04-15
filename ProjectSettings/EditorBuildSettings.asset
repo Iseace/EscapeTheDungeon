@@ -26,6 +26,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/RacePodium.unity
     guid: f6fc1ce14cdd59e40bf685a0eccc26da
+  - enabled: 1
+    path: Assets/Scenes/EndMatch.unity
+    guid: 967b9008fdffcaf4bacc3c42809af34a
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

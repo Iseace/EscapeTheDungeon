@@ -102,7 +102,7 @@ public class BossHitbox : NetworkBehaviour
             if (Object.HasStateAuthority)
             {
                 var setup = health.GetComponent<PlayerSetup>();
-                if (setup != null && setup.HasEscaped)
+                if (setup != null && setup.HasEscapedSafe)
                 {
                     _myCollider.enabled = false;
                     return;

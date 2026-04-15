@@ -8,6 +8,7 @@ using System;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
+[DefaultExecutionOrder(-10000)]
 public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 {
     [Header("UI References")]
@@ -21,7 +22,10 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private string lobbySceneName = "LobbyRoom";
     [SerializeField] private string gameSceneName = "Game";
     [SerializeField] private string raceSceneName = "Race";
+    [SerializeField] private string lobbyListSceneName = "LobbyList";
     [SerializeField] private int maxPlayers = 5;
+    [SerializeField] private bool autoReturnToLobbyListOnDisconnect = true;
+    [SerializeField] private bool stayInEndMatchAfterDisconnect = true;
 
     [Header("Session List")]
     [SerializeField] private LobbyListManager LobbyListManager;
@@ -32,10 +36,16 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     public const string SESSION_TYPE_RACE = "race";
 
     private NetworkRunner _runner;
+    private bool _isReturningToLobbyList;
 
     // Cached reference to the local player's health so OnInput can check IsDead.
     // Looked up lazily the first time it is needed — avoids a Find() call every frame.
     private PlayerHealth _localHealth;
+
+    private void Awake()
+    {
+        DisablePrototypeFusionBootstrap();
+    }
 
     private void Start()
     {
@@ -55,6 +65,35 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         Cursor.visible = true;
 
         OnJoinLobby();
+    }
+
+    private void DisablePrototypeFusionBootstrap()
+    {
+        MonoBehaviour[] behaviours = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        for (int i = 0; i < behaviours.Length; i++)
+        {
+            MonoBehaviour behaviour = behaviours[i];
+            if (behaviour == null) continue;
+
+            string fullName = behaviour.GetType().FullName;
+            if (!string.Equals(fullName, "Fusion.FusionBootstrap", StringComparison.Ordinal) &&
+                !string.Equals(fullName, "Fusion.FusionBootstrapDebugGUI", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            GameObject targetObject = behaviour.gameObject;
+            if (targetObject != null)
+            {
+                targetObject.SetActive(false);
+                Debug.Log($"[NETWORK] Disabled prototype Fusion bootstrap object: '{targetObject.name}'.");
+            }
+            else
+            {
+                behaviour.enabled = false;
+            }
+        }
     }
 
     // Saves nickname to disk the moment the player finishes typing
@@ -368,10 +407,21 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnShutdown(NetworkRunner runner, ShutdownReason reason)
     {
+        if (ShouldIgnoreDisconnectCallbacks())
+        {
+            Debug.Log($"[NETWORK] Shutdown during EndMatch flow (expected): {reason}");
+            return;
+        }
+
         Debug.Log($"Runner shutdown: {reason}");
 
         // Clear cached health so it is re-fetched after a reconnect
         _localHealth = null;
+
+        if (!autoReturnToLobbyListOnDisconnect)
+            return;
+
+        TryReturnToLobbyList("shutdown", reason.ToString());
     }
 
     public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
@@ -553,7 +603,21 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
     public void OnConnectedToServer(NetworkRunner runner) { }
-    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
+    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason)
+    {
+        if (ShouldIgnoreDisconnectCallbacks())
+        {
+            Debug.Log($"[NETWORK] Disconnect during EndMatch flow (expected): {reason}");
+            return;
+        }
+
+        Debug.LogWarning($"[NETWORK] Disconnected from server: {reason}");
+
+        if (!autoReturnToLobbyListOnDisconnect)
+            return;
+
+        TryReturnToLobbyList("disconnect", reason.ToString());
+    }
     public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
     public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
     public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
@@ -564,6 +628,110 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
     public void OnSceneLoadStart(NetworkRunner runner) { }
     public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
+
+    private void TryReturnToLobbyList(string source, string reason)
+    {
+        if (_isReturningToLobbyList)
+            return;
+
+        // EndMatch has its own explicit timer-driven return flow.
+        // If that controller exists, never force a scene jump from disconnect callbacks.
+        if (FindAnyObjectByType<EndMatchReturnToLobbyButton>() != null)
+        {
+            Debug.LogWarning($"[NETWORK] Auto-return blocked by EndMatch timer flow after {source}: {reason}");
+            return;
+        }
+
+        string currentScene = SceneManager.GetActiveScene().name;
+        if (!ShouldAutoReturnFromScene(currentScene))
+            return;
+
+        _isReturningToLobbyList = true;
+
+        int sceneIndex = ResolveSceneIndex(lobbyListSceneName);
+        Debug.LogWarning($"[NETWORK] Auto returning to {lobbyListSceneName} from scene '{currentScene}' after {source}: {reason}");
+
+        if (sceneIndex >= 0)
+        {
+            SceneManager.LoadScene(sceneIndex);
+        }
+        else
+        {
+            SceneManager.LoadScene(lobbyListSceneName);
+        }
+    }
+
+    private static bool ShouldIgnoreDisconnectCallbacks()
+    {
+        if (Time.realtimeSinceStartup <= EndMatchReturnToLobbyButton.IgnoreDisconnectCallbacksUntilRealtime)
+            return true;
+
+        string currentScene = SceneManager.GetActiveScene().name;
+        if (string.Equals(currentScene, "EndMatch", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (FindAnyObjectByType<EndMatchReturnToLobbyButton>() != null)
+            return true;
+
+        return false;
+    }
+
+    private bool ShouldAutoReturnFromScene(string sceneName)
+    {
+        if (string.IsNullOrWhiteSpace(sceneName))
+            return false;
+
+        if (string.Equals(sceneName, lobbyListSceneName, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (string.Equals(sceneName, "MainMenu", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (string.Equals(sceneName, "CharacterSelect", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Return from gameplay flow scenes.
+        if (string.Equals(sceneName, gameSceneName, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        // EndMatch has its own explicit return flow (countdown/UI).
+        // Never auto-return from disconnect here to avoid skipping results screen.
+        if (string.Equals(sceneName, "EndMatch", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (string.Equals(sceneName, lobbySceneName, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
+    }
+
+    private static int ResolveSceneIndex(string sceneName)
+    {
+        if (string.IsNullOrWhiteSpace(sceneName))
+            return -1;
+
+        int index = SceneUtility.GetBuildIndexByScenePath("Assets/Scenes/" + sceneName + ".unity");
+        if (index >= 0)
+            return index;
+
+        index = SceneUtility.GetBuildIndexByScenePath("Scenes/" + sceneName);
+        if (index >= 0)
+            return index;
+
+        int sceneCount = SceneManager.sceneCountInBuildSettings;
+        for (int i = 0; i < sceneCount; i++)
+        {
+            string path = SceneUtility.GetScenePathByBuildIndex(i);
+            if (string.IsNullOrWhiteSpace(path))
+                continue;
+
+            string fileName = System.IO.Path.GetFileNameWithoutExtension(path);
+            if (string.Equals(fileName, sceneName, StringComparison.OrdinalIgnoreCase))
+                return i;
+        }
+
+        return -1;
+    }
 }
 
 public struct PlayerInputData : INetworkInput

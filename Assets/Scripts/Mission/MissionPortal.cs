@@ -80,7 +80,7 @@ public class MissionPortal : MonoBehaviour
         if (player == null) return;
         if (player.Object == null) return;
         if (player.IsBossPlayer()) return;
-        if (player.HasEscaped) return;
+        if (player.HasEscapedSafe) return;
 
         if (debugLogs)
         {

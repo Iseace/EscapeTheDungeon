@@ -19,7 +19,7 @@ public class PlayerInventory : NetworkBehaviour
     public override void Render()
     {
         var setup = GetComponent<PlayerSetup>();
-        if (setup != null && setup.HasEscaped)
+        if (setup != null && setup.HasEscapedSafe)
         {
             SetAllVisualWandsActive(false);
             _lastWeaponID = CurrentWeaponID;

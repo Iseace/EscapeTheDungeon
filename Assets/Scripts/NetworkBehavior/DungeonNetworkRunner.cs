@@ -3,6 +3,8 @@ using Fusion;
 using UnityEngine.SceneManagement;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.IO;
 
 public class DungeonNetworkRunner : NetworkBehaviour
 {
@@ -22,9 +24,16 @@ public class DungeonNetworkRunner : NetworkBehaviour
     [SerializeField] private bool enableMatchTimeLimit = true;
     [Tooltip("Fallback: usado si no se encuentra DungeonCreator o no tiene config")]
     [SerializeField] private float matchDurationSeconds = 600f;
+    [Tooltip("Escena unica de finales (debe existir en Build Settings)")]
+    [SerializeField] private string endMatchSceneName = "EndMatch";
+    [Tooltip("Fallback por indice si no se resuelve endMatchSceneName")]
+    [SerializeField] private int endMatchSceneIndex = -1;
+    [Tooltip("Tiempo para que el snapshot se replique antes de cargar la escena final")]
+    [SerializeField] private float endMatchLoadDelaySeconds = 0.5f;
 
     [Networked] public NetworkBool MatchInProgress { get; set; }
     [Networked] public NetworkBool MatchEnded { get; set; }
+    [Networked] private int EndMatchReasonCode { get; set; }
     [Networked] private TickTimer BossFreezeTimer { get; set; }
     [Networked] private TickTimer MatchTimer { get; set; }
 
@@ -38,12 +47,17 @@ public class DungeonNetworkRunner : NetworkBehaviour
     private bool isEndingMatch;
     private bool pickupItemsSpawned;
     private int lastPickupGeneration = -1;
+    private bool hasSpawned;
+
+    public bool IsNetworkStateReady => hasSpawned && Object != null && Runner != null;
+    public bool IsMatchInProgressSafe => IsNetworkStateReady && MatchInProgress;
+    public bool IsMatchEndedSafe => IsNetworkStateReady && MatchEnded;
 
     public float RemainingMatchTimeSeconds
     {
         get
         {
-            if (Runner == null || !MatchInProgress || !enableMatchTimeLimit) return 0f;
+            if (!IsNetworkStateReady || !IsMatchInProgressSafe || !enableMatchTimeLimit) return 0f;
             float? remaining = MatchTimer.RemainingTime(Runner);
             return Mathf.Max(0f, remaining ?? 0f);
         }
@@ -55,7 +69,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
     {
         get
         {
-            if (Runner == null || !MatchInProgress || !IsBossFrozen) return 0f;
+            if (!IsNetworkStateReady || !IsMatchInProgressSafe || !IsBossFrozen) return 0f;
             float? remaining = BossFreezeTimer.RemainingTime(Runner);
             return Mathf.Max(0f, remaining ?? 0f);
         }
@@ -65,7 +79,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
     {
         get
         {
-            if (Runner == null || !MatchInProgress) return false;
+            if (!IsNetworkStateReady || !IsMatchInProgressSafe) return false;
             return !BossFreezeTimer.ExpiredOrNotRunning(Runner);
         }
     }
@@ -73,6 +87,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
     public override void Spawned()
     {
         Instance = this;
+        hasSpawned = true;
 
         Debug.Log($"=== DungeonNetworkRunner.Spawned() ===");
         Debug.Log($"HasStateAuthority: {Object.HasStateAuthority}");
@@ -85,6 +100,7 @@ public class DungeonNetworkRunner : NetworkBehaviour
         {
             MatchInProgress = false;
             MatchEnded = false;
+            EndMatchReasonCode = -1;
             BossFreezeTimer = TickTimer.None;
             MatchTimer = TickTimer.None;
         }
@@ -118,6 +134,11 @@ public class DungeonNetworkRunner : NetworkBehaviour
 
             Debug.Log($"[MASTER CLIENT] Generated seed: {SharedSeed}");
         }
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        hasSpawned = false;
     }
 
     private static int GenerateSessionSeed()
@@ -170,6 +191,8 @@ public class DungeonNetworkRunner : NetworkBehaviour
             localMatchEndedLogged = true;
             Debug.Log("[MATCH] Tiempo de partida finalizado.");
         }
+
+        TryEnsureLocalEndMatchSnapshot();
     }
 
     public override void FixedUpdateNetwork()
@@ -182,6 +205,8 @@ public class DungeonNetworkRunner : NetworkBehaviour
 
         if (!Object || !Object.HasStateAuthority) return;
         if (!MatchInProgress || MatchEnded) return;
+
+        if (TryEndMatchBySurvivorOutcome()) return;
 
         if (!enableMatchTimeLimit) return;
 
@@ -198,6 +223,60 @@ public class DungeonNetworkRunner : NetworkBehaviour
         {
             EndMatchByTimeLimit();
         }
+    }
+
+    private bool TryEndMatchBySurvivorOutcome()
+    {
+        int survivorsTotal = 0;
+        int survivorsEscaped = 0;
+        int survivorsDefeated = 0;
+
+        foreach (PlayerRef player in Runner.ActivePlayers)
+        {
+            if (!Runner.TryGetPlayerObject(player, out NetworkObject playerObject) || playerObject == null)
+                continue;
+
+            PlayerSetup setup = playerObject.GetComponent<PlayerSetup>();
+            if (setup == null) continue;
+            if (setup.IsBossPlayer()) continue;
+
+            survivorsTotal++;
+
+            if (setup.HasEscapedSafe)
+            {
+                survivorsEscaped++;
+                continue;
+            }
+
+            if (playerObject.TryGetComponent<PlayerHealth>(out PlayerHealth health) && health.IsDeadSafe)
+            {
+                survivorsDefeated++;
+            }
+        }
+
+        if (survivorsTotal <= 0) return false;
+
+        if (survivorsEscaped >= survivorsTotal)
+        {
+            BeginEndMatch(MatchEndReason.AllSurvivorsEscaped);
+            return true;
+        }
+
+        if (survivorsDefeated >= survivorsTotal)
+        {
+            BeginEndMatch(MatchEndReason.AllSurvivorsDefeated);
+            return true;
+        }
+
+        // Mixed resolution case: e.g. one escaped and one died.
+        // If nobody remains actively playing as survivor, the match should end.
+        if (survivorsEscaped + survivorsDefeated >= survivorsTotal)
+        {
+            BeginEndMatch(MatchEndReason.NoActiveSurvivors);
+            return true;
+        }
+
+        return false;
     }
 
     public void StartMatchFlow()
@@ -559,6 +638,8 @@ public class DungeonNetworkRunner : NetworkBehaviour
 
     private void OnDestroy()
     {
+        hasSpawned = false;
+
         if (Instance == this)
         {
             Instance = null;
@@ -571,24 +652,121 @@ public class DungeonNetworkRunner : NetworkBehaviour
         missionSyncHooked = false;
     }
 
-    private async void EndMatchByTimeLimit()
+    private void EndMatchByTimeLimit()
+    {
+        BeginEndMatch(MatchEndReason.TimeLimitExpired);
+    }
+
+    public void EndMatchManualDebug()
+    {
+        if (!Object || !Object.HasStateAuthority) return;
+        BeginEndMatch(MatchEndReason.Manual);
+    }
+
+    private async void BeginEndMatch(MatchEndReason reason)
     {
         if (isEndingMatch) return;
         isEndingMatch = true;
 
+        EndMatchReasonCode = (int)reason;
         MatchEnded = true;
         MatchInProgress = false;
         BossFreezeTimer = TickTimer.None;
+        MatchTimer = TickTimer.None;
 
-        Debug.Log("[MATCH] El tiempo global se agoto. Cerrando sesion del host para terminar la partida.");
+        MatchEndSnapshot localSnapshot = MatchEndSnapshotBuilder.CaptureFromRunner(Runner, reason);
+        MatchEndRuntimeContext.SetSnapshot(localSnapshot);
+        Debug.Log($"[MATCH] Snapshot local capturado: players={localSnapshot.Players.Count}, reason={reason}");
+
+        Rpc_PrepareLocalEndMatchSnapshot(reason);
+
+        int sceneIndex = ResolveEndMatchSceneIndex();
+        if (sceneIndex < 0)
+        {
+            Debug.LogError($"[MATCH] No se encontro escena final. Configura endMatchSceneName='{endMatchSceneName}' o endMatchSceneIndex.");
+            isEndingMatch = false;
+            return;
+        }
+
+        int delayMs = Mathf.CeilToInt(Mathf.Max(0.1f, endMatchLoadDelaySeconds) * 1000f);
+        await Task.Delay(delayMs);
+
+        if (!Object || !Object.HasStateAuthority || Runner == null || !Runner.IsRunning)
+            return;
+
         try
         {
-            await Runner.Shutdown();
+            Debug.Log($"[MATCH] Fin de partida ({reason}). Cargando escena final index={sceneIndex}.");
+            await Runner.LoadScene(SceneRef.FromIndex(sceneIndex));
         }
-        catch (System.Exception e)
+        catch (Exception e)
         {
-            Debug.LogError($"[MATCH] Error al cerrar la sesion: {e.Message}");
+            Debug.LogError($"[MATCH] Error al cargar escena final: {e.Message}");
+            isEndingMatch = false;
         }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_PrepareLocalEndMatchSnapshot(MatchEndReason reason)
+    {
+        if (Object != null && Object.HasStateAuthority) return;
+        if (Runner == null) return;
+
+        MatchEndSnapshot snapshot = MatchEndSnapshotBuilder.CaptureFromRunner(Runner, reason);
+        MatchEndRuntimeContext.SetSnapshot(snapshot);
+        Debug.Log($"[MATCH] Snapshot por RPC capturado: players={snapshot.Players.Count}, reason={reason}");
+    }
+
+    private void TryEnsureLocalEndMatchSnapshot()
+    {
+        if (!MatchEnded) return;
+        if (MatchEndRuntimeContext.LatestSnapshot != null) return;
+        if (Runner == null || !Runner.IsRunning) return;
+        if (SceneManager.GetActiveScene().name != "Game") return;
+
+        MatchEndReason reason = DecodeNetworkedEndReason();
+        MatchEndSnapshot snapshot = MatchEndSnapshotBuilder.CaptureFromRunner(Runner, reason);
+        if (snapshot == null || snapshot.Players.Count == 0) return;
+
+        MatchEndRuntimeContext.SetSnapshot(snapshot);
+        Debug.Log($"[MATCH] Snapshot fallback capturado: players={snapshot.Players.Count}, reason={reason}");
+    }
+
+    private MatchEndReason DecodeNetworkedEndReason()
+    {
+        if (Enum.IsDefined(typeof(MatchEndReason), EndMatchReasonCode))
+            return (MatchEndReason)EndMatchReasonCode;
+
+        return MatchEndReason.Manual;
+    }
+
+    private int ResolveEndMatchSceneIndex()
+    {
+        if (!string.IsNullOrWhiteSpace(endMatchSceneName))
+        {
+            int resolved = SceneUtility.GetBuildIndexByScenePath("Scenes/" + endMatchSceneName);
+            if (resolved >= 0) return resolved;
+
+            resolved = SceneUtility.GetBuildIndexByScenePath("Assets/Scenes/" + endMatchSceneName + ".unity");
+            if (resolved >= 0) return resolved;
+
+            resolved = SceneUtility.GetBuildIndexByScenePath(endMatchSceneName);
+            if (resolved >= 0) return resolved;
+
+            int sceneCount = SceneManager.sceneCountInBuildSettings;
+            for (int i = 0; i < sceneCount; i++)
+            {
+                string path = SceneUtility.GetScenePathByBuildIndex(i);
+                if (string.IsNullOrWhiteSpace(path)) continue;
+
+                string fileName = Path.GetFileNameWithoutExtension(path);
+                if (string.Equals(fileName, endMatchSceneName, StringComparison.OrdinalIgnoreCase))
+                    return i;
+            }
+        }
+
+        if (endMatchSceneIndex >= 0) return endMatchSceneIndex;
+        return -1;
     }
 
     private void OnLocalPylonActivated(MissionObjectivePylon pylon)

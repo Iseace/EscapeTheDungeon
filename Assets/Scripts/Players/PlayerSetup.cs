@@ -23,9 +23,13 @@ public class PlayerSetup : NetworkBehaviour
 
     [Networked]
     public NetworkBool HasEscaped { get; set; }
+    public bool IsNetworkStateReady => hasSpawned && Object != null && Runner != null;
+    public bool HasEscapedSafe => IsNetworkStateReady && HasEscaped;
+
     public ParentConstraint wandConstraint;
     private bool escapeHandledLocally;
     private bool escapeCollisionDisabled;
+    private bool hasSpawned;
 
     [Networked, OnChangedRender(nameof(OnNicknameChanged))]
     public NetworkString<_32> Nickname { get; set; }
@@ -40,6 +44,7 @@ public class PlayerSetup : NetworkBehaviour
 
     public override void Spawned()
     {
+        hasSpawned = true;
         escapeHandledLocally = false;
         escapeCollisionDisabled = false;
 
@@ -74,6 +79,11 @@ public class PlayerSetup : NetworkBehaviour
         }
     }
 
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        hasSpawned = false;
+    }
+
     public void SetNameplateVisible(bool visible)
     {
         if (nameplateText != null)
@@ -103,7 +113,10 @@ public class PlayerSetup : NetworkBehaviour
     // Added Update to force cursor visibility if a camera script tries to lock it in the Lobby
     private void Update()
     {
-        if (HasInputAuthority && SceneManager.GetActiveScene().name == "LobbyRoom")
+        if (!HasInputAuthority)
+            return;
+
+        if (ShouldCursorBeVisibleInCurrentScene())
         {
             if (Cursor.lockState != CursorLockMode.None || !Cursor.visible)
             {
@@ -124,14 +137,14 @@ public class PlayerSetup : NetworkBehaviour
     {
         if (Object == null || !Object.HasStateAuthority) return;
         if (IsBossPlayer()) return;
-        if (HasEscaped) return;
+        if (HasEscapedSafe) return;
         HasEscaped = true;
     }
 
     public bool IsBossPlayer()
     {
         var role = GetComponent<PlayerRole>();
-        if (role != null && role.IsBoss) return true;
+        if (role != null && role.IsBossSafe) return true;
 
         // Fallback for prefabs where role sync is late or missing.
         if (GetComponent<BossSpecial>() != null) return true;
@@ -158,7 +171,7 @@ public class PlayerSetup : NetworkBehaviour
 
         TryHandleEscapedState();
 
-        if (HasEscaped)
+        if (HasEscapedSafe)
         {
             SetAllCharacterModelsActive(false);
             return;
@@ -240,7 +253,7 @@ public class PlayerSetup : NetworkBehaviour
 
     private void TryHandleEscapedState()
     {
-        if (!HasEscaped) return;
+        if (!HasEscapedSafe) return;
 
         if (!escapeCollisionDisabled)
         {
@@ -349,8 +362,7 @@ public class PlayerSetup : NetworkBehaviour
 
     private void HandleCursorState()
     {
-        // CHANGED: Using "LobbyRoom" to match your actual scene name
-        if (SceneManager.GetActiveScene().name == "LobbyRoom")
+        if (ShouldCursorBeVisibleInCurrentScene())
         {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -360,5 +372,12 @@ public class PlayerSetup : NetworkBehaviour
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
         }
+    }
+
+    private static bool ShouldCursorBeVisibleInCurrentScene()
+    {
+        string sceneName = SceneManager.GetActiveScene().name;
+        return !string.Equals(sceneName, "Game", System.StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(sceneName, "Race", System.StringComparison.OrdinalIgnoreCase);
     }
 }
