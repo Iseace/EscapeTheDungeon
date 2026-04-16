@@ -182871,7 +182871,7 @@ MonoBehaviour:
   missionPortalHeightOffset: 1
   bossFreezeDurationSeconds: 10
   enableMatchTimeLimit: 1
-  matchDurationSeconds: 120
+  matchDurationSeconds: 180
   spawnWallDecorations: 1
   wallDecorations:
   - prefab: {fileID: 510141063021254879, guid: 7a937ee5bc40ba142a195e3a41fa7258, type: 3}

@@ -258,6 +258,8 @@ MonoBehaviour:
   PlayerSpeed: 5
   JumpForce: 5
   Gravity: -9.81
+  GroundFriction: 6
+  AirFriction: 0.5
   isBoss: 0
   Camera: {fileID: 0}
 --- !u!114 &8479133809032691040
@@ -315,13 +317,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3567b9d8aad0d814f85ee5eed7bd6357, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
-  maxHealth: 2000
+  maxHealth: 1000
   healthBarObject: {fileID: 345259118353679250}
   controlsUI: {fileID: 0}
   spectatorUI: {fileID: 0}
   mobileControls: {fileID: 0}
   spectatorMobileInput: {fileID: 0}
-  _CurrentHealth: 2000
+  _CurrentHealth: 1000
   _IsDead:
     _value: 0
 --- !u!114 &7756113825659338862
