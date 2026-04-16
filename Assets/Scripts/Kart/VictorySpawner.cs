@@ -12,6 +12,10 @@ public class VictorySpawner : NetworkBehaviour
     // Usamos Spawned en lugar de FixedUpdateNetwork para reaccionar al entrar en la escena
     public override void Spawned()
     {
+        // Aseguramos que el cursor sea visible en la escena de victoria
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
         // Si ya estamos en la escena y hay un ganador, intentamos configurar
         CheckAndSetup();
     }
