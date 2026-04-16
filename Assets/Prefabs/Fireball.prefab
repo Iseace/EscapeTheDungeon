@@ -4953,8 +4953,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67e18a6a86dbb704a96ae7161ea59a23, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellLogic
-  speed: 15
+  speed: 25
   maxLifetime: 5
+  damage: 25
 --- !u!54 &1661248609884323214
 Rigidbody:
   m_ObjectHideFlags: 0

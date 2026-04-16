@@ -148,7 +148,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpellLogic
   speed: 15
   maxLifetime: 5
-  damage: 20
+  damage: 30
 --- !u!114 &-7629743083155470750
 MonoBehaviour:
   m_ObjectHideFlags: 0
