@@ -40,7 +40,13 @@ public class WeatherIconHUD : MonoBehaviour
         if (eventManager != null)
         {
             eventManager.WeatherChanged += OnWeatherChanged;
-            UpdateIcon(eventManager.GetCurrentWeather());
+
+            // Si el EventManager ya está válido en red, actualizamos inmediatamente.
+            // Si no, el WeatherChanged se disparará cuando el EventManager haga su Spawned()
+            if (eventManager.Object != null && eventManager.Object.IsValid)
+            {
+                UpdateIcon(eventManager.GetCurrentWeather());
+            }
         }
         else
         {

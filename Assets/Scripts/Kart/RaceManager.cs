@@ -40,20 +40,45 @@ public class RaceManager : NetworkBehaviour
             if (playerSetup != null)
             {
                 WinnerCharacterIndex = playerSetup.SelectedCharacterIndex;
+                Debug.Log($"[MATCH] Found PlayerSetup for {WinnerPlayerRef}. Character Index: {WinnerCharacterIndex}");
             }
             else
             {
-                // 2. FALLBACK ESPECIAL: Si somos el Host y el ganador soy yo, podemos leer PlayerPrefs directamente.
-                // Si el ganador es un cliente y no encontramos su PlayerSetup, el Host no tiene acceso a sus PlayerPrefs.
-                if (WinnerPlayerRef == Runner.LocalPlayer)
+                // FALLBACK A: Intentamos con LocalPlayerSetup (el script que usan los Karts)
+                var kartSetup = racer.GetComponent<LocalPlayerSetup>() ?? racer.GetComponentInChildren<LocalPlayerSetup>();
+                if (kartSetup != null)
                 {
-                    WinnerCharacterIndex = PlayerPrefs.GetInt("SelectedCharacterID", 0);
-                    Debug.Log($"[MATCH] Winner is Local Host. Reading from PlayerPrefs: {WinnerCharacterIndex}");
+                    WinnerCharacterIndex = kartSetup.SelectedCharacterIndex;
+                    Debug.Log($"[MATCH] Winner is using LocalPlayerSetup. Index: {WinnerCharacterIndex}");
                 }
                 else
                 {
-                    Debug.LogWarning($"[MATCH] No se encontró PlayerSetup para el ganador remoto {WinnerPlayerRef}. Usando index 0 por defecto.");
-                    WinnerCharacterIndex = 0;
+                    // FALLBACK B: Si somos el Host y el ganador soy yo, podemos leer PlayerPrefs directamente.
+                    if (WinnerPlayerRef == Runner.LocalPlayer)
+                    {
+                        WinnerCharacterIndex = PlayerPrefs.GetInt("SelectedCharacterID", 0);
+                        Debug.Log($"[MATCH] Winner is Local Host. Reading from PlayerPrefs: {WinnerCharacterIndex}");
+                    }
+                    else
+                    {
+                        // FALLBACK C: Buscamos por todo el mundo
+                        var allSetups = FindObjectsByType<LocalPlayerSetup>(FindObjectsSortMode.None);
+                        foreach (var setup in allSetups)
+                        {
+                            if (setup.Object != null && setup.Object.InputAuthority == WinnerPlayerRef)
+                            {
+                                WinnerCharacterIndex = setup.SelectedCharacterIndex;
+                                Debug.Log($"[MATCH] Found LocalPlayerSetup via search for {WinnerPlayerRef}. Index: {WinnerCharacterIndex}");
+                                break;
+                            }
+                        }
+
+                        if (WinnerCharacterIndex == -1)
+                        {
+                            Debug.LogWarning($"[MATCH] No se encontró Setup para el ganador remoto {WinnerPlayerRef}. Usando index 0.");
+                            WinnerCharacterIndex = 0;
+                        }
+                    }
                 }
             }
 

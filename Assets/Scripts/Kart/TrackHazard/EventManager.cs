@@ -56,7 +56,6 @@ public class EventManager : NetworkBehaviour
         }
 
         localWeather = ReadWeatherSafe();
-        
         ApplyWeatherEffects();
     }
 
@@ -236,7 +235,7 @@ public class EventManager : NetworkBehaviour
     }
 
     /// <summary>
-    /// Gets the current weather type
+    /// Gets the current weather type. Safer version that checks if object is spawned.
     /// </summary>
     public WeatherType GetCurrentWeather()
     {
