@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
@@ -18,8 +17,7 @@ public class LapTracker : MonoBehaviour
     [SerializeField] private bool enableDebugLogs = true;
     [SerializeField] private bool logAllTriggerContacts = false;
 
-    [Header("UI (Local Player)")]
-    [SerializeField] private TMP_Text localLapText;
+    [Header("UI (Local Player) — legacy, now handled by RacerLapData on the prefab")]
     [SerializeField] private string lapPrefix = "Lap";
     [SerializeField] private string finishedText = "FINISHED";
 
@@ -35,8 +33,6 @@ public class LapTracker : MonoBehaviour
     }
 
     private readonly Dictionary<int, RacerProgress> progressByRacerId = new Dictionary<int, RacerProgress>();
-    private BroomMove localRacer;
-    private float nextLocalRacerResolveTime;
 
     private void Awake()
     {
@@ -50,11 +46,6 @@ public class LapTracker : MonoBehaviour
         {
             Debug.Log($"[LAP] LapTracker active on {name}. ActiveInHierarchy={gameObject.activeInHierarchy}, ScriptEnabled={enabled}, ColliderEnabled={finishCollider.enabled}, IsTrigger={finishCollider.isTrigger}, Layer={gameObject.layer}", this);
         }
-    }
-
-    private void Update()
-    {
-        RefreshLocalHud();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -72,13 +63,29 @@ public class LapTracker : MonoBehaviour
             return;
         }
 
+        // Guard: NetworkObject must be valid before we touch any Fusion state
+        if (racer.Object == null || !racer.Object.IsValid)
+        {
+            return;
+        }
+
+        if (!racer.Object.HasStateAuthority)
+        {
+            return;
+        }
+
+        int racerId = GetRacerId(racer);
+        if (racerId == -1)
+        {
+            return;
+        }
+
         string racerLabel = GetRacerLabel(racer);
         if (enableDebugLogs)
         {
             Debug.Log($"[LAP] Finish line crossed by {racerLabel}.", this);
         }
 
-        int racerId = GetRacerId(racer);
         RacerProgress progress = GetOrCreateProgress(racerId);
         if (progress.finished)
         {
@@ -129,9 +136,14 @@ public class LapTracker : MonoBehaviour
             }
         }
 
-        if (racer == localRacer)
+        RacerLapData lapData = racer.GetComponent<RacerLapData>();
+        if (lapData != null)
         {
-            UpdateLocalLapText(progress);
+            lapData.SetLap(progress.currentLap, totalLaps, progress.finished);
+        }
+        else if (enableDebugLogs)
+        {
+            Debug.LogWarning($"[LAP] RacerLapData not found on {racer.name}. Add it to the racer prefab!", this);
         }
     }
 
@@ -211,62 +223,6 @@ public class LapTracker : MonoBehaviour
         return progress;
     }
 
-    private void RefreshLocalHud()
-    {
-        // 1. Try to find the local racer if we don't have one yet
-        if (localRacer == null && Time.time >= nextLocalRacerResolveTime)
-        {
-            BroomMove[] allRacers = FindObjectsByType<BroomMove>(FindObjectsSortMode.None);
-            foreach (var racer in allRacers)
-            {
-                if (racer != null && racer.HasInputAuthority)
-                {
-                    localRacer = racer;
-
-                    // 2. NEW: Automatically find the TMP_Text on the spawned prefab
-                    // This searches the racer and all its children for a TMP_Text component
-                    localLapText = racer.GetComponentInChildren<TMP_Text>();
-
-                    if (localLapText == null && enableDebugLogs)
-                    {
-                        Debug.LogWarning($"[LAP] Found local racer {racer.name}, but no TMP_Text found on it!");
-                    }
-                    break;
-                }
-            }
-            nextLocalRacerResolveTime = Time.time + 0.5f;
-        }
-
-        // 3. Safety check: If we still don't have a text component, we can't update anything
-        if (localLapText == null) return;
-
-        // 4. Update the text based on progress
-        if (localRacer == null)
-        {
-            localLapText.text = $"{lapPrefix} 1/{totalLaps}";
-            return;
-        }
-
-        UpdateLocalLapText(GetOrCreateProgress(GetRacerId(localRacer)));
-    }
-
-    private void UpdateLocalLapText(RacerProgress progress)
-    {
-        if (localLapText == null || progress == null)
-        {
-            return;
-        }
-
-        if (progress.finished)
-        {
-            localLapText.text = finishedText;
-            return;
-        }
-
-        int displayLap = Mathf.Clamp(progress.currentLap + 1, 1, totalLaps);
-        localLapText.text = string.Format("{0} {1}/{2}", lapPrefix, displayLap, totalLaps);
-    }
-
     private static string GetRacerLabel(BroomMove racer)
     {
         return racer == null ? "Unknown" : $"{racer.name}#{GetRacerId(racer)}";
@@ -279,6 +235,6 @@ public class LapTracker : MonoBehaviour
             return -1;
         }
 
-        return racer.Object.InputAuthority.PlayerId;
+        return (int)racer.Object.Id.Raw;
     }
 }

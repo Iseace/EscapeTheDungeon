@@ -15709,6 +15709,7 @@ GameObject:
   - component: {fileID: -1469339193753302141}
   - component: {fileID: -1060268322058557028}
   - component: {fileID: 3864002276216712713}
+  - component: {fileID: 8012609659685413935}
   m_Layer: 0
   m_Name: BroomRacer
   m_TagString: Untagged
@@ -15758,6 +15759,7 @@ MonoBehaviour:
   - {fileID: 6336234727296163067}
   - {fileID: -1469339193753302141}
   - {fileID: -1060268322058557028}
+  - {fileID: 8012609659685413935}
   ForceRemoteRenderTimeframe: 0
 --- !u!54 &8188509914162312914
 Rigidbody:
@@ -15894,6 +15896,24 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   killDepth: -5
+  enableDebugLogs: 1
+--- !u!114 &8012609659685413935
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7092673203643427425}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2badd21c59c1617d48465a894e385f51, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  lapPrefix: Lap
+  finishedText: FINISHED
+  _CurrentLap: 0
+  _Finished: 0
+  _TotalLaps: 2
   enableDebugLogs: 1
 --- !u!1 &7098714450728896804
 GameObject:
